@@ -1,0 +1,308 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Fonts */
+
+  /* Colors - Mapping your specific dashboard palette */
+  --color-primary: #6946dd;
+  --color-obsidian: #0f172a;
+  --color-midnight: #1e293b;
+  --color-glass: rgba(30, 41, 59, 0.7);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+  --color-emerald-glow: #10b981;
+  --color-gold-glow: #fbbf24;
+  --color-rose-glow: #f43f5e;
+  --color-cyan-glow: #06b6d4;
+
+  /* i added this  */
+  --color-border: var(--color-gray-200);
+
+  /* Custom Animations */
+  --animate-pulsing: pulsing 3s infinite cubic-bezier(0.66, 0, 0, 1);
+  --animate-toast: slide-up-fade 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+
+  @keyframes pulsing {
+    to {
+      box-shadow: 0 0 0 15px rgba(59, 130, 246, 0);
+    }
+  }
+
+  @keyframes slide-up-fade {
+    0% {
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-obsidian text-slate-200 ;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  :root {
+    --swal-bg: #ffffff;
+    --swal-text: #1f2937;
+    --gauge-bg: #f4f6f8;
+
+    --color-obsidian: #f4f6f8;
+    --font-geist-sans: "Noto Sans", sans-serif;
+    --background-light: #f4f6f8;
+    --background-dark: #111827;
+    --surface:
+      "rgba(255, 255, 255, 0.65)", "glass-border": "rgba(255, 255, 255, 0.4)";
+
+    --radius: 0.625rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.13 0.028 261.692);
+
+    --accent: "#0D9488";
+    --background-light: "#F9FAFB";
+    --border-light: "#E2E8F0";
+
+    --color-border: #e2e8f0; /* Fallback for raw CSS if needed */
+  }
+
+  .dark {
+    --gauge-bg: rgba(255, 255, 255, 0.1);
+    --color-obsidian: #0f172a;
+    --color-border: oklch(1 0 0 / 10%); /* This is white/10 in v4 */
+    --swal-bg: #1f2937;
+    --swal-text: #f3f4f6;
+  }
+}
+
+@layer components {
+  .dark ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  }
+
+  .gauge-bg {
+    fill: none;
+    stroke-width: 15;
+    stroke-linecap: round;
+  }
+
+  /* DARK MODE */
+  .dark .glass-panel {
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .glass-card {
+    @apply transition-all duration-300;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  }
+
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.8);
+    border-color: rgba(255, 255, 255, 0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  }
+
+  .dark .glass-card {
+    @apply bg-white/5 border-white/5;
+    box-shadow: none;
+  }
+
+  .dark .glass-card:hover {
+    @apply bg-white/10 border-white/10;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .ai-pulse {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+    @apply animate-pulsing;
+  }
+
+  .minimal-table-row {
+    @apply border-b border-white/5 transition-colors duration-200 hover:bg-white/5;
+  }
+
+  /* Select Dropdown Styling */
+  select option {
+    background-color: #1e293b;
+    color: #cbd5e1;
+  }
+}
+
+/* SweetAlert2 Theme Integration */
+.swal2-popup {
+  background: var(--swal-bg) !important;
+  color: var(--swal-text) !important;
+  border-radius: var(--radius) !important; /* Matches your UI radius */
+}
+
+/* Fix the "Bad" Ring Color */
+.swal2-styled:focus {
+  /* This removes the default blue and uses a soft version of your primary indigo */
+  box-shadow: 0 0 0 3px rgba(105, 70, 221, 0.4) !important;
+}
+
+/* 1. Kill the default SweetAlert animation and width */
+.swal2-timer-progress-bar {
+  background: var(--color-primary) !important;
+}
+
+/* Confirm Button - using your primary #6946dd */
+.swal2-confirm {
+  background-color: var(--color-primary) !important;
+  font-weight: 600 !important;
+}
+
+/* Success Icon Styling */
+.dark .swal2-icon.swal2-success {
+  border-color: var(--color-emerald-glow) !important;
+}
+
+/* This targets the actual checkmark lines inside the circle */
+.dark .swal2-icon.swal2-success [class^="swal2-success-line"] {
+  background-color: var(--color-emerald-glow) !important;
+}
+
+/* This fixes the little 'circular-line' element Swal uses for animations */
+.dark .swal2-icon.swal2-success .swal2-success-ring {
+  border: 0.25em solid rgba(16, 185, 129, 0.2) !important; /* Your emerald with low opacity */
+}
+
+/* Repeat for Error and Warning if needed */
+.dark .swal2-icon.swal2-error {
+  border-color: var(--color-rose-glow) !important;
+}
+.dark .swal2-icon.swal2-error [class^="swal2-x-mark-line"] {
+  background-color: var(--color-rose-glow) !important;
+}
+
+.dark .swal2-icon.swal2-warning {
+  border-color: var(--color-gold-glow) !important;
+  color: var(--color-gold-glow) !important;
+}
+
+.live-tracker-map .map-gradient-overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(16, 22, 34, 0) 0%,
+    rgba(16, 22, 34, 0) 85%,
+    rgba(16, 22, 34, 0.9) 100%
+  );
+}
+
+.live-tracker-map .glass-panel {
+  background: rgba(28, 31, 39, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.live-tracker-map .custom-scrollbar::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
+}
+
+.live-tracker-map .custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.live-tracker-map .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #282e39;
+  border-radius: 10px;
+}
+
+@keyframes live-tracker-ping {
+  75%,
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.live-tracker-map .animate-ping {
+  animation: live-tracker-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.live-tracker-map .bw-mode .avatar-wrap img {
+  filter: none;
+}
+
+.live-tracker-map .bw-mode .avatar-wrap {
+  border-color: #1152d4 !important;
+}
+
+.live-tracker-map .bw-mode .glass-panel {
+  background: #0b0b0b !important;
+  color: #e6e6e6 !important;
+}
+
+.live-tracker-map .pin-tooltip {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
+}
+
+.live-tracker-map .pin-wrapper:hover .pin-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.live-tracker-map .side-panel-enter {
+  transform: translateX(100%);
+}
+
+.live-tracker-map .side-panel-open {
+  transform: translateX(0);
+}
+
+.live-tracker-map .side-panel-closed {
+  transform: translateX(100%);
+}
+
+
+/* Bell shake animation */
+@keyframes shake {
+  0%, 100% { transform: rotate(0deg); }
+  20%       { transform: rotate(-15deg); }
+  40%       { transform: rotate(15deg); }
+  60%       { transform: rotate(-10deg); }
+  80%       { transform: rotate(10deg); }
+}
+
+.bell-shake {
+  animation: shake 0.5s ease-in-out;
+}
