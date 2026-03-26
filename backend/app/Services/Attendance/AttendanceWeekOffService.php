@@ -349,4 +349,157 @@ class AttendanceWeekOffService
 
         return !empty($absentDates) && $absentDates[0] === $date;
     }
+
+    /**
+     * Recalculate weekoff statuses for a collection of attendance records.
+     * Works in-memory — does NOT write to DB.
+     * Only processes records with status "A" — leaves P, L, H, O, etc. untouched.
+     *
+     * @param \Illuminate\Support\Collection $attendances  Attendance records with employee.schedule.shift loaded
+     * @param int $companyId
+     * @return \Illuminate\Support\Collection  Same collection with corrected statuses
+     */
+    public static function recalculateForReport($attendances, int $companyId)
+    {
+        // Group by employee
+        $byEmployee = $attendances->groupBy('employee_id');
+
+        foreach ($byEmployee as $employeeId => $records) {
+            // Get shift config from the first record that has schedule.shift
+            $shift = null;
+            foreach ($records as $record) {
+                $emp = $record->employee ?? null;
+                if ($emp) {
+                    $schedule = $emp->schedule ?? ($emp->schedule_all ?? null);
+                    if ($schedule) {
+                        // schedule could be a single model or a collection
+                        $scheduleModel = is_iterable($schedule) ? collect($schedule)->first() : $schedule;
+                        if ($scheduleModel && isset($scheduleModel['shift'])) {
+                            $shift = $scheduleModel['shift'];
+                            break;
+                        }
+                    }
+                }
+                // Also check direct shift relationship
+                if (!$shift && isset($record->shift) && $record->shift) {
+                    $shift = $record->shift;
+                    break;
+                }
+            }
+
+            if (!$shift) {
+                continue;
+            }
+
+            $config = self::resolveConfig($shift);
+
+            // Check if monthly flexi is standalone mode
+            $isMonthlyFlexiStandalone = $config['monthly_flexi'] > 0
+                && $config['weekend1']['type'] === 'Not Applicable'
+                && $config['weekend2']['type'] === 'Not Applicable';
+
+            // Collect only "A" status records sorted by date
+            $absentRecords = $records->filter(fn($r) => $r->status === 'A')->sortBy('date');
+
+            if ($absentRecords->isEmpty()) {
+                continue;
+            }
+
+            if ($isMonthlyFlexiStandalone) {
+                // Mode 3: Monthly Flexible (standalone)
+                self::applyMonthlyFlexiForReport($absentRecords, $config['monthly_flexi'], $records);
+            } else {
+                // Mode 1 & 2: Fixed and/or Flexible weekends
+                self::applyWeekendForReport($absentRecords, $config, $records);
+            }
+        }
+
+        return $attendances;
+    }
+
+    /**
+     * Apply weekend1/weekend2 logic in-memory for report.
+     */
+    private static function applyWeekendForReport($absentRecords, array $config, $allRecords): void
+    {
+        // Group absent records by week (Mon-Sun)
+        $byWeek = $absentRecords->groupBy(function ($record) {
+            $week = self::getWeekRange(date('Y-m-d', strtotime($record->date)));
+            return $week['start']; // group key = Monday of that week
+        });
+
+        foreach ($byWeek as $weekStart => $weekAbsents) {
+            $weekAbsents = $weekAbsents->sortBy('date')->values();
+            $convertedCount = 0;
+
+            // Also count already-O records in this week from allRecords
+            $weekRange = self::getWeekRange($weekStart);
+            $existingOff = $allRecords->filter(function ($r) use ($weekRange) {
+                $d = date('Y-m-d', strtotime($r->date));
+                return $r->status === 'O' && $d >= $weekRange['start'] && $d <= $weekRange['end'];
+            })->count();
+
+            foreach ($weekAbsents as $record) {
+                $date = date('Y-m-d', strtotime($record->date));
+                $shouldConvert = false;
+
+                // Weekend1 check
+                if (!$shouldConvert && $config['weekend1']['type'] !== 'Not Applicable') {
+                    if ($config['weekend1']['type'] === 'Fixed') {
+                        $dayName = date('l', strtotime($date));
+                        $shouldConvert = ($dayName === $config['weekend1']['day']);
+                    } elseif ($config['weekend1']['type'] === 'Flexi') {
+                        // First absent in the week (considering existing O records)
+                        $shouldConvert = ($convertedCount + $existingOff) < 1;
+                    }
+                }
+
+                // Weekend2 check (only if Weekend1 didn't match)
+                if (!$shouldConvert && $config['weekend2']['type'] !== 'Not Applicable') {
+                    if ($config['weekend2']['type'] === 'Fixed') {
+                        $dayName = date('l', strtotime($date));
+                        $shouldConvert = ($dayName === $config['weekend2']['day']);
+                    } elseif ($config['weekend2']['type'] === 'Flexi') {
+                        // Second absent in the week (considering existing O records)
+                        $shouldConvert = ($convertedCount + $existingOff) < 2;
+                    }
+                }
+
+                if ($shouldConvert) {
+                    $record->status = 'O';
+                    $convertedCount++;
+                }
+            }
+        }
+    }
+
+    /**
+     * Apply monthly flexible logic in-memory for report.
+     */
+    private static function applyMonthlyFlexiForReport($absentRecords, int $monthlyQuota, $allRecords): void
+    {
+        // Group absent records by month
+        $byMonth = $absentRecords->groupBy(function ($record) {
+            return date('Y-m', strtotime($record->date));
+        });
+
+        foreach ($byMonth as $monthKey => $monthAbsents) {
+            $monthAbsents = $monthAbsents->sortBy('date')->values();
+
+            // Count existing "O" records in this month from allRecords
+            $existingOff = $allRecords->filter(function ($r) use ($monthKey) {
+                return $r->status === 'O' && date('Y-m', strtotime($r->date)) === $monthKey;
+            })->count();
+
+            $remaining = $monthlyQuota - $existingOff;
+
+            foreach ($monthAbsents as $record) {
+                if ($remaining <= 0) {
+                    break;
+                }
+                $record->status = 'O';
+                $remaining--;
+            }
+        }
+    }
 }

@@ -14,6 +14,42 @@
     />
     <script type="module" crossorigin src="/attendance-report/assets/index-AuH5YblT.js"></script>
     <link rel="stylesheet" crossorigin href="/attendance-report/assets/index-CW4BccYh.css">
+    <style>
+      /* Remove card/badge styling from status column - show plain text only */
+      td.px-4.py-3.text-center.font-mono span,
+      td.p-1.text-center.font-mono span {
+        position: static !important;
+        display: inline !important;
+        height: auto !important;
+        width: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+      td.px-4.py-3.text-center.font-mono span span,
+      td.p-1.text-center.font-mono span span {
+        position: static !important;
+        left: auto !important;
+        top: auto !important;
+      }
+      /* Present = green */
+      td.px-4.py-3.text-center.font-mono .bg-emerald-50,
+      td.p-1.text-center.font-mono .bg-emerald-50 {
+        color: #047857 !important;
+      }
+      /* Absent = red */
+      td.px-4.py-3.text-center.font-mono .bg-rose-50,
+      td.p-1.text-center.font-mono .bg-rose-50 {
+        color: #be123c !important;
+      }
+      /* Holiday, Leave, Missing = gray (bg-gray-100) */
+      td.px-4.py-3.text-center.font-mono .bg-gray-100,
+      td.p-1.text-center.font-mono .bg-gray-100 {
+        color: #374151 !important;
+      }
+    </style>
   </head>
   <body class="">
     <div id="root"></div>

@@ -240,11 +240,16 @@ Route::get('attendance-report', function (Request $request) {
             'employee:id,first_name,last_name,system_user_id,employee_id,department_id,designation_id',
             'employee.department:id,name',
             'employee.designation:id,name'
-        ])
-            ->without('schedule');
+        ]);
 
 
         $paginated = $model->paginate($perPage, ['id', 'employee_id', 'date', 'ot', 'total_hrs', 'status', 'logs'], 'page', $page);
+
+        // -----------------------------
+        // 🔄 RECALCULATE WEEKOFF FOR "A" RECORDS
+        // -----------------------------
+        $items = collect($paginated->items());
+        \App\Services\Attendance\AttendanceWeekOffService::recalculateForReport($items, (int) $request->company_id);
 
         // -----------------------------
         // 🔄 TRANSFORM DATA

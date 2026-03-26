@@ -345,7 +345,7 @@ export default function AttendanceTable() {
           company_name: "Hilal & Co",
         });
 
-        let templateUrl = `https://summary-report.netlify.app/attendance-report/?${t4Params.toString()}`;
+        let templateUrl = `http://localhost:5555/attendance-report/?${t4Params.toString()}`;
 
         // await downloadReport(templateUrl, `Attendance-Report-Template-A.pdf`);
         window.open(templateUrl, "_blank");

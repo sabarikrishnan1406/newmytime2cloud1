@@ -51,6 +51,10 @@ class ReportController extends Controller
 
         $data = $model->paginate($perPage);
 
+        // Recalculate weekoff for "A" records
+        $items = collect($data->items());
+        \App\Services\Attendance\AttendanceWeekOffService::recalculateForReport($items, (int) $request->company_id);
+
         $showTabs = json_decode($request->showTabs, true);
 
         // only for multi in/out
@@ -432,6 +436,9 @@ class ReportController extends Controller
                         "id",
                         "working_hours",
                         "days",
+                        "weekend1",
+                        "weekend2",
+                        "monthly_flexi_holidays",
                     ]);
                 }]);
             }]);
@@ -464,7 +471,52 @@ class ReportController extends Controller
         }])
             ->groupBy('employee_id');
 
-        return $model->paginate($request->per_page ?? 100);
+        $paginated = $model->paginate($request->per_page ?? 100);
+
+        // Recalculate weekoff counts for employees that have absent records
+        $employeesWithAbsent = collect($paginated->items())->filter(fn($item) => ($item->a_count ?? 0) > 0);
+
+        if ($employeesWithAbsent->isNotEmpty()) {
+            $empIds = $employeesWithAbsent->pluck('employee_id')->toArray();
+
+            $rawRecords = Attendance::where('company_id', $companyId)
+                ->whereIn('employee_id', $empIds)
+                ->whereBetween('date', [$fromDate, $toDate])
+                ->whereIn('status', ['A', 'O'])
+                ->with(['employee' => function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId);
+                    $q->with(['schedule' => function ($q) use ($companyId) {
+                        $q->where('company_id', $companyId);
+                        $q->select('id', 'shift_id', 'employee_id');
+                        $q->withOut('shift_type');
+                    }, 'schedule.shift' => function ($q) use ($companyId) {
+                        $q->where('company_id', $companyId);
+                        $q->select('id', 'weekend1', 'weekend2', 'monthly_flexi_holidays');
+                    }]);
+                }])
+                ->orderBy('date', 'asc')
+                ->get();
+
+            \App\Services\Attendance\AttendanceWeekOffService::recalculateForReport($rawRecords, (int) $companyId);
+
+            // Recount per employee
+            $recounted = $rawRecords->groupBy('employee_id')->map(function ($records) {
+                return [
+                    'o_count' => $records->where('status', 'O')->count(),
+                    'a_count' => $records->where('status', 'A')->count(),
+                ];
+            });
+
+            // Update paginated items with corrected counts
+            foreach ($paginated->items() as $item) {
+                if (isset($recounted[$item->employee_id])) {
+                    $item->o_count = $recounted[$item->employee_id]['o_count'];
+                    $item->a_count = $recounted[$item->employee_id]['a_count'];
+                }
+            }
+        }
+
+        return $paginated;
     }
 
     public function summaryReportDownload(Request $request)

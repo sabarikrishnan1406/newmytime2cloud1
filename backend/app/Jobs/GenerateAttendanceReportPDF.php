@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Attendance;
+use App\Services\Attendance\AttendanceWeekOffService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -31,15 +32,18 @@ class GenerateAttendanceReportPDF implements ShouldQueue
 
         $data = $model->get();
 
-        $collection = $model->clone()->get();
+        // Recalculate weekoff for "A" records before counting statuses
+        AttendanceWeekOffService::recalculateForReport($data, (int) $this->requestPayload['company_id']);
+
+        $collection = $data;
 
         $info = (object) [
-            'total_absent'   => $model->clone()->where('status', 'A')->count(),
-            'total_present'  => $model->clone()->where('status', 'P')->count()  + $model->clone()->where('status', 'LC')->count() + $model->clone()->where('status', 'EG')->count(),
-            'total_off'      => $model->clone()->where('status', 'O')->count(),
-            'total_missing'  => $model->clone()->where('status', 'M')->count(),
-            'total_leave'    => $model->clone()->where('status', 'L')->count(),
-            'total_holiday'  => $model->clone()->where('status', 'H')->count(),
+            'total_absent'   => $data->where('status', 'A')->count(),
+            'total_present'  => $data->where('status', 'P')->count()  + $data->where('status', 'LC')->count() + $data->where('status', 'EG')->count(),
+            'total_off'      => $data->where('status', 'O')->count(),
+            'total_missing'  => $data->where('status', 'M')->count(),
+            'total_leave'    => $data->where('status', 'L')->count(),
+            'total_holiday'  => $data->where('status', 'H')->count(),
 
             'total_late'     => getTotalHours(array_column($collection->toArray(), 'late_coming')),
             'total_early'    => getTotalHours(array_column($collection->toArray(), 'early_going')),
