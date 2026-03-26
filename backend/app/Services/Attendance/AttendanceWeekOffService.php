@@ -126,4 +126,105 @@ class AttendanceWeekOffService
         ];
         return $map[$name] ?? null;
     }
+
+    public static function getWeekRange(string $date): array
+    {
+        $timestamp = strtotime($date);
+        $dayOfWeek = date('N', $timestamp); // 1=Monday, 7=Sunday
+        $monday = date('Y-m-d', strtotime("-" . ($dayOfWeek - 1) . " days", $timestamp));
+        $sunday = date('Y-m-d', strtotime("+" . (7 - $dayOfWeek) . " days", $timestamp));
+        return ['start' => $monday, 'end' => $sunday];
+    }
+
+    public static function getMonthRange(string $date): array
+    {
+        $dt = new DateTime($date);
+        return [
+            'start' => $dt->modify('first day of this month')->format('Y-m-d'),
+            'end'   => (new DateTime($date))->modify('last day of this month')->format('Y-m-d'),
+        ];
+    }
+
+    public static function countOffInRange(int $employeeId, int $companyId, string $startDate, string $endDate): int
+    {
+        return Attendance::where('employee_id', $employeeId)
+            ->where('company_id', $companyId)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->where('status', 'O')
+            ->count();
+    }
+
+    public static function getAbsentDatesInRange(int $employeeId, int $companyId, string $startDate, string $endDate): array
+    {
+        return Attendance::where('employee_id', $employeeId)
+            ->where('company_id', $companyId)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->where('status', 'A')
+            ->orderBy('date', 'asc')
+            ->pluck('date')
+            ->map(fn($d) => date('Y-m-d', strtotime($d)))
+            ->toArray();
+    }
+
+    public static function applyWeekend(array $weekendConfig, int $nthAbsent, string $date, int $employeeId, int $companyId): bool
+    {
+        $type = $weekendConfig['type'] ?? 'Not Applicable';
+
+        if ($type === 'Not Applicable') {
+            return false;
+        }
+
+        if ($type === 'Fixed') {
+            $dayName = date('l', strtotime($date));
+            return $dayName === $weekendConfig['day'];
+        }
+
+        if ($type === 'Flexi') {
+            $week = self::getWeekRange($date);
+            $absentDates = self::getAbsentDatesInRange($employeeId, $companyId, $week['start'], $week['end']);
+
+            $offDates = Attendance::where('employee_id', $employeeId)
+                ->where('company_id', $companyId)
+                ->whereBetween('date', [$week['start'], $week['end']])
+                ->where('status', 'O')
+                ->orderBy('date', 'asc')
+                ->pluck('date')
+                ->map(fn($d) => date('Y-m-d', strtotime($d)))
+                ->toArray();
+
+            $allNonPresentDates = array_unique(array_merge($absentDates, $offDates));
+            sort($allNonPresentDates);
+
+            $targetIndex = $nthAbsent - 1;
+            return isset($allNonPresentDates[$targetIndex]) && $allNonPresentDates[$targetIndex] === $date;
+        }
+
+        if ($type === 'Alternating') {
+            $weekNumber = (int) date('W', strtotime($date));
+            $isEvenWeek = ($weekNumber % 2 === 0);
+            $targetDays = $isEvenWeek ? ($weekendConfig['even'] ?? []) : ($weekendConfig['odd'] ?? []);
+            $currentDayKey = self::fullNameToDayKey(date('l', strtotime($date)));
+            return in_array($currentDayKey, $targetDays);
+        }
+
+        return false;
+    }
+
+    public static function applyMonthlyFlexi(int $monthlyQuota, string $date, int $employeeId, int $companyId): bool
+    {
+        if ($monthlyQuota <= 0) {
+            return false;
+        }
+
+        $month = self::getMonthRange($date);
+        $existingOffCount = self::countOffInRange($employeeId, $companyId, $month['start'], $month['end']);
+
+        if ($existingOffCount >= $monthlyQuota) {
+            return false;
+        }
+
+        $absentDates = self::getAbsentDatesInRange($employeeId, $companyId, $month['start'], $month['end']);
+
+        return !empty($absentDates) && $absentDates[0] === $date;
+    }
 }
