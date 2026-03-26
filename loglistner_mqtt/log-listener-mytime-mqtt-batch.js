@@ -78,7 +78,7 @@ const dbPool = new Pool({
   port: process.env.PGPORT ? Number(process.env.PGPORT) : 5432,
   user: process.env.PGUSER || "postgres",
   password: process.env.PGPASSWORD || "test123",
-  database: process.env.PGDATABASE || "hrms",
+  database: process.env.PGDATABASE || "mytime2cloud_dev",
   max: 10,
   idleTimeoutMillis: 0,
 });

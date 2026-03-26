@@ -2,7 +2,7 @@
 
 let env = process.env;
 
-export const API_BASE_URL = env.NEXT_PUBLIC_API_URL || 'https://backend.mytime2cloud.com/api';
+export const API_BASE_URL = env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 export const FACE_VALIDATOR_URL =
   typeof window !== "undefined"
