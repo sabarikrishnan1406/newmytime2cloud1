@@ -10,6 +10,128 @@ use DateTime;
 class AttendanceWeekOffService
 {
     /**
+     * Process weekoff for all absent employees on a given date.
+     * Called by the rendering pipeline (cron/render endpoints).
+     * Writes "O" status to the attendances table.
+     *
+     * Priority: Weekend1 → Weekend2 → Monthly Flexible → remains Absent
+     */
+    public static function processWeekOff(int $companyId, string $date, int $userId = 0): array
+    {
+        $query = Attendance::where('company_id', $companyId)
+            ->where('date', $date)
+            ->where('status', 'A')
+            ->with(['schedule' => function ($q) use ($companyId, $date) {
+                $q->where('company_id', $companyId);
+                $q->where('from_date', '<=', $date);
+                $q->where('to_date', '>=', $date);
+                $q->withOut('shift_type');
+                $q->whereHas('shift', fn($sq) => $sq->where('from_date', '<=', $date));
+                $q->whereHas('shift', fn($sq) => $sq->where('to_date', '>=', $date));
+                $q->orderBy('to_date', 'asc');
+            }]);
+
+        if ($userId) {
+            $query->where('employee_id', $userId);
+        }
+
+        $absentEmployees = $query->get();
+        $records = [];
+
+        foreach ($absentEmployees as $attendance) {
+            if (!$attendance->schedule || !$attendance->schedule->shift) {
+                continue;
+            }
+
+            $shift = $attendance->schedule->shift;
+            $config = self::resolveConfig($shift);
+            $employeeId = $attendance->employee_id;
+
+            $shouldBeOff = false;
+
+            // Priority 1: Weekend1
+            if (!$shouldBeOff && $config['weekend1']['type'] !== 'Not Applicable') {
+                $shouldBeOff = self::applyWeekend($config['weekend1'], 1, $date, $employeeId, $companyId);
+            }
+
+            // Priority 2: Weekend2
+            if (!$shouldBeOff && $config['weekend2']['type'] !== 'Not Applicable') {
+                $shouldBeOff = self::applyWeekend($config['weekend2'], 2, $date, $employeeId, $companyId);
+            }
+
+            // Priority 3: Monthly Flexible
+            if (!$shouldBeOff && $config['monthly_flexi'] > 0) {
+                $shouldBeOff = self::applyMonthlyFlexi($config['monthly_flexi'], $date, $employeeId, $companyId);
+            }
+
+            if ($shouldBeOff) {
+                $records[] = [
+                    'company_id'    => $companyId,
+                    'date'          => $date,
+                    'status'        => 'O',
+                    'employee_id'   => $employeeId,
+                    'shift_id'      => $attendance->shift_id,
+                    'shift_type_id' => $attendance->shift_type_id,
+                    'created_at'    => date('Y-m-d H:i:s'),
+                    'updated_at'    => date('Y-m-d H:i:s'),
+                    'updated_func'  => 'AttendanceWeekOffService::processWeekOff',
+                ];
+            }
+        }
+
+        // Write to DB
+        $userIds = array_column($records, 'employee_id');
+
+        if (count($records) > 0) {
+            Attendance::where('company_id', $companyId)
+                ->where('date', $date)
+                ->whereIn('employee_id', $userIds)
+                ->delete();
+
+            Attendance::insert($records);
+        }
+
+        return $userIds;
+    }
+
+    /**
+     * Calculate weekoff status for a single employee on a single date.
+     * Called by report/PDF generation — does NOT write to DB.
+     */
+    public static function calculateStatus(string $currentDayKey, ?array $weekoffRules, $shift, int $companyId, string $date, int $employeeId, $firstLog): ?string
+    {
+        // If employee has logs (worked today), not a weekoff
+        if ($firstLog) {
+            return null;
+        }
+
+        $config = self::resolveConfig($shift);
+
+        // Priority 1: Weekend1
+        if ($config['weekend1']['type'] !== 'Not Applicable') {
+            if (self::applyWeekend($config['weekend1'], 1, $date, $employeeId, $companyId)) {
+                return 'O';
+            }
+        }
+
+        // Priority 2: Weekend2
+        if ($config['weekend2']['type'] !== 'Not Applicable') {
+            if (self::applyWeekend($config['weekend2'], 2, $date, $employeeId, $companyId)) {
+                return 'O';
+            }
+        }
+
+        // Priority 3: Monthly Flexible
+        if ($config['monthly_flexi'] > 0) {
+            if (self::applyMonthlyFlexi($config['monthly_flexi'], $date, $employeeId, $companyId)) {
+                return 'O';
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Resolve weekoff configuration from shift.
      * Priority: weekoff_rules JSON > legacy string fields.
      */
