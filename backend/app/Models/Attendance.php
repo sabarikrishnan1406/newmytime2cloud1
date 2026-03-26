@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Log;
+use App\Services\Attendance\AttendanceWeekOffService;
 
 class Attendance extends Model
 {
@@ -510,51 +511,18 @@ class Attendance extends Model
 
     public static function processWeekOffFunc($currentDayKey, $weekoff_rules, $company_id, $date, $employeeId, $firstLog)
     {
-        $type = $weekoff_rules['type'] ?? 'Fixed';
+        // Delegate to the consolidated service.
+        $shift = (object) ['weekoff_rules' => $weekoff_rules];
 
-        // 1. FIXED TYPE
-        if ($type === 'Fixed' && in_array($currentDayKey, $weekoff_rules['days'] ?? [])) {
-            return "O";
-        }
-
-        // 2. ALTERNATING TYPE
-        if ($type === 'Alternating') {
-            $weekNumber = (int)date('W', strtotime($date));
-            $isEvenWeek = ($weekNumber % 2 === 0);
-            $targetDays = $isEvenWeek ? ($weekoff_rules['even'] ?? []) : ($weekoff_rules['odd'] ?? []);
-
-            if (in_array($currentDayKey, $targetDays)) {
-                return "O";
-            }
-        }
-
-        // 3. FLEXIBLE TYPE
-        if ($type === 'Flexible') {
-            $cycle = $weekoff_rules['cycle'] ?? 'Weekly';
-            $allowedCount = $weekoff_rules['count'] ?? 0;
-
-            $startDate =  date("Y-m-d");
-
-            if ($cycle === 'Monthly') {
-                $startDate = date("Y-m-01", strtotime($date));
-            } else {
-                // Monday to Sunday Slot
-                $startDate = date("Y-m-d", strtotime('monday this week', strtotime($date)));
-            }
-
-            $offDaysTaken = Attendance::where('employee_id', $employeeId)
-                ->where('company_id', $company_id)
-                ->whereBetween('date', [$startDate, date("Y-m-d", strtotime($date . " -1 day"))])
-                ->where('status', 'O')
-                ->count();
-
-            // Check if logs exist today - If they worked, it's not a Week Off
-            if ($offDaysTaken < $allowedCount && !$firstLog) {
-                return "O";
-            }
-        }
-
-        return null; // Return null if none of the week-off conditions are met
+        return AttendanceWeekOffService::calculateStatus(
+            $currentDayKey,
+            $weekoff_rules,
+            $shift,
+            (int) $company_id,
+            $date,
+            (int) $employeeId,
+            $firstLog
+        );
     }
 
     public static function processHalfDay($currentDayKey, $halfday_rules, $shift)
