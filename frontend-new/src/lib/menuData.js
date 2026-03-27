@@ -38,6 +38,7 @@ const attendanceMenu = [
 const reportMenu = [
   { href: "/report", icon: FileText, label: "Reports" },
   { href: "/logs", icon: History, label: "Device Logs" },
+  { href: "/manual-logs", icon: Clipboard, label: "Manual Logs" },
 ];
 
 const companyMenu = [
@@ -90,6 +91,7 @@ export const leftNavLinks = {
   "/document-expiry": employeesMenu,
 
    "/report": reportMenu,
+   "/manual-logs": reportMenu,
 
   "/shift": attendanceMenu,
   "/schedule": attendanceMenu,

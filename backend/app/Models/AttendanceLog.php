@@ -19,6 +19,11 @@ class AttendanceLog extends Model
         // 'LogTime' => 'datetime:d-M-y h:i:s:a',
     ];
 
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by')->with('employee:id,user_id,first_name,last_name,profile_picture,department_id', 'employee.department:id,name');
+    }
+
     public function getTimeAttribute()
     {
         return date("H:i", strtotime($this->LogTime));
@@ -147,6 +152,7 @@ class AttendanceLog extends Model
             ->with('device', function ($q) use ($request) {
                 $q->where('company_id', $request->company_id);
             })
+            ->with('approver')
             ->when($request->from_date, function ($query) use ($request) {
                 return $query->where('LogTime', '>=', $request->from_date);
             })

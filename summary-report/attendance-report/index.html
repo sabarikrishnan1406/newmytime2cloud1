@@ -1,76 +1,192 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Monthly Attendance Report - Multiple IN</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Outfit:wght@500;600;700&amp;family=Plus+Jakarta+Sans:wght@500;600;700&amp;display=swap"
-      rel="stylesheet"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
-      rel="stylesheet"
-    />
-    <script type="module" crossorigin src="/attendance-report/assets/index-AuH5YblT.js"></script>
-    <link rel="stylesheet" crossorigin href="/attendance-report/assets/index-CW4BccYh.css">
-    <style>
-      /* Use system font for status column */
-      td.px-4.py-3.text-center.font-mono,
-      td.p-1.text-center.font-mono {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-        font-weight: 500 !important;
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>Monthly Attendance Report - Multiple IN</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Outfit:wght@500;600;700&amp;family=Plus+Jakarta+Sans:wght@500;600;700&amp;display=swap"
+    rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+    rel="stylesheet" />
+  <script type="module" crossorigin src="/attendance-report/assets/index-AuH5YblT.js"></script>
+  <link rel="stylesheet" crossorigin href="/attendance-report/assets/index-CW4BccYh.css">
+  <style>
+    /* Use system font for status column */
+    td.px-4.py-3.text-center.font-mono,
+    td.p-1.text-center.font-mono {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+      font-weight: 300 !important;
+    }
+
+    /* Remove card/badge styling from status column - show plain text only */
+    td.px-4.py-3.text-center.font-mono>span,
+    td.p-1.text-center.font-mono>span {
+      position: static !important;
+      display: block !important;
+      height: auto !important;
+      width: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: none !important;
+      border: none !important;
+      box-shadow: none !important;
+      font-weight: 500 !important;
+    }
+
+    td.px-4.py-3.text-center.font-mono>span>span:not(.manual-tag),
+    td.p-1.text-center.font-mono>span>span:not(.manual-tag) {
+      position: static !important;
+      left: auto !important;
+      top: auto !important;
+    }
+
+    .manual-tag {
+      display: block !important;
+      color: #ef4444 !important;
+      font-size: 9px !important;
+      font-weight: 400 !important;
+      margin-top: 2px !important;
+      background: none !important;
+      border: none !important;
+      padding: 0 !important;
+      height: auto !important;
+      width: auto !important;
+      position: static !important;
+    }
+
+    /* Reduce title size */
+    h1, .text-2xl, [class*="text-2xl"] {
+      font-size: 18px !important;
+    }
+
+    /* Time values and branch/device name - dark black */
+    table td .font-mono,
+    table td [class*="font-mono"],
+    table td [class*="text-indigo"],
+    table td [class*="text-slate"],
+    table td [class*="text-gray"] {
+      color: #000000 !important;
+    }
+
+    /* Hide colored underlines below summary count numbers */
+    .h-1.rounded-full,
+    [class~="h-1"][class~="rounded-full"] {
+      display: none !important;
+    }
+
+    /* Reduce all table cell padding */
+    table td,
+    table th {
+      padding: 6px 8px !important;
+    }
+
+    /* Prevent header text wrapping and fix alignment */
+    table th {
+      white-space: nowrap !important;
+      font-size: 11px !important;
+      text-align: center !important;
+      color: #000000 !important;
+    }
+
+    /* Center align all data cells */
+    table td {
+      text-align: center !important;
+    }
+
+    /* Left align date and shift columns */
+    table td:first-child,
+    table th:first-child,
+    table td:nth-child(2),
+    table th:nth-child(2) {
+      text-align: left !important;
+    }
+
+    /* Remove background color from summary cards */
+    div[class*="bg-rose-50"],
+    div[class*="bg-indigo-50"],
+    div[class*="bg-blue-50"],
+    div[class*="bg-emerald-50"],
+    div[class*="bg-amber-50"] {
+      background: white !important;
+    }
+
+    /* Ensure header aligns with data */
+    table th div[class*="absolute"] {
+      position: static !important;
+    }
+
+    /* Date column - reduce font weight */
+    td.px-4.py-3 .font-bold,
+    td.p-1 .font-bold {
+      font-weight: 400 !important;
+    }
+
+    /* Total hours - increase font weight */
+    td.px-4.py-3.text-center.font-mono:nth-last-child(2),
+    td.p-1.text-center.font-mono.text-slate-700 {
+      font-weight: 600 !important;
+    }
+
+    /* Present = green */
+    td.px-4.py-3.text-center.font-mono .bg-emerald-50,
+    td.p-1.text-center.font-mono .bg-emerald-50 {
+      color: #047857 !important;
+    }
+
+    /* Absent = red */
+    td.px-4.py-3.text-center.font-mono .bg-rose-50,
+    td.p-1.text-center.font-mono .bg-rose-50 {
+      color: #be123c !important;
+    }
+
+    /* Holiday, Leave, Missing = gray (bg-gray-100) */
+    td.px-4.py-3.text-center.font-mono .bg-gray-100,
+    td.p-1.text-center.font-mono .bg-gray-100 {
+      color: #374151 !important;
+    }
+
+    /* PDF page break - remove extra white space */
+    @media print {
+      * {
+        page-break-inside: auto !important;
       }
-      /* Remove card/badge styling from status column - show plain text only */
-      td.px-4.py-3.text-center.font-mono > span,
-      td.p-1.text-center.font-mono > span {
-        position: static !important;
-        display: block !important;
-        height: auto !important;
-        width: auto !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: none !important;
-        border: none !important;
-        box-shadow: none !important;
+      tr {
+        page-break-inside: avoid !important;
       }
-      td.px-4.py-3.text-center.font-mono > span > span:not(.manual-tag),
-      td.p-1.text-center.font-mono > span > span:not(.manual-tag) {
-        position: static !important;
-        left: auto !important;
-        top: auto !important;
+      table {
+        page-break-inside: auto !important;
       }
-      .manual-tag {
-        display: block !important;
-        color: #ef4444 !important;
-        font-size: 10px !important;
-        font-weight: bold !important;
-        margin-top: 2px !important;
-        background: none !important;
-        border: none !important;
-        padding: 0 !important;
-        height: auto !important;
-        width: auto !important;
-        position: static !important;
-      }
-      /* Present = green */
-      td.px-4.py-3.text-center.font-mono .bg-emerald-50,
-      td.p-1.text-center.font-mono .bg-emerald-50 {
-        color: #047857 !important;
-      }
-      /* Absent = red */
-      td.px-4.py-3.text-center.font-mono .bg-rose-50,
-      td.p-1.text-center.font-mono .bg-rose-50 {
-        color: #be123c !important;
-      }
-      /* Holiday, Leave, Missing = gray (bg-gray-100) */
-      td.px-4.py-3.text-center.font-mono .bg-gray-100,
-      td.p-1.text-center.font-mono .bg-gray-100 {
-        color: #374151 !important;
-      }
-    </style>
-  </head>
-  <body class="">
-    <div id="root"></div>
-  </body>
+    }
+
+    /* Remove fixed height on page containers to eliminate blank space in PDF */
+    [class*="min-h-screen"],
+    [class*="min-h-"] {
+      min-height: auto !important;
+    }
+
+    /* Page containers - remove forced full height */
+    div[style*="page-break-after"],
+    div[class*="page-break"],
+    [style*="min-height"],
+    [style*="height: 100vh"] {
+      min-height: auto !important;
+      height: auto !important;
+    }
+
+    /* Target page wrapper divs that force 100vh */
+    #root > div > div {
+      min-height: auto !important;
+      height: auto !important;
+    }
+  </style>
+</head>
+
+<body class="">
+  <div id="root"></div>
+
+</body>
+
 </html>

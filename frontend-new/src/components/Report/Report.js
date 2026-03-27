@@ -347,7 +347,7 @@ export default function AttendanceTable() {
 
         let templateUrl = `http://localhost:5555/attendance-report/?${t4Params.toString()}`;
 
-        // await downloadReport(templateUrl, `Attendance-Report-Template-A.pdf`);
+        //await downloadReport(templateUrl, `Attendance-Report-${fromDate}-to-${toDate}.pdf`);
         window.open(templateUrl, "_blank");
         return;
       }

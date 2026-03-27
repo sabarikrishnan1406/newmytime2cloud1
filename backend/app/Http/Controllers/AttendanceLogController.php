@@ -467,12 +467,13 @@ class AttendanceLogController extends Controller
     {
         try {
             $payload = [
-                "UserID"     => $request->UserID,
-                "LogTime"    => $request->LogTime . ":00",
-                "DeviceID"   => $request->DeviceID ?? "Unknown",
-                "company_id" => $request->company_id,
-                "log_type"   => $request->log_type ?? "Unknown",
-                "log_date"   => date("Y-m-d"),
+                "UserID"      => $request->UserID,
+                "LogTime"     => $request->LogTime . ":00",
+                "DeviceID"    => $request->DeviceID ?? "Unknown",
+                "company_id"  => $request->company_id,
+                "log_type"    => $request->log_type ?? "Unknown",
+                "log_date"    => date("Y-m-d"),
+                "approved_by" => $request->user()?->id,
             ];
 
             $existing = AttendanceLog::where('UserID', $payload['UserID'])
@@ -515,6 +516,7 @@ class AttendanceLogController extends Controller
             "gps_location" => $request->gps_location ?? "Unknown",
             "reason"       => $request->reason ?? null,
             "note"         => $request->note ?? null,
+            "approved_by"  => $request->user()?->id,
         ];
 
         try {
