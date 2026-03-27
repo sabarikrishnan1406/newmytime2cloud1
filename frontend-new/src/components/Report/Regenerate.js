@@ -139,8 +139,6 @@ const RegenerateReport = ({ shift_type_id, onSuccess = () => { } }) => {
 
     const onSubmit = async () => {
 
-        setResponse(["Regenerating..."]);
-
         if (!selectedIds.length) {
             notify("Error", "Employee must be selected", "error");
             return;
@@ -151,45 +149,26 @@ const RegenerateReport = ({ shift_type_id, onSuccess = () => { } }) => {
             return;
         }
 
+        setResponse(["Regenerating..."]);
         setLoading(true);
 
         try {
-            // 1. Generate the list of individual dates
-            const dateArray = [];
-            let currentDate = new Date(from);
-            const stopDate = new Date(to);
+            const fromDate = new Date(from).toISOString().split('T')[0];
+            const toDate = new Date(to).toISOString().split('T')[0];
 
-            while (currentDate <= stopDate) {
-                // Format as YYYY-MM-DD
-                dateArray.push(currentDate.toISOString().split('T')[0]);
-                currentDate.setDate(currentDate.getDate() + 1);
-            }
+            let json = {
+                "dates": [fromDate, toDate],
+                "reason": "",
+                "employee_ids": selectedIds,
+                "shift_type_id": shift_type_id,
+            };
 
-            const allResponses = [];
+            const result = await regenerateReport(json);
 
-            // 2. Loop through each date and call the API
-            for (const targetDate of dateArray) {
-                let json = {
-                    "dates": [targetDate, targetDate], // Start and end are the same day
-                    "reason": "",
-                    "employee_ids": selectedIds,
-                    "shift_type_id": shift_type_id,
-                    "company_id": 60, // Added based on your URL example
-                    "company_ids": [60]
-                };
-
-                const dayResult = await regenerateReport(json);
-
-                if (Array.isArray(dayResult)) {
-                    setResponse((prev) => [
-                        ...prev,
-                        ...dayResult // This spreads the 4-5 logs into the main list
-                    ]);
-                } else {
-                    // Fallback if the API returns a single object or error message
-                    setResponse((prev) => [...prev, `[${targetDate}] No data returned.`]);
-                }
-
+            if (Array.isArray(result)) {
+                setResponse(result);
+            } else {
+                setResponse(["Report regenerated successfully."]);
             }
         } catch (error) {
             console.log(error);
@@ -394,44 +373,32 @@ const RegenerateReport = ({ shift_type_id, onSuccess = () => { } }) => {
                                     </div>
                                 </section>
 
-                                <div className="grid grid-cols-1 gap-6">
-                                    <section className="bg-surface-light dark:bg-surface-dark rounded-3xl p-6 shadow-elevation-1 border border-gray-200 dark:border-white/5 h-full">
-
-                                        <div className="flex flex-col gap-3">
-                                            {response.map((row, index) => {
-                                                const hasNoData = row.toLowerCase().includes("no data") || row.toLowerCase().includes("No valid");
-                                                const isShift = row.toLowerCase().includes("shift");
-                                                const isSync = row.toLowerCase().includes("sync");
-
-                                                return (
-                                                    <div
-                                                        key={index}
-                                                        className="flex items-start gap-3 rounded-xl border border-gray-200 dark:border-white/5 bg-white dark:bg-black/20 px-4 py-3 hover:shadow-md transition"
-                                                    >
-                                                        {/* Status Indicator */}
-                                                        <div
-                                                            className={`mt-1 w-2.5 h-2.5 rounded-full ${hasNoData
-                                                                ? "bg-amber-400"
-                                                                : isSync
-                                                                    ? "bg-blue-400"
-                                                                    : isShift
-                                                                        ? "bg-green-400"
-                                                                        : "bg-gray-400"
-                                                                }`}
-                                                        />
-
-                                                        {/* Log Text */}
-                                                        <div className="flex-1">
-                                                            <p className="font-mono text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
-                                                                {row}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
+                                {response.length > 0 && (
+                                    <div className="bg-surface-light dark:bg-surface-dark rounded-3xl p-6 shadow-elevation-1 border border-gray-200 dark:border-white/5">
+                                        <div className="flex items-center gap-3 mb-3">
+                                            {loading && (
+                                                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                            )}
+                                            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                                                {loading ? "Processing..." : "Completed"}
+                                            </p>
                                         </div>
-                                    </section>
-                                </div>
+                                        <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2">
+                                            <div
+                                                className="h-2 rounded-full transition-all duration-500 ease-out"
+                                                style={{
+                                                    width: loading ? "60%" : "100%",
+                                                    backgroundColor: loading ? "#3b82f6" : "#22c55e"
+                                                }}
+                                            />
+                                        </div>
+                                        {!loading && (
+                                            <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                                                Report regenerated successfully
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
 
                             </div>
                         </div>

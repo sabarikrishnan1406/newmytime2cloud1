@@ -40,7 +40,7 @@ class RenderController extends Controller
 
         // return ["Regeneration not allowd. contact to admin"];
 
-        set_time_limit(60); // In seconds
+        set_time_limit(300); // In seconds
 
         $fromdate = date('Y-m-d', strtotime('-1 day', strtotime($request->dates[0])));
 
@@ -51,8 +51,8 @@ class RenderController extends Controller
             $date2 = new DateTime($request->dates[1]);
 
             $interval = $date1->diff($date2);
-            if ($interval->days > 8) {
-                return ["Limit 8 Days only  allowed between From and To Date."];
+            if ($interval->days > 32) {
+                return ["Limit 31 Days only allowed between From and To Date."];
             }
         }
 
