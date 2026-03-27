@@ -99,7 +99,7 @@ export const setStatusLabel = (status) => {
   const statuses = {
     A: "Absent",
     P: "Present",
-    M: "Incomplete",
+    M: "Missing",
     LC: "Present",
     EG: "Present",
     O: "Week Off",

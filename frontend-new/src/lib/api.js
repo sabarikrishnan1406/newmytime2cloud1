@@ -1,7 +1,6 @@
 import axios from "axios";
 
-// const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://backend.mytime2cloud.com/api';
-const API_BASE = 'https://backend.mytime2cloud.com/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 
 import { getUser } from "@/config/index";
