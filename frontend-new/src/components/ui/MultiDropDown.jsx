@@ -117,7 +117,7 @@ export default function MultiDropDown({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="p-0" style={{ width: popoverWidth }}>
+      <PopoverContent className="p-0 max-h-[200px] overflow-y-auto" side="bottom" align="start" avoidCollisions={false} style={{ width: popoverWidth }}>
         <Command>
           <CommandInput placeholder={`Search ${placeholder.toLowerCase()}`} />
           <CommandEmpty>No items found.</CommandEmpty>

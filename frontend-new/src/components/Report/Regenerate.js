@@ -59,6 +59,7 @@ const RegenerateReport = ({ shift_type_id, onSuccess = () => { } }) => {
     const [loading, setLoading] = useState(false);
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
     const [error, setError] = useState(null);
 
     const [selectedDepartmentIds, setSelectedDepartment] = useState([]);
@@ -266,20 +267,15 @@ const RegenerateReport = ({ shift_type_id, onSuccess = () => { } }) => {
 
 
 
-                        <div className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar bg-surface-variant/30 dark:bg-black/20">
-                            <div className="flex flex-col gap-6 pb-24">
+                        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-surface-variant/30 dark:bg-black/20">
+                            <div className="flex flex-col gap-3">
 
-                                <section className="bg-surface-light dark:bg-surface-dark rounded-3xl p-6 shadow-elevation-1 border border-gray-200 dark:border-white/5">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h2 className="text-lg font-bold text-gray-600 dark:text-white flex items-center gap-3">
-                                            Select Employees
-                                        </h2>
-                                    </div>
+                                <section className="bg-surface-light dark:bg-surface-dark rounded-2xl p-4 shadow-elevation-1 border border-gray-200 dark:border-white/5">
 
-                                    <div className="flex flex-col gap-6">
+                                    <div className="flex flex-col gap-3">
 
                                         {/* Filters */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                             <MultiDropDown
                                                 placeholder={'Select Branch'}
                                                 items={branches}
@@ -296,16 +292,16 @@ const RegenerateReport = ({ shift_type_id, onSuccess = () => { } }) => {
                                                 badgesCount={1}
                                             />
 
-
-
-                                            <Input
-                                                placeholder="Search by name or ID"
-                                                icon="search"
-                                                value={searchTerm}
-                                                onChange={handleSearch}
+                                            <MultiDropDown
+                                                placeholder={'Select Employee'}
+                                                items={employees.map(emp => ({ id: emp.id, name: emp.name }))}
+                                                value={selectedIds}
+                                                onChange={setSelectedIds}
+                                                badgesCount={1}
                                             />
 
                                             <DateRangeSelect
+                                                showOutsideDays={false}
                                                 value={{ from, to }}
                                                 onChange={({ from, to }) => {
                                                     setFrom(from);
@@ -314,89 +310,69 @@ const RegenerateReport = ({ shift_type_id, onSuccess = () => { } }) => {
                                                 } />
                                         </div>
 
-
-                                        {/* Employee Table */}
-                                        <div className="overflow-y-auto max-h-[400px] rounded-3xl border border-stone-200 dark:border-white/10 shadow-elevation-1">
+                                        {/* Selected Employee Table */}
+                                        {selectedIds.length > 0 && (
+                                        <div className="overflow-y-auto max-h-[350px] rounded-xl border border-stone-200 dark:border-white/10 shadow-elevation-1">
                                             <table className="w-full text-left border-collapse">
                                                 <thead>
                                                     <tr className="bg-[#efece5] dark:bg-white/5 text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wider font-semibold border-b border-stone-200 dark:border-white/5">
-                                                        {/* Checkbox Header */}
-                                                        <th className="pl-6 py-4">
-
-
-                                                            <Checkbox
-                                                                checked={filteredEmployees.length > 0 && selectedIds.length === filteredEmployees.length}
-                                                                onCheckedChange={toggleAll}
-                                                            />
-
-                                                        </th>
-                                                        <th className="pr-6 py-4 font-bold">Employee Name</th>
-                                                        <th className="px-6 py-4 font-bold">Employee ID</th>
-                                                        <th className="px-6 py-4 font-bold">Department</th>
-                                                        <th className="px-6 py-4 font-bold">Designation</th>
+                                                        <th className="pl-6 py-3 font-bold">Employee Name</th>
+                                                        <th className="px-6 py-3 font-bold">Employee ID</th>
+                                                        <th className="px-6 py-3 font-bold">Department</th>
+                                                        <th className="px-6 py-3 font-bold">Designation</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-stone-100 dark:divide-white/5 bg-surface-light dark:bg-surface-dark">
-                                                    {filteredEmployees.map((emp) => (
-                                                        <tr
-                                                            key={emp.id}
-                                                            className={`transition-colors group hover:bg-[#f8f6f1] dark:hover:bg-white/5 ${selectedIds.includes(emp.id) ? 'bg-[#fcfaf6] dark:bg-white/[0.02]' : ''
-                                                                }`}
-                                                        >
-                                                            {/* Checkbox Cell */}
-                                                            <td className="pl-6 py-4">
-
-                                                                <Checkbox
-                                                                    checked={selectedIds.includes(emp.id)}
-                                                                    onCheckedChange={() => toggleSelect(emp.id)}
-                                                                />
-
-
-                                                            </td>
-                                                            <td className="pr-6 py-4">
+                                                    {employees.filter(emp => selectedIds.includes(emp.id)).map((emp) => (
+                                                        <tr key={emp.id} className="transition-colors hover:bg-[#f8f6f1] dark:hover:bg-white/5">
+                                                            <td className="pl-6 py-3">
                                                                 <div className="flex items-center gap-3">
                                                                     <ProfilePicture src={emp.profile_picture} />
-                                                                    <div>
-                                                                        <div className="font-bold text-slate-800 dark:text-white">{emp.name}</div>
-                                                                        <div className="text-xs text-slate-500">{emp.email}</div>
-                                                                    </div>
+                                                                    <div className="text-slate-800 dark:text-white text-sm" style={{ fontWeight: 500 }}>{emp.name}</div>
                                                                 </div>
                                                             </td>
-                                                            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{emp.employee_id}</td>
-                                                            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{emp.department?.name}</td>
-                                                            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{emp.designation?.name}</td>
+                                                            <td className="px-6 py-3 text-sm text-slate-600 dark:text-slate-400" style={{ fontWeight: 500 }}>{emp.employee_id}</td>
+                                                            <td className="px-6 py-3 text-sm text-slate-600 dark:text-slate-400" style={{ fontWeight: 500 }}>{emp.department?.name}</td>
+                                                            <td className="px-6 py-3 text-sm text-slate-600 dark:text-slate-400" style={{ fontWeight: 500 }}>{emp.designation?.name}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
                                             </table>
                                         </div>
+                                        )}
                                     </div>
                                 </section>
 
                                 {response.length > 0 && (
-                                    <div className="bg-surface-light dark:bg-surface-dark rounded-3xl p-6 shadow-elevation-1 border border-gray-200 dark:border-white/5">
-                                        <div className="flex items-center gap-3 mb-3">
-                                            {loading && (
-                                                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+                                        <div className="absolute inset-0 bg-black/50" />
+                                        <div className="relative bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-2xl border border-gray-200 dark:border-white/10 min-w-[350px] text-center">
+                                            {loading ? (
+                                                <>
+                                                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                                                    <p className="text-base font-semibold text-slate-700 dark:text-slate-200 mb-3">Processing...</p>
+                                                    <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2">
+                                                        <div className="h-2 rounded-full bg-primary animate-pulse" style={{ width: "60%" }} />
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="w-12 h-12 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                        <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    </div>
+                                                    <p className="text-base font-semibold text-green-700 dark:text-green-400 mb-2">Completed</p>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Report regenerated successfully</p>
+                                                    <button
+                                                        onClick={() => { setResponse([]); setOpen(false); onSuccess(); }}
+                                                        className="px-6 py-2 rounded-lg bg-primary text-white hover:bg-blue-600 transition-all text-sm font-semibold"
+                                                    >
+                                                        Done
+                                                    </button>
+                                                </>
                                             )}
-                                            <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-                                                {loading ? "Processing..." : "Completed"}
-                                            </p>
                                         </div>
-                                        <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2">
-                                            <div
-                                                className="h-2 rounded-full transition-all duration-500 ease-out"
-                                                style={{
-                                                    width: loading ? "60%" : "100%",
-                                                    backgroundColor: loading ? "#3b82f6" : "#22c55e"
-                                                }}
-                                            />
-                                        </div>
-                                        {!loading && (
-                                            <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                                                Report regenerated successfully
-                                            </p>
-                                        )}
                                     </div>
                                 )}
 

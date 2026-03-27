@@ -18,6 +18,8 @@ export default function DateRangeSelect({
   value,
   className,
   onChange = () => {},
+  numberOfMonths = 2,
+  showOutsideDays = true,
 }) {
   // 1. Main state for the selected range (displayed in the button)
   const [date, setDate] = useState({
@@ -114,7 +116,8 @@ export default function DateRangeSelect({
             defaultMonth={draftDate?.from || new Date()}
             selected={draftDate}
             onSelect={setDraftDate}
-            numberOfMonths={2}
+            numberOfMonths={numberOfMonths}
+            showOutsideDays={showOutsideDays}
             // --- ADD THESE PROPS ---
             captionLayout="dropdown" // Enables the dropdowns
             fromYear={2020} // Set the start of your year range
