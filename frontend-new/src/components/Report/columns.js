@@ -82,11 +82,14 @@ export default (shiftTypeId, { onViewLogs } = {}) => {
             key: "status",
             header: "Status",
             render: (log) => (
-                <span className={`text-sm ${getBgColor(log.status)}`}
-                    style={{ padding: "2px 10px", borderRadius: "50px" }}
-                >
-                    {setStatusLabel(log?.status)}
-                </span>
+                <div className="flex flex-col items-center">
+                    <span className={`text-sm ${getBgColor(log.status)}`}
+                        style={{ padding: "2px 10px", borderRadius: "50px" }}
+                    >
+                        {setStatusLabel(log?.status)}
+                    </span>
+                    {log.is_manual_entry && <span className="text-xs text-red-500 mt-1">Manual</span>}
+                </div>
             ),
         },
         {
@@ -121,12 +124,22 @@ export default (shiftTypeId, { onViewLogs } = {}) => {
         {
             key: "in",
             header: "In",
-            render: (log) => (<p className="text-sm text-slate-600 dark:text-slate-300">{`${log?.in || "—"}`}</p>),
+            render: (log) => (
+                <div>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">{`${log?.in || "—"}`}</p>
+                    {log?.device_in?.name && <p className="text-xs text-slate-400">{log.device_in.name}</p>}
+                </div>
+            ),
         },
         {
             key: "out",
             header: "Out",
-            render: (log) => (<p className="text-sm text-slate-600 dark:text-slate-300">{`${log?.out || "—"}`}</p>),
+            render: (log) => (
+                <div>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">{`${log?.out || "—"}`}</p>
+                    {log?.device_out?.name && <p className="text-xs text-slate-400">{log.device_out.name}</p>}
+                </div>
+            ),
         },
         {
             key: "late_coming",

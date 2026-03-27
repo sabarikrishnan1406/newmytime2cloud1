@@ -146,11 +146,18 @@ class FiloShiftController extends Controller
                 return !in_array(strtolower($record['log_type']), ['out'], true);
             });
 
+            if (!$firstLog) {
+                $firstLog = $filteredLogs->first();
+            }
+
             $lastLog = $filteredLogs->last(function ($record) {
                 return !in_array(strtolower($record['log_type']), ['in'], true);
             });
 
-            // 3. Prepare the Item
+            // 3. Check if any log is manual
+            $hasManualLog = $filteredLogs->contains(fn($log) => ($log['DeviceID'] ?? '') === 'Manual');
+
+            // 4. Prepare the Item
             $item = [
                 "roster_id" => 0,
                 "total_hrs" => "---",
@@ -165,6 +172,7 @@ class FiloShiftController extends Controller
                 "shift_id" => $shift["id"] ?? 0,
                 "shift_type_id" => $shift["shift_type_id"] ?? 0,
                 "status" => "M", // Default to Missing
+                "is_manual_entry" => $hasManualLog,
                 "late_coming" => "---",
                 "early_going" => "---",
             ];

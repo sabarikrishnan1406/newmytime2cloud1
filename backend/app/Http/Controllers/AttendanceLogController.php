@@ -475,15 +475,16 @@ class AttendanceLogController extends Controller
                 "log_date"   => date("Y-m-d"),
             ];
 
-            $exists = AttendanceLog::where('UserID', $payload['UserID'])
+            $existing = AttendanceLog::where('UserID', $payload['UserID'])
                 ->where('LogTime', $payload['LogTime'])
                 ->where('DeviceID', $payload['DeviceID'])
-                ->exists();
+                ->first();
 
-            if ($exists) {
+            if ($existing) {
+                $existing->update($payload);
                 return [
-                    'status'  => false,
-                    'message' => 'A log already exists for this employee at the specified time.',
+                    'status'  => true,
+                    'message' => 'Log Successfully Updated',
                 ];
             }
 
@@ -491,7 +492,7 @@ class AttendanceLogController extends Controller
 
             return [
                 'status'  => true,
-                'message' => 'Log Successfully Updated',
+                'message' => 'Log Successfully Created',
             ];
         } catch (\Throwable $th) {
             $this->devLog("generate-manual-log", $th);
@@ -525,15 +526,16 @@ class AttendanceLogController extends Controller
                 $payload['attachment'] = $fileName;
             }
 
-            $exists = AttendanceLog::where('UserID', $payload['UserID'])
+            $existing = AttendanceLog::where('UserID', $payload['UserID'])
                 ->where('LogTime', $payload['LogTime'])
                 ->where('DeviceID', $payload['DeviceID'])
-                ->exists();
+                ->first();
 
-            if ($exists) {
+            if ($existing) {
+                $existing->update($payload);
                 return [
-                    'status'  => false,
-                    'message' => 'A log already exists for this employee at the specified time.',
+                    'status'  => true,
+                    'message' => 'Log Successfully Updated',
                 ];
             }
 
@@ -541,7 +543,7 @@ class AttendanceLogController extends Controller
 
             return [
                 'status'  => true,
-                'message' => 'Log Successfully Updated',
+                'message' => 'Log Successfully Created',
             ];
         } catch (\Throwable $th) {
             $this->devLog("render-manual-log", $th);

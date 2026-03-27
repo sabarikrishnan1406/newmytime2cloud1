@@ -349,6 +349,9 @@ class SingleShiftController extends Controller
 
             $status = Attendance::processWeekOffFunc($currentDayKey, $shift['weekoff_rules'] ?? "A", $id, $date, $employeeId, $firstLog);
 
+            // Check if any log is manual
+            $hasManualLog = collect($logs)->contains(fn($log) => ($log['DeviceID'] ?? '') === 'Manual');
+
             // 4. Initialize Item
             $item = [
                 "roster_id" => 0,
@@ -364,6 +367,7 @@ class SingleShiftController extends Controller
                 "shift_id" => $shift["id"] ?? 0,
                 "shift_type_id" => $shift["shift_type_id"] ?? 0,
                 "status" => $status ?? "A",
+                "is_manual_entry" => $hasManualLog,
                 "late_coming" => "---",
                 "early_going" => "---",
             ];

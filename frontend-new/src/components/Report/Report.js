@@ -226,9 +226,9 @@ export default function AttendanceTable() {
 
   const [params, setParams] = useState(null);
 
-  const fetchRecords = async (shiftTypeId) => {
+  const fetchRecords = async (shiftTypeId, forceRefresh = false) => {
 
-    if (!shiftTypeId || !isButtonclicked) return;
+    if (!shiftTypeId || (!isButtonclicked && !forceRefresh)) return;
 
     if (
       !selectedEmployeeIds?.length
@@ -733,7 +733,8 @@ export default function AttendanceTable() {
         open={isOpen}
         onClose={() => setIsOpen(false)}
         onSuccess={() => {
-          if (isButtonclicked) fetchRecords(shiftTypeId);
+          setIsButtonclicked(true);
+          fetchRecords(shiftTypeId, true);
         }}
         initialData={{
           date: from || "",

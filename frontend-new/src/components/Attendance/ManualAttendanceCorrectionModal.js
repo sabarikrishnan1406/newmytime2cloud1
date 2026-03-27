@@ -357,34 +357,52 @@ export default function ManualAttendanceCorrectionModal({
         setIsSubmitting(true);
         try {
             const user = getUser();
-            const log_type = await resolveLogType(user_id);
 
-            const log_payload = {
-                branch_id,
-                UserID: user_id,
-                LogTime: date + " " + time,
-                DeviceID: "Manual",
-                company_id: user?.company_id,
-                log_type,
-                shift_type_id: currentShiftTypeId,
-                reason: form?.reason || null,
-                note: form?.note || null,
-            };
+            // Collect all filled time slots
+            const timeSlots = [];
+            if (form?.in1 && form.in1 !== "00:00") timeSlots.push({ time: form.in1, type: "in" });
+            if (form?.out1 && form.out1 !== "00:00") timeSlots.push({ time: form.out1, type: "out" });
+            if (form?.in2 && form.in2 !== "00:00") timeSlots.push({ time: form.in2, type: "in" });
+            if (form?.out2 && form.out2 !== "00:00") timeSlots.push({ time: form.out2, type: "out" });
 
-            // Attach evidence file if selected
-            const file = fileInputRef.current?.files?.[0];
-            if (file) {
-                log_payload.attachment = file;
+            // If no specific slots filled, use the resolved log type with fallback time
+            if (timeSlots.length === 0) {
+                const log_type = await resolveLogType(user_id);
+                timeSlots.push({ time, type: log_type });
             }
 
-            const response = await generateManualLog(log_payload);
+            let lastResponse = null;
 
-            if (response?.status === false) {
-                notify("Error", (response?.message || "Unable to submit manual log."), "error");
-                return;
+            for (const slot of timeSlots) {
+                const log_payload = {
+                    branch_id,
+                    UserID: user_id,
+                    LogTime: date + " " + slot.time,
+                    DeviceID: "Manual",
+                    company_id: user?.company_id,
+                    log_type: slot.type,
+                    shift_type_id: currentShiftTypeId,
+                    reason: form?.reason || null,
+                    note: form?.note || null,
+                };
+
+                // Attach evidence file only to the first log
+                if (slot === timeSlots[0]) {
+                    const file = fileInputRef.current?.files?.[0];
+                    if (file) {
+                        log_payload.attachment = file;
+                    }
+                }
+
+                lastResponse = await generateManualLog(log_payload);
+
+                if (lastResponse?.status === false) {
+                    notify("Error", (lastResponse?.message || "Unable to submit manual log."), "error");
+                    return;
+                }
             }
 
-            notify("Saved", response?.message || "Correction submitted successfully.", "success");
+            notify("Saved", lastResponse?.message || "Correction submitted successfully.", "success");
 
             try {
                 await regenerateReport({
@@ -402,6 +420,8 @@ export default function ManualAttendanceCorrectionModal({
             }
 
             onClose?.();
+            // Small delay to let backend finish processing before refreshing
+            await new Promise(resolve => setTimeout(resolve, 1000));
             onSuccess?.();
         } catch (error) {
             notify("Error", parseApiError(error), "error");

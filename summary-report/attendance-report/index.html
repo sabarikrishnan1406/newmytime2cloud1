@@ -15,11 +15,17 @@
     <script type="module" crossorigin src="/attendance-report/assets/index-AuH5YblT.js"></script>
     <link rel="stylesheet" crossorigin href="/attendance-report/assets/index-CW4BccYh.css">
     <style>
+      /* Use system font for status column */
+      td.px-4.py-3.text-center.font-mono,
+      td.p-1.text-center.font-mono {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        font-weight: 500 !important;
+      }
       /* Remove card/badge styling from status column - show plain text only */
-      td.px-4.py-3.text-center.font-mono span,
-      td.p-1.text-center.font-mono span {
+      td.px-4.py-3.text-center.font-mono > span,
+      td.p-1.text-center.font-mono > span {
         position: static !important;
-        display: inline !important;
+        display: block !important;
         height: auto !important;
         width: auto !important;
         margin: 0 !important;
@@ -28,11 +34,24 @@
         border: none !important;
         box-shadow: none !important;
       }
-      td.px-4.py-3.text-center.font-mono span span,
-      td.p-1.text-center.font-mono span span {
+      td.px-4.py-3.text-center.font-mono > span > span:not(.manual-tag),
+      td.p-1.text-center.font-mono > span > span:not(.manual-tag) {
         position: static !important;
         left: auto !important;
         top: auto !important;
+      }
+      .manual-tag {
+        display: block !important;
+        color: #ef4444 !important;
+        font-size: 10px !important;
+        font-weight: bold !important;
+        margin-top: 2px !important;
+        background: none !important;
+        border: none !important;
+        padding: 0 !important;
+        height: auto !important;
+        width: auto !important;
+        position: static !important;
       }
       /* Present = green */
       td.px-4.py-3.text-center.font-mono .bg-emerald-50,
