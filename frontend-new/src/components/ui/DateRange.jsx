@@ -19,7 +19,7 @@ export default function DateRangeSelect({
   className,
   onChange = () => {},
   numberOfMonths = 2,
-  showOutsideDays = true,
+  showOutsideDays = false,
 }) {
   // 1. Main state for the selected range (displayed in the button)
   const [date, setDate] = useState({

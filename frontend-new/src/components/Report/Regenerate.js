@@ -328,7 +328,10 @@ const RegenerateReport = ({ shift_type_id, onSuccess = () => { } }) => {
                                                             <td className="pl-6 py-3">
                                                                 <div className="flex items-center gap-3">
                                                                     <ProfilePicture src={emp.profile_picture} />
-                                                                    <div className="text-slate-800 dark:text-white text-sm" style={{ fontWeight: 500 }}>{emp.name}</div>
+                                                                    <div>
+                                                                        <div className="text-slate-800 dark:text-white text-sm" style={{ fontWeight: 500 }}>{emp.name}</div>
+                                                                        <div className="text-xs text-slate-400" style={{ fontWeight: 500 }}>{emp.branch?.branch_name || ''}</div>
+                                                                    </div>
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-3 text-sm text-slate-600 dark:text-slate-400" style={{ fontWeight: 500 }}>{emp.employee_id}</td>
