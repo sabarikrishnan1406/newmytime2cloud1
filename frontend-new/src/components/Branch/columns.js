@@ -3,6 +3,12 @@
 
 import { useState } from "react";
 import { MoreVertical, PenBox, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import Edit from "@/components/Branch/Edit";
 
 import { deleteBranch } from "@/lib/api";
@@ -14,57 +20,67 @@ function OptionsMenu({ item, onSuccess = () => { } }) {
 
   const onDelete = async (id) => {
     const confirmDelete = window.confirm("Are you sure you want to delete this item?");
-    if (!confirmDelete) return; // exit if user cancels
+    if (!confirmDelete) return;
     try {
       await deleteBranch(id);
-      onSuccess(); // refresh parent data after successful delete
-      setOpenEdit(false); // close menu
+      onSuccess();
     } catch (error) {
       console.log(parseApiError(error));
     }
   };
 
   return (
-    <div className="relative">
-      <MoreVertical
-        className="text-gray-600 hover:text-gray-800 cursor-pointer"
-        onClick={() => setOpenEdit(!openEdit)}
-      />
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+          <div className="p-2 rounded-full cursor-pointer w-fit">
+            <MoreVertical className="w-5 h-5 text-gray-400" />
+          </div>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent
+          align="end"
+          className="w-32 bg-white dark:bg-gray-900 shadow-md rounded-md py-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpenEdit(true);
+            }}
+            className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <PenBox className="w-4 h-4 text-emerald-500" />
+            <span className="text-emerald-500 font-medium">Edit</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(item.id);
+            }}
+            className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          >
+            <Trash2 className="w-4 h-4 text-red-500" />
+            <span className="text-red-500 font-medium">Delete</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {openEdit && (
-        <div className="absolute mt-2 w-24 bg-white dark:bg-slate-900 border border-border rounded shadow-lg z-10">
-          <button
-            onClick={() => setOpenEdit("edit")}
-            className="flex items-center gap-2 text-sm w-full text-left px-3 py-2 dark:hover:bg-gray-700 hover:bg-gray-100 text-gray-600 dark:text-slate-300"
-          >
-            <PenBox size={14} /> Edit
-          </button>
-          <button
-            onClick={() => onDelete(item.id)}
-            className="flex items-center gap-2 text-sm w-full text-left px-3 py-2 dark:hover:bg-gray-700 hover:bg-gray-100 text-gray-600 dark:text-slate-300"
-          >
-            <Trash2 size={14} /> Delete
-          </button>
-        </div>
-      )}
-
-      {/* 👇 Edit Dialog Integration */}
-      {openEdit === "edit" && (
         <Edit
           initialData={item}
           controlledOpen={true}
-          controlledSetOpen={(val) => setOpenEdit(val ? "edit" : false)}
+          controlledSetOpen={(val) => setOpenEdit(val)}
           onSuccess={() => {
-            onSuccess(); // refresh parent data
+            onSuccess();
             setOpenEdit(false);
           }}
         />
       )}
-    </div>
+    </>
   );
 }
 
-// 	City	Phone	Status	Actions
 export default function Columns({ handleRowClick, onSuccess = () => { } } = {}) {
   return [
     {
@@ -113,7 +129,7 @@ export default function Columns({ handleRowClick, onSuccess = () => { } } = {}) 
         </span>
       ),
     },
-    
+
     {
       key: "created_date",
       header: "Since",

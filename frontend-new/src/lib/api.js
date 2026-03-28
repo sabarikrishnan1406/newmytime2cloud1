@@ -103,6 +103,13 @@ export const getScheduleStats = async (params = {}) => {
     return data;
 };
 
+export const getSchedulesByEmployee = async (employeeId) => {
+    const { data } = await axios.get(`${API_BASE}/get_shifts_by_employee/${employeeId}`, {
+        params: await buildQueryParams({}),
+    });
+    return data;
+};
+
 export const getScheduleEmployeesV1 = async (params = {}) => {
 
     const { data } = await axios.get(`${API_BASE}/schedule_employees`, {

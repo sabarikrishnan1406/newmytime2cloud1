@@ -2,6 +2,7 @@
 import {
     AlertCircle,
     Check,
+    Eye,
     MoreVertical,
     Pencil,
     Trash,
@@ -16,8 +17,28 @@ import {
 import ProfilePicture from "@/components/ProfilePicture";
 
 
-export default (deleteItem) => {
+export default (deleteItem, onEdit, onView, { selectedIds, toggleSelect, toggleAll, allSelected }) => {
     return [
+        {
+            key: "checkbox",
+            header: (
+                <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    className="w-4 h-4 accent-primary cursor-pointer"
+                />
+            ),
+            render: (e) => (
+                <input
+                    type="checkbox"
+                    checked={selectedIds.includes(e.employee_id)}
+                    onChange={() => toggleSelect(e.employee_id)}
+                    onClick={(ev) => ev.stopPropagation()}
+                    className="w-4 h-4 accent-primary cursor-pointer"
+                />
+            ),
+        },
         {
             key: "employee",
             header: "Personnel",
@@ -48,43 +69,59 @@ export default (deleteItem) => {
         {
             key: "schedule_status",
             header: "Active Interval",
-            render: (e) => (
-                <div onClick={() => handleRowClick(e)} className="flex flex-col text-slate-600 dark:text-slate-300">
-                    {!e.schedule?.shift && e.schedule_all?.length > 0 ? (
-                        <div className="text-slate-600 dark:text-slate-300 text-sm">Expired</div>
-                    ) : (
-                        <div>
-                            {e.schedule?.isAutoShift
-                                ? "Auto"
-                                : e.schedule?.shift
-                                    ? e.schedule.shift.name
-                                    : "---"}
-                        </div>
-                    )}
+            render: (e) => {
+                const all = e.schedule_all?.length > 0 ? e.schedule_all : (e.schedule?.shift ? [e.schedule] : []);
+                const today = new Date().toISOString().split('T')[0];
 
-                    {e.schedule?.from_date && (
-                        <div className="text-sm text-gray-400" title="Schedule Date Range">
-                            {e.schedule.from_date} - {e.schedule.to_date}
-                        </div>
-                    )}
-                </div>
-            ),
+                // Only show currently active schedule (today falls within the range)
+                const schedule = all.find(s => s.from_date <= today && s.to_date >= today);
+
+                const formatDate = (dateStr) => {
+                    const d = new Date(dateStr + 'T00:00:00');
+                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                };
+
+                return (
+                    <div className="flex flex-col text-slate-600 dark:text-slate-300">
+                        {!schedule ? (
+                            <div className="text-sm text-gray-400">No Schedules</div>
+                        ) : (
+                            <div>
+                                <div className="text-sm font-medium">
+                                    {schedule.isAutoShift ? "Auto" : (schedule.shift?.name || "---")}
+                                </div>
+                                {schedule.from_date && (
+                                    <div className="text-xs text-gray-400">
+                                        {formatDate(schedule.from_date)} - {formatDate(schedule.to_date)}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                );
+            },
         },
 
         {
             key: "status",
             header: "Status",
-            render: (e) => (
-                <div className="flex flex-col text-slate-600 dark:text-slate-300">
-                    {!e.schedule?.shift && e.schedule_all?.length > 0 ? (
-                        <div className="  dark:text-slate-400 text-sm"><AlertCircle className="text-red-700" /></div>
-                    ) : (
-                        <div>
+            render: (e) => {
+                const all = e.schedule_all?.length > 0 ? e.schedule_all : (e.schedule?.shift ? [e.schedule] : []);
+                const today = new Date().toISOString().split('T')[0];
+                const hasActive = all.some(s => s.from_date <= today && s.to_date >= today);
+
+                return (
+                    <div className="flex flex-col text-slate-600 dark:text-slate-300">
+                        {all.length === 0 ? (
+                            <span className="text-xs text-slate-400">No Schedule</span>
+                        ) : hasActive ? (
                             <Check className="text-green-500" />
-                        </div>
-                    )}
-                </div>
-            ),
+                        ) : (
+                            <AlertCircle className="text-yellow-500" />
+                        )}
+                    </div>
+                );
+            },
         },
 
         // {
@@ -117,7 +154,27 @@ export default (deleteItem) => {
                     >
                         <DropdownMenuItem
                             onClick={(e) => {
-                                e.stopPropagation(); // Stop row redirect
+                                e.stopPropagation();
+                                onView?.(employee);
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                        >
+                            <Eye className="w-4 h-4 text-blue-500" />
+                            <span className="text-blue-500 font-medium">View</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEdit?.(employee);
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                        >
+                            <Pencil className="w-4 h-4 text-emerald-500" />
+                            <span className="text-emerald-500 font-medium">Edit</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={(e) => {
+                                e.stopPropagation();
                                 deleteItem(employee.employee_id);
                             }}
                             className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"

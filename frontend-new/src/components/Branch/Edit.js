@@ -14,8 +14,10 @@ import DropDown from "@/components/ui/DropDown";
 
 import { updateBranch } from "@/lib/api";
 import { notify, parseApiError } from "@/lib/utils";
-import TextArea from "../Theme/TextArea";
 import Input from "../Theme/Input";
+import SearchableSelect from "../ui/SearchableSelect";
+import MapPicker from "../ui/MapPicker";
+import COUNTRIES from "@/lib/countries";
 
 const Edit = ({
   initialData = {},
@@ -157,7 +159,21 @@ const Edit = ({
                   />
                 </div>
 
-                {/* Lat and Lon Container */}
+                {/* Map Picker */}
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-slate-400">
+                    Location <span className="text-red-400">*</span>
+                  </label>
+                  <MapPicker
+                    lat={form.lat}
+                    lon={form.lon}
+                    onChange={(lat, lon) => {
+                      handleChange("lat", lat);
+                      handleChange("lon", lon);
+                    }}
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="block text-sm font-medium text-slate-400">
@@ -180,17 +196,86 @@ const Edit = ({
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-slate-400">
-                    Branch Address
-                  </label>
-                  <TextArea
-                    placeholder="Enter address of the branch..."
-                    rows={3}
-                    value={form.address}
-                    onChange={(e) => handleChange("address", e.target.value)}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-400">
+                      Area
+                    </label>
+                    <Input
+                      value={form.area}
+                      onChange={(e) => handleChange("area", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-400">
+                      City
+                    </label>
+                    <Input
+                      value={form.city}
+                      onChange={(e) => handleChange("city", e.target.value)}
+                    />
+                  </div>
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-400">
+                      Country
+                    </label>
+                    <SearchableSelect
+                      value={form.country}
+                      onChange={(val) => handleChange("country", val)}
+                      options={COUNTRIES}
+                      placeholder="Search country..."
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-400">
+                      Timezone
+                    </label>
+                    <select
+                      value={form.timezone}
+                      onChange={(e) => handleChange("timezone", e.target.value)}
+                      className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
+                    >
+                      <option value="">Select Timezone</option>
+                      <option value="GMT-12:00">(GMT-12:00) Baker Island</option>
+                      <option value="GMT-11:00">(GMT-11:00) Pago Pago</option>
+                      <option value="GMT-10:00">(GMT-10:00) Hawaii</option>
+                      <option value="GMT-09:00">(GMT-09:00) Alaska</option>
+                      <option value="GMT-08:00">(GMT-08:00) Pacific Time</option>
+                      <option value="GMT-07:00">(GMT-07:00) Mountain Time</option>
+                      <option value="GMT-06:00">(GMT-06:00) Central Time</option>
+                      <option value="GMT-05:00">(GMT-05:00) Eastern Time</option>
+                      <option value="GMT-04:00">(GMT-04:00) Atlantic Time</option>
+                      <option value="GMT-03:30">(GMT-03:30) Newfoundland</option>
+                      <option value="GMT-03:00">(GMT-03:00) Buenos Aires</option>
+                      <option value="GMT-02:00">(GMT-02:00) Mid-Atlantic</option>
+                      <option value="GMT-01:00">(GMT-01:00) Azores</option>
+                      <option value="GMT+00:00">(GMT+00:00) London, Dublin</option>
+                      <option value="GMT+01:00">(GMT+01:00) Paris, Berlin</option>
+                      <option value="GMT+02:00">(GMT+02:00) Cairo, Johannesburg</option>
+                      <option value="GMT+03:00">(GMT+03:00) Moscow, Riyadh</option>
+                      <option value="GMT+03:30">(GMT+03:30) Tehran</option>
+                      <option value="GMT+04:00">(GMT+04:00) Dubai, Abu Dhabi</option>
+                      <option value="GMT+04:30">(GMT+04:30) Kabul</option>
+                      <option value="GMT+05:00">(GMT+05:00) Karachi, Tashkent</option>
+                      <option value="GMT+05:30">(GMT+05:30) India, Sri Lanka</option>
+                      <option value="GMT+05:45">(GMT+05:45) Kathmandu</option>
+                      <option value="GMT+06:00">(GMT+06:00) Dhaka, Almaty</option>
+                      <option value="GMT+06:30">(GMT+06:30) Yangon</option>
+                      <option value="GMT+07:00">(GMT+07:00) Bangkok, Jakarta</option>
+                      <option value="GMT+08:00">(GMT+08:00) Singapore, Hong Kong</option>
+                      <option value="GMT+09:00">(GMT+09:00) Tokyo, Seoul</option>
+                      <option value="GMT+09:30">(GMT+09:30) Adelaide</option>
+                      <option value="GMT+10:00">(GMT+10:00) Sydney, Melbourne</option>
+                      <option value="GMT+11:00">(GMT+11:00) Solomon Islands</option>
+                      <option value="GMT+12:00">(GMT+12:00) Auckland, Fiji</option>
+                      <option value="GMT+13:00">(GMT+13:00) Tonga</option>
+                    </select>
+                  </div>
+                </div>
+
               </div>
 
               {/* Action Buttons */}

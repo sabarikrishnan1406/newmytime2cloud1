@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { RefreshCw, Trash2 } from 'lucide-react';
 
 import Input from '@/components/Theme/Input';
-import { getBranches, getDepartmentsByBranchIds, getScheduleEmployees, getScheduleStats, removeEmployeeSchedule } from '@/lib/api';
+import { getBranches, getDepartmentsByBranchIds, getScheduleEmployees, removeEmployeeSchedule } from '@/lib/api';
+import { getEmployeesByDepartmentIds } from '@/lib/api/employee';
 
 import DataTable from '@/components/ui/DataTable';
 import Pagination from '@/lib/Pagination';
@@ -13,10 +15,32 @@ import Columns from "./columns";
 import { parseApiError } from '@/lib/utils';
 import IconButton from '@/components/Theme/IconButton';
 import Create from '@/components/Schedule/Create';
+import EditScheduleModal from '@/components/Schedule/EditModal';
 import MultiDropDown from '@/components/ui/MultiDropDown';
 import { SCHEDULE_STATS } from '@/lib/dropdowns';
 
 export default function SchedulePage() {
+    const router = useRouter();
+
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editEmployee, setEditEmployee] = useState(null);
+    const [isViewOnly, setIsViewOnly] = useState(false);
+
+    const handleView = (employee) => {
+        // Get fresh data from records
+        const fresh = records.find(r => r.id === employee.id) || employee;
+        setEditEmployee(fresh);
+        setIsViewOnly(true);
+        setEditModalOpen(true);
+    };
+
+    const handleEdit = (employee) => {
+        const fresh = records.find(r => r.id === employee.id) || employee;
+        console.log("handleEdit - employee:", { id: fresh.id, system_user_id: fresh.system_user_id, employee_id: fresh.employee_id, schedule_all: fresh.schedule_all });
+        setEditEmployee(fresh);
+        setIsViewOnly(false);
+        setEditModalOpen(true);
+    };
 
     const [records, setRecords] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -29,16 +53,45 @@ export default function SchedulePage() {
 
     const [selectedBranchIds, setSelectedBranchIds] = useState([]);
     const [selectedDepartmentIds, setSelectedDepartmentIds] = useState([]);
+    const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
+    const [scheduleFilter, setScheduleFilter] = useState('');
+    const [selectedIds, setSelectedIds] = useState([]);
 
-    const [stats, setStats] = useState(SCHEDULE_STATS);
+    const toggleSelect = (employeeId) => {
+        setSelectedIds(prev =>
+            prev.includes(employeeId) ? prev.filter(id => id !== employeeId) : [...prev, employeeId]
+        );
+    };
+
+    const toggleAll = () => {
+        if (selectedIds.length === records.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(records.map(r => r.employee_id));
+        }
+    };
+
+    const bulkDelete = async () => {
+        if (!selectedIds.length) return;
+        if (!confirm(`Are you sure you want to delete schedules for ${selectedIds.length} employee(s)?`)) return;
+
+        try {
+            await Promise.all(selectedIds.map(id => removeEmployeeSchedule(id)));
+            setSelectedIds([]);
+            await handleRefresh();
+        } catch (error) {
+            alert("Failed to delete: " + parseApiError(error));
+        }
+    };
+
 
     const [branches, setBranches] = useState([]);
     const [departments, setDepartments] = useState([]);
+    const [employees, setEmployees] = useState([]);
 
     const fetchDropdowns = async () => {
         try {
             setBranches(await getBranches());
-            setStats(await getScheduleStats());
         } catch (error) {
             setError(parseApiError(error));
         }
@@ -57,6 +110,31 @@ export default function SchedulePage() {
 
     }, [selectedBranchIds]);
 
+    useEffect(() => {
+        const fetchEmployees = async () => {
+            try {
+                if (selectedDepartmentIds.length > 0) {
+                    const result = await getEmployeesByDepartmentIds(selectedDepartmentIds);
+                    setEmployees(Array.isArray(result) ? result : []);
+                } else if (selectedBranchIds.length > 0) {
+                    // Fetch departments for selected branches, then fetch employees
+                    const depts = await getDepartmentsByBranchIds(selectedBranchIds);
+                    const deptIds = depts.map(d => d.id);
+                    if (deptIds.length > 0) {
+                        const result = await getEmployeesByDepartmentIds(deptIds);
+                        setEmployees(Array.isArray(result) ? result : []);
+                    } else {
+                        setEmployees([]);
+                    }
+                } else {
+                    setEmployees([]);
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        };
+        fetchEmployees();
+    }, [selectedBranchIds, selectedDepartmentIds]);
 
     useEffect(() => {
         fetchDropdowns();
@@ -72,13 +150,18 @@ export default function SchedulePage() {
                 per_page: perPage,
                 sortDesc: 'false',
                 branch_ids: selectedBranchIds,
-                common_search: searchTerm || null, // Only include search if it's not empty
+                department_ids: selectedDepartmentIds.length > 0 ? selectedDepartmentIds : undefined,
+                employee_ids: selectedEmployeeIds.length > 0 ? selectedEmployeeIds : undefined,
+                common_search: searchTerm || null,
+                schedules_count: scheduleFilter !== '' ? scheduleFilter : undefined,
             };
             const result = await getScheduleEmployees(params);
 
             // Check if result has expected structure before setting state
+            console.log("Fetched records:", result?.data?.slice(0, 2)?.map(r => ({ id: r.id, name: r.first_name, schedule: r.schedule })));
             if (result && Array.isArray(result.data)) {
                 setRecords(result.data);
+                setSelectedIds([]);
                 setCurrentPage(result.current_page || 1);
                 setTotalPages(result.total || 1);
                 setIsLoading(false);
@@ -92,7 +175,7 @@ export default function SchedulePage() {
             setError(parseApiError(error))
             setIsLoading(false); // Make sure loading state is turned off on error
         }
-    }, [perPage, selectedBranchIds, searchTerm]);
+    }, [perPage, selectedBranchIds, selectedDepartmentIds, selectedEmployeeIds, searchTerm, scheduleFilter]);
 
 
     useEffect(() => {
@@ -100,58 +183,53 @@ export default function SchedulePage() {
     }, [currentPage, perPage, fetchRecords]); // Re-fetch when page or perPage changes
 
     const handleRefresh = async () => {
-        setStats(await getScheduleStats());
-        fetchRecords(currentPage, perPage);
+        await fetchRecords(currentPage, perPage);
     }
 
 
     const deleteItem = async (id) => {
-        if (confirm("Are you sure you want to delete this employee?")) {
+        if (confirm("Are you sure you want to delete this schedule?")) {
             try {
                 await removeEmployeeSchedule(id);
-                handleRefresh();
+                // Clear schedule but keep employee in list
+                setRecords(prev => prev.map(r =>
+                    r.employee_id === id ? { ...r, schedule: null, schedule_all: [] } : r
+                ));
             } catch (error) {
-                console.error("Error deleting employee:", error);
+                alert("Failed to delete: " + parseApiError(error));
             }
         }
     }
 
     return (
         <div className='p-4 pb-24 overflow-y-auto max-h-[calc(100vh-100px)]'>
+            <EditScheduleModal
+                key={editEmployee?.id + '-' + editModalOpen}
+                employee={editEmployee}
+                open={editModalOpen}
+                onClose={() => { setEditModalOpen(false); setEditEmployee(null); }}
+                onSuccess={handleRefresh}
+                viewOnly={isViewOnly}
+                onSwitchToView={() => setIsViewOnly(true)}
+            />
             <div className='space-y-5'>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {stats.map((stat, index) => (
-                        <div
-                            key={index}
-                            className="glass-panel bg-white dark:bg-slate-900/50 rounded-xl p-5 flex flex-col gap-1 relative overflow-hidden group hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all duration-300 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/20 shadow-sm dark:shadow-none"
-                        >
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <p className="text-slate-600 dark:text-slate-300 text-xs font-semibold uppercase tracking-wider">
-                                        {stat.label}
-                                    </p>
-                                    <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1 drop-shadow-sm dark:drop-shadow-md">
-                                        {stat.value}
-                                    </h3>
-                                </div>
-
-                                {/* Dynamic Color Container */}
-                                <div className={` p-2 rounded-lg border shadow-sm ${stat.class}`}>
-                                    <span className="material-symbols-outlined">
-                                        {stat.icon}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
 
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6  sm:space-y-0">
-                    <h1 className="text-2xl font-extrabold text-gray-600 dark:text-gray-300 flex items-center">
-                        {/* <User className="w-7 h-7 mr-3 text-indigo-600" /> */}
-                        Schedule Employees
-                    </h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-extrabold text-gray-600 dark:text-gray-300 flex items-center">
+                            Schedule Employees
+                        </h1>
+                        {selectedIds.length > 0 && (
+                            <button
+                                onClick={bulkDelete}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold rounded-lg transition-all"
+                            >
+                                <Trash2 size={14} />
+                                Delete ({selectedIds.length})
+                            </button>
+                        )}
+                    </div>
                     <div className="flex flex-wrap items-center space-x-3 space-y-2 sm:space-y-0">
                         <div className="relative">
                             <MultiDropDown
@@ -172,6 +250,28 @@ export default function SchedulePage() {
                                 onChange={setSelectedDepartmentIds}
                                 badgesCount={1}
                             />
+                        </div>
+
+                        <div className="relative">
+                            <MultiDropDown
+                                placeholder={'Select Employee'}
+                                items={employees}
+                                value={selectedEmployeeIds}
+                                onChange={setSelectedEmployeeIds}
+                                badgesCount={1}
+                            />
+                        </div>
+
+                        <div className="relative">
+                            <select
+                                value={scheduleFilter}
+                                onChange={(e) => { setScheduleFilter(e.target.value); setCurrentPage(1); }}
+                                className="h-10 px-3 pr-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer"
+                            >
+                                <option value="">All</option>
+                                <option value="1">Scheduled</option>
+                                <option value="0">Unscheduled</option>
+                            </select>
                         </div>
 
                         {/* Search Input */}
@@ -197,7 +297,12 @@ export default function SchedulePage() {
                 </div>
 
                 <DataTable
-                    columns={Columns(deleteItem)}
+                    columns={Columns(deleteItem, handleEdit, handleView, {
+                        selectedIds,
+                        toggleSelect,
+                        toggleAll,
+                        allSelected: records.length > 0 && selectedIds.length === records.length,
+                    })}
                     data={records}
                     isLoading={isLoading}
                     error={error}

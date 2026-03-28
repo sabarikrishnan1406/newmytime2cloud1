@@ -18,7 +18,7 @@ const LiveInsightSidebar = ({ shift }) => {
 
     const startPercent = getPercent(shift?.on_duty_time);
     const endPercent = getPercent(shift?.off_duty_time);
-    const durationPercent = endPercent - startPercent;
+    const isNightShift = startPercent > endPercent;
 
     const scheduleData = [
         { short_key: "M", day: 'Mon' },
@@ -99,43 +99,67 @@ const LiveInsightSidebar = ({ shift }) => {
                         <span>24:00</span>
                     </div>
 
-                    {scheduleData.map((item) => {
-                        const isOff = week_offs.includes(item.short_key);
+                    {scheduleData.map((item, idx) => {
+                        const prevDay = scheduleData[(idx - 1 + scheduleData.length) % scheduleData.length];
+                        const nextDay = scheduleData[(idx + 1) % scheduleData.length];
+                        const isDayOff = week_offs.includes(item.short_key);
+                        const isPrevDayOff = week_offs.includes(prevDay.short_key);
+                        const isNextDayOff = week_offs.includes(nextDay.short_key);
+
                         const isHalfDay = halfday_rules?.enabled && item.short_key === halfday_rules?.day;
 
-                        // Use half day's own times if available
-                        let barStart = startPercent;
-                        let barWidth = durationPercent;
+                        let bars = [];
                         if (isHalfDay) {
                             const hdStart = getPercent(halfday_rules?.onDuty || halfday_rules?.on_duty);
                             const hdEnd = getPercent(halfday_rules?.offDuty || halfday_rules?.off_duty);
                             if (hdStart || hdEnd) {
-                                barStart = hdStart;
-                                barWidth = hdEnd - hdStart;
+                                if (hdStart > hdEnd) {
+                                    bars = [{ left: hdStart, width: 100 - hdStart }, { left: 0, width: hdEnd }];
+                                } else {
+                                    bars = [{ left: hdStart, width: hdEnd - hdStart }];
+                                }
                             } else {
-                                barWidth = durationPercent / 2;
+                                const halfDuration = isNightShift ? ((100 - startPercent) + endPercent) / 2 : (endPercent - startPercent) / 2;
+                                bars = [{ left: startPercent, width: halfDuration }];
                             }
+                        } else if (isNightShift) {
+                            // Night shift: morning bar (00:00-off_duty) from previous night
+                            // Evening bar (on_duty-24:00) for current night going into next day
+                            const showMorning = !isDayOff && !isNextDayOff;
+                            const showEvening = !isNextDayOff;
+
+                            // Morning bar: show if current day is not off (prev night's shift carries into this day)
+                            const hasMorning = !isDayOff;
+                            // Evening bar: show if next day is not weekoff
+                            const hasEvening = !isNextDayOff;
+
+                            if (hasMorning) bars.push({ left: 0, width: endPercent });
+                            if (hasEvening) bars.push({ left: startPercent, width: 100 - startPercent });
+                        } else if (!isDayOff) {
+                            bars = [{ left: startPercent, width: endPercent - startPercent }];
                         }
 
+                        const isFullOff = bars.length === 0;
+                        const barColor = isHalfDay
+                            ? 'bg-blue-500 shadow-blue-500/40'
+                            : 'bg-emerald-500 shadow-emerald-500/40';
+
                         return (
-                            <div key={item.day} className={`flex items-center gap-3 group ${isOff ? 'opacity-40' : ''}`}>
-                                <span className={`text-xs font-medium w-7 ${isHalfDay ? 'text-blue-400' : 'text-gray-600 dark:text-slate-300'}`}>
+                            <div key={item.day} className={`flex items-center gap-3 group ${isFullOff ? 'opacity-40' : ''}`}>
+                                <span className={`text-xs font-medium w-7 ${isHalfDay ? 'text-blue-400' : isFullOff ? 'text-red-400' : 'text-gray-600 dark:text-slate-300'}`}>
                                     {item.day}
                                 </span>
                                 <div className="flex-1 h-2.5 bg-obsidian dark:bg-slate-800 rounded-full overflow-hidden relative border border-border">
-                                    {!isOff && (
+                                    {bars.map((bar, i) => (
                                         <div
-                                            className={`absolute h-full shadow-lg transition-all duration-500 ${
-                                                isHalfDay
-                                                ? 'bg-blue-500 shadow-blue-500/40'
-                                                : 'bg-emerald-500 shadow-emerald-500/40'
-                                            }`}
+                                            key={i}
+                                            className={`absolute h-full shadow-lg transition-all duration-500 ${barColor}`}
                                             style={{
-                                                left: `${barStart}%`,
-                                                width: `${barWidth}%`
+                                                left: `${bar.left}%`,
+                                                width: `${bar.width}%`
                                             }}
                                         />
-                                    )}
+                                    ))}
                                 </div>
                             </div>
                         );

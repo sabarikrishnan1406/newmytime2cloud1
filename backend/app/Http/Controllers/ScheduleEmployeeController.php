@@ -96,7 +96,7 @@ class ScheduleEmployeeController extends Controller
         //$model->has('schedule_active.shift_type_id', '>', 2);
 
         $model->with(["schedule_all" => function ($q) use ($request) {
-            $q->where("company_id", $request->company_id);
+            $q->where("company_id", $request->company_id)->with('shift:id,name');
         }]);
 
         if ($request->filled('schedules_count')) {
@@ -165,6 +165,20 @@ class ScheduleEmployeeController extends Controller
     public function store(StoreRequest $request, ScheduleEmployee $model)
     {
         $data = $request->validated();
+
+        // Validate no overlapping schedules within the request
+        $schedules = $data["schedules"];
+        for ($i = 0; $i < count($schedules); $i++) {
+            for ($j = $i + 1; $j < count($schedules); $j++) {
+                if ($schedules[$i]["from_date"] <= $schedules[$j]["to_date"] && $schedules[$j]["from_date"] <= $schedules[$i]["to_date"]) {
+                    return response()->json([
+                        'status' => false,
+                        'errors' => ['schedules' => ["Schedule " . ($i + 1) . " and " . ($j + 1) . " have overlapping dates."]],
+                    ], 422);
+                }
+            }
+        }
+
 
         $arr = [];
 

@@ -37,6 +37,10 @@ class StoreRequest extends FormRequest
             'lat' => 'nullable|min:3|max:100',
             'lon' => 'nullable|min:3|max:100',
             'address' => 'nullable|min:3|max:300',
+            'area' => 'nullable|max:100',
+            'city' => 'nullable|max:100',
+            'country' => 'nullable|max:100',
+            'timezone' => 'nullable|max:100',
             'company_id' => 'required',
         ];
     }
