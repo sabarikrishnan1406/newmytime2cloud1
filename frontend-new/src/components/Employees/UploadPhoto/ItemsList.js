@@ -55,37 +55,38 @@ const ItemsList = ({
 
   return (
     <div className="lg:col-span-5 flex flex-col h-[520px] bg-white/80 dark:bg-slate-900 backdrop-blur-xl rounded-xl shadow-lg border border-border overflow-hidden">
-      <div className="p-5 bg-white/30 dark:bg-slate-900 space-y-3">
-        <div className="flex justify-between items-center">
-          <h2 className="font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2">
+      <div className="p-5 bg-white/30 dark:bg-slate-900">
+        <div className="flex items-center gap-3">
+          <h2 className="font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2 shrink-0">
             <Icon className={`${isIndigo ? 'text-indigo-400/80' : 'text-slate-400/80'} w-5 h-5`} />
             {title}
           </h2>
-          <span className={`text-[10px] font-bold px-2.5 py-1 border rounded-full uppercase tracking-wider ${isIndigo
+
+          {showSyncPlaceholder ? (
+            <div className="flex-1">
+              <div className="w-full h-[38px] border border-dashed border-border/50 rounded-lg flex items-center justify-center bg-slate-50/30 dark:bg-slate-800/20">
+                <span className="text-[10px] text-slate-400 uppercase tracking-widest font-medium">Ready for Sync</span>
+              </div>
+            </div>
+          ) : (
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Input
+                placeholder="Search ID or Name..."
+                value={searchTerm}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="bg-white/50 dark:bg-slate-800/50"
+              />
+            </div>
+          )}
+
+          <span className={`text-[10px] font-bold px-2.5 py-1 border rounded-full uppercase tracking-wider shrink-0 ${isIndigo
               ? 'text-indigo-500 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/50 dark:bg-indigo-950/30'
               : 'text-slate-600 dark:text-slate-300 border-border bg-slate-50/50 dark:bg-slate-800/30'
             }`}>
             {items.length} {badgeLabel}
           </span>
         </div>
-
-        {showSyncPlaceholder ? (
-          <div className="relative">
-            <div className="w-full h-[38px] border border-dashed border-border/50 rounded-lg flex items-center justify-center bg-slate-50/30 dark:bg-slate-800/20">
-              <span className="text-[10px] text-slate-400 uppercase tracking-widest font-medium">Ready for Sync</span>
-            </div>
-          </div>
-        ) : (
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-            <Input
-              placeholder="Search ID or Name..."
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="bg-white/50 dark:bg-slate-800/50"
-            />
-          </div>
-        )}
       </div>
 
       <div className="overflow-y-auto flex-1 border-t border-border/50">

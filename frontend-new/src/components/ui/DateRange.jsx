@@ -1,9 +1,8 @@
 "use client";
 
-import { format } from "date-fns";
-import { Calendar as CalendarIcon, Check, X } from "lucide-react";
+import { format, addMonths, subMonths } from "date-fns";
+import { Calendar as CalendarIcon, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
 
-// Assuming your shadcn/ui components are correctly imported:
 import { cn, formatDateDubai } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -12,7 +11,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import DropDown from "@/components/ui/DropDown";
+
+const monthItems = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+].map((name, idx) => ({ id: idx, name }));
 
 export default function DateRangeSelect({
   value,
@@ -21,24 +26,18 @@ export default function DateRangeSelect({
   numberOfMonths = 2,
   showOutsideDays = false,
 }) {
-  // 1. Main state for the selected range (displayed in the button)
-  const [date, setDate] = useState({
-    // from: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First day of current month
-    // to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0), // Last day of current month
-    from: null, // First day of current month
-    to: null, // Last day of current month
-  });
-
-  // 2. Draft state for the range selection happening *inside* the calendar
-  // It is initialized with the current committed date.
+  const [date, setDate] = useState({ from: null, to: null });
   const [draftDate, setDraftDate] = useState(date);
-
-  // 3. State to control the Popover's open/close status
   const [open, setOpen] = useState(false);
+  const [yearPickerOpen, setYearPickerOpen] = useState(false);
+  const [viewMonth, setViewMonth] = useState(new Date());
 
-  // --- Handlers ---
+  const yearGridPage = useMemo(() => {
+    const centerYear = viewMonth.getFullYear();
+    const startYear = centerYear - (centerYear % 10) - 1;
+    return Array.from({ length: 12 }, (_, i) => startYear + i);
+  }, [viewMonth]);
 
-  // NEW: Sync internal state when parent props change (e.g., when Edit Modal opens)
   useEffect(() => {
     if (value?.from || value?.to) {
       const newRange = {
@@ -52,29 +51,27 @@ export default function DateRangeSelect({
 
   const handleOpenChange = (newOpen) => {
     setOpen(newOpen);
-    // If the Popover is closing without an explicit action, revert draft date
-    // to the last committed date to ensure canceled changes are discarded.
     if (!newOpen) {
       setDraftDate(date);
+      setYearPickerOpen(false);
     }
   };
 
   const handleApply = () => {
-    setDate(draftDate); // Commit the draft selection to the main state
-    setOpen(false); // Close the popover
-
+    setDate(draftDate);
+    setOpen(false);
+    setYearPickerOpen(false);
     onChange({
       from: formatDateDubai(draftDate.from),
       to: formatDateDubai(draftDate.to),
-    }); // Notify parent component of the new date range
+    });
   };
 
   const handleCancel = () => {
-    setDraftDate(date); // Revert the draft back to the last committed date
-    setOpen(false); // Close the popover
+    setDraftDate(date);
+    setOpen(false);
+    setYearPickerOpen(false);
   };
-
-  // --- Rendering ---
 
   return (
     <div className={cn("grid gap-2", className)}>
@@ -89,7 +86,6 @@ export default function DateRangeSelect({
             )}
           >
             <CalendarIcon className="h-4 w-4" />
-            {/* Display the committed date range or a placeholder */}
             {date?.from ? (
               date.to ? (
                 <>
@@ -106,25 +102,94 @@ export default function DateRangeSelect({
         </PopoverTrigger>
         <PopoverContent
           className="w-auto p-0 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/20"
-          align="start" // Ensures the popover's left edge aligns with the button's left edge
-          side="bottom" // Ensures the popover opens below the button
+          align="start"
+          side="bottom"
         >
-          {/* Calendar Component */}
-          <Calendar
-            initialFocus
-            mode="range"
-            defaultMonth={draftDate?.from || new Date()}
-            selected={draftDate}
-            onSelect={setDraftDate}
-            numberOfMonths={numberOfMonths}
-            showOutsideDays={showOutsideDays}
-            // --- ADD THESE PROPS ---
-            captionLayout="dropdown" // Enables the dropdowns
-            fromYear={2020} // Set the start of your year range
-            toYear={2035} // Set this to include your 5+ year target
-          />
+          {/* Header with month/year controls */}
+          <div className="flex items-center justify-between gap-2 p-3 pb-0">
+            <div className="flex gap-2 items-center">
+              <div className="w-28">
+                <DropDown
+                  items={monthItems}
+                  value={viewMonth.getMonth()}
+                  onChange={(id) => setViewMonth(new Date(viewMonth.getFullYear(), Number(id), 1))}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setYearPickerOpen(!yearPickerOpen)}
+                className="px-3 h-9 rounded-md border border-border text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                {viewMonth.getFullYear()}
+                <span className="material-icons ml-1 text-base align-middle">expand_more</span>
+              </button>
+            </div>
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() =>
+                  yearPickerOpen
+                    ? setViewMonth(new Date(viewMonth.getFullYear() - 10, viewMonth.getMonth(), 1))
+                    : setViewMonth(subMonths(viewMonth, 1))
+                }
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+              >
+                <ChevronLeft className="w-4 h-4 text-slate-500" />
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  yearPickerOpen
+                    ? setViewMonth(new Date(viewMonth.getFullYear() + 10, viewMonth.getMonth(), 1))
+                    : setViewMonth(addMonths(viewMonth, 1))
+                }
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+              >
+                <ChevronRight className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+          </div>
 
-          {/* Action Buttons Container */}
+          {yearPickerOpen ? (
+            <div className="p-4">
+              <div className="grid grid-cols-4 gap-2">
+                {yearGridPage.map((year) => {
+                  const isSelected = year === viewMonth.getFullYear();
+                  return (
+                    <button
+                      key={year}
+                      type="button"
+                      onClick={() => {
+                        setViewMonth(new Date(year, viewMonth.getMonth(), 1));
+                        setYearPickerOpen(false);
+                      }}
+                      className={cn(
+                        "h-10 rounded-xl text-sm font-medium transition-all",
+                        isSelected
+                          ? "bg-primary text-white"
+                          : "text-slate-600 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                      )}
+                    >
+                      {year}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <Calendar
+              initialFocus
+              mode="range"
+              month={viewMonth}
+              onMonthChange={setViewMonth}
+              selected={draftDate}
+              onSelect={setDraftDate}
+              numberOfMonths={numberOfMonths}
+              showOutsideDays={showOutsideDays}
+            />
+          )}
+
+          {/* Action Buttons */}
           <div className="flex justify-end space-x-2 border-t border-gray-200 dark:border-white/30 p-2">
             <Button
               variant="secondary"
@@ -139,7 +204,6 @@ export default function DateRangeSelect({
               className="bg-white dark:bg-primary"
               size="sm"
               onClick={handleApply}
-              // The Apply button is disabled unless both the 'from' and 'to' dates are selected.
               disabled={!draftDate?.from || !draftDate.to}
             >
               <Check className="h-4 w-4" />

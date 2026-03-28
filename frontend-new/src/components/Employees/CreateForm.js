@@ -16,6 +16,7 @@ const CreateForm = ({ action = "Add", payload }) => {
     const router = useRouter();
 
     const [showPassword, setShowPassword] = useState(false);
+    const [emailError, setEmailError] = useState("");
     const [form, setForm] = useState({
         title: "Mr.",
         first_name: "",
@@ -116,7 +117,18 @@ const CreateForm = ({ action = "Add", payload }) => {
 
     }
 
+    const validateEmail = (email) => {
+        if (!email) { setEmailError(""); return true; }
+        const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        setEmailError(valid ? "" : "Invalid email format");
+        return valid;
+    };
+
     const onSubmit = async () => {
+        if (form.email && !validateEmail(form.email)) {
+            await notify("Oops!", "Please enter a valid email address.", "error");
+            return;
+        }
 
         alert(form.profile_image_base64)
 
@@ -329,7 +341,10 @@ const CreateForm = ({ action = "Add", payload }) => {
                             <div className="col-span-6">
                                 <Label>Email</Label>
                                 <Input type="email" value={form.email}
-                                    onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="hr@company.com" />
+                                    onChange={(e) => { setForm({ ...form, email: e.target.value }); validateEmail(e.target.value); }}
+                                    placeholder="hr@company.com"
+                                    className={emailError ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""} />
+                                {emailError && <p className="text-red-500 text-xs mt-1">{emailError}</p>}
                             </div>
                         </div>
 

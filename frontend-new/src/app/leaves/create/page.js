@@ -27,6 +27,15 @@ const EmployeeProfileForm = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [password, setPassword] = useState('pass1234');
     const [gender, setGender] = useState('Male');
+    const [email, setEmail] = useState('');
+    const [emailError, setEmailError] = useState('');
+
+    const validateEmail = (val) => {
+        if (!val) { setEmailError(''); return true; }
+        const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+        setEmailError(valid ? '' : 'Invalid email format');
+        return valid;
+    };
 
     const generatePassword = () => {
         const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
@@ -170,7 +179,11 @@ const EmployeeProfileForm = () => {
                             <SectionTitle icon={<Contact size={14} />} title="Contact Info" />
                             <div className="grid grid-cols-12 gap-4">
                                 <div className="col-span-6"><Label>Mobile</Label><Input type="tel" placeholder="971xxxxxxxxx" /></div>
-                                <div className="col-span-6"><Label>Email</Label><Input type="email" placeholder="hr@company.com" /></div>
+                                <div className="col-span-6"><Label>Email</Label>
+                                    <Input type="email" value={email} onChange={(e) => { setEmail(e.target.value); validateEmail(e.target.value); }}
+                                        placeholder="hr@company.com" className={emailError ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""} />
+                                    {emailError && <p className="text-red-500 text-xs mt-1">{emailError}</p>}
+                                </div>
                             </div>
 
                         </form>

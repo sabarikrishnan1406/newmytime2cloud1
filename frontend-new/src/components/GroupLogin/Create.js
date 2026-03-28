@@ -40,6 +40,14 @@ const Create = ({ isEditOpen = false, defaultPayload = {}, pageTitle = "Add Item
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [globalError, setGlobalError] = useState(null);
+  const [emailError, setEmailError] = useState("");
+
+  const validateEmail = (email) => {
+    if (!email) { setEmailError(""); return true; }
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    setEmailError(valid ? "" : "Invalid email format");
+    return valid;
+  };
 
   const [selectedEmployee, setSelectedEmployee] = useState({ id: null, name: "Select Employee" });
 
@@ -137,6 +145,10 @@ const Create = ({ isEditOpen = false, defaultPayload = {}, pageTitle = "Add Item
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (form.email && !validateEmail(form.email)) {
+      setGlobalError("Please enter a valid email address");
+      return;
+    }
     setGlobalError(null);
     setLoading(true);
     try {
@@ -262,12 +274,14 @@ const Create = ({ isEditOpen = false, defaultPayload = {}, pageTitle = "Add Item
                   <div className="relative">
                     <Input
                       value={form.email}
-                      onChange={(e) => handleChange("email", e.target.value)}
+                      onChange={(e) => { handleChange("email", e.target.value); validateEmail(e.target.value); }}
                       placeholder="admin@vault.com"
                       type="email"
+                      className={emailError ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""}
                     />
                     <Mail className="absolute right-3 top-3.5 text-slate-500 w-4 h-4" />
                   </div>
+                  {emailError && <p className="text-red-500 text-xs mt-1">{emailError}</p>}
                 </div>
 
               </div>

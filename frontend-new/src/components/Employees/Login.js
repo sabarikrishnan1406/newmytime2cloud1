@@ -8,6 +8,14 @@ import Input from "../Theme/Input";
 const Login = ({ employee_id, email }) => {
 
     const [loading, setLoading] = useState(false);
+    const [emailError, setEmailError] = useState("");
+
+    const validateEmail = (email) => {
+        if (!email) { setEmailError(""); return true; }
+        const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        setEmailError(valid ? "" : "Invalid email format");
+        return valid;
+    };
 
     const [form, setForm] = useState({
         email: email || "",
@@ -18,7 +26,8 @@ const Login = ({ employee_id, email }) => {
 
     // 2. Update state when user actually types
     const handleEmailChange = (e) => {
-        setForm((prev) => ({ ...prev, email: e.target.value || "" }))
+        setForm((prev) => ({ ...prev, email: e.target.value || "" }));
+        validateEmail(e.target.value);
     };
 
     const handlePasswordChange = (e) => {
@@ -33,6 +42,11 @@ const Login = ({ employee_id, email }) => {
     const strength = getStrength(form.password);
 
     const onSubmit = async () => {
+        if (form.email && !validateEmail(form.email)) {
+            notify("Error", "Please enter a valid email address", "error");
+            return;
+        }
+
         // Logic Guard: Don't save if password fields are being typed but don't match yet
         if (form.password && form.password !== form.password_confirmation) {
             notify("Error", "Passwords do not match", "error");
@@ -93,7 +107,9 @@ const Login = ({ employee_id, email }) => {
                         value={form.email}
                         onChange={handleEmailChange}
                         placeholder="email@company.com"
+                        className={emailError ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""}
                     />
+                    {emailError && <p className="text-red-500 text-xs mt-1">{emailError}</p>}
                 </div>
 
                 <div className="pt-4 border-t border-slate-200 dark:border-slate-700">

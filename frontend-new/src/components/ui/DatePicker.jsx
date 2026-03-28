@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom"; // 👈 Import this
 import {
-  format,
   addMonths,
   subMonths,
   startOfMonth,
@@ -13,7 +12,6 @@ import {
   isSameMonth,
   isSameDay,
   eachDayOfInterval,
-  getYear,
 } from "date-fns";
 import {
   ChevronLeft,
@@ -48,6 +46,7 @@ export default function DatePicker({
 }) {
   const [open, setOpen] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
+  const [yearPickerOpen, setYearPickerOpen] = useState(false);
   const [coords, setCoords] = useState({
     top: 0,
     left: 0,
@@ -127,13 +126,11 @@ export default function DatePicker({
     [],
   );
 
-  const yearItems = useMemo(() => {
-    const currentYear = getYear(new Date());
-    return Array.from({ length: 120 }, (_, i) => ({
-      id: currentYear - 100 + i,
-      name: (currentYear - 100 + i).toString(),
-    })).reverse();
-  }, []);
+  const yearGridPage = useMemo(() => {
+    const centerYear = viewDate.getFullYear();
+    const startYear = centerYear - (centerYear % 10) - 1;
+    return Array.from({ length: 12 }, (_, i) => startYear + i);
+  }, [viewDate]);
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(viewDate));
@@ -144,6 +141,7 @@ export default function DatePicker({
   const handleDateSelect = (date) => {
     onChange(formatDate(date));
     setOpen(false);
+    setYearPickerOpen(false);
   };
 
   return (
@@ -164,7 +162,7 @@ export default function DatePicker({
               : "text-slate-700 dark:text-slate-200"
           }
         >
-          {displayDate ? formatDate(displayDate) : placeholder}
+          {displayDate ? `${String(displayDate.getDate()).padStart(2, "0")}-${String(displayDate.getMonth() + 1).padStart(2, "0")}-${displayDate.getFullYear()}` : placeholder}
         </span>
         <CalendarIcon className="w-5 h-5 text-slate-400" />
       </button>
@@ -200,27 +198,34 @@ export default function DatePicker({
                       }
                     />
                   </div>
-                  <div className="w-24">
-                    <DropDown
-                      items={yearItems}
-                      value={viewDate.getFullYear()}
-                      onChange={(id) =>
-                        setViewDate(new Date(viewDate.setFullYear(Number(id))))
-                      }
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setYearPickerOpen(!yearPickerOpen)}
+                    className="px-3 h-9 rounded-md border border-border text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    {viewDate.getFullYear()}
+                    <span className="material-icons ml-1 text-base align-middle">expand_more</span>
+                  </button>
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setViewDate(subMonths(viewDate, 1))}
+                    onClick={() =>
+                      yearPickerOpen
+                        ? setViewDate(new Date(viewDate.getFullYear() - 10, viewDate.getMonth(), 1))
+                        : setViewDate(subMonths(viewDate, 1))
+                    }
                     className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
                   >
                     <ChevronLeft className="w-4 h-4 text-slate-500" />
                   </button>
                   <button
                     type="button"
-                    onClick={() => setViewDate(addMonths(viewDate, 1))}
+                    onClick={() =>
+                      yearPickerOpen
+                        ? setViewDate(new Date(viewDate.getFullYear() + 10, viewDate.getMonth(), 1))
+                        : setViewDate(addMonths(viewDate, 1))
+                    }
                     className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
                   >
                     <ChevronRight className="w-4 h-4 text-slate-500" />
@@ -228,31 +233,56 @@ export default function DatePicker({
                 </div>
               </div>
 
-              <div className="grid grid-cols-7 border-b border-slate-100 dark:border-white/5 pb-2 text-center text-[10px] font-bold text-slate-400 uppercase">
-                {daysOfWeek.map((day) => (
-                  <div key={day}>{day}</div>
-                ))}
-              </div>
+              {yearPickerOpen ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {yearGridPage.map((year) => {
+                    const isSelected = year === viewDate.getFullYear();
+                    return (
+                      <button
+                        key={year}
+                        type="button"
+                        onClick={() => {
+                          setViewDate(new Date(year, viewDate.getMonth(), 1));
+                          setYearPickerOpen(false);
+                        }}
+                        className={`h-10 rounded-xl text-sm font-medium transition-all
+                          ${isSelected ? "bg-blue-600 text-white" : "text-slate-600 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/30"}
+                        `}
+                      >
+                        {year}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-7 border-b border-slate-100 dark:border-white/5 pb-2 text-center text-[10px] font-bold text-slate-400 uppercase">
+                    {daysOfWeek.map((day) => (
+                      <div key={day}>{day}</div>
+                    ))}
+                  </div>
 
-              <div className="grid grid-cols-7 gap-1">
-                {days.map((day, idx) => {
-                  const isSelected = displayDate && isSameDay(day, displayDate);
-                  const isCurrentMonth = isSameMonth(day, viewDate);
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleDateSelect(day)}
-                      className={`h-9 w-9 flex items-center justify-center rounded-xl text-sm font-medium transition-all
-                      ${!isCurrentMonth ? "text-slate-300 dark:text-slate-700 opacity-30" : "text-slate-600 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/30"}
-                      ${isSelected ? "!bg-blue-600 !text-white" : ""}
-                    `}
-                    >
-                      {day.getDate()}
-                    </button>
-                  );
-                })}
-              </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {days.map((day, idx) => {
+                      const isSelected = displayDate && isSameDay(day, displayDate);
+                      const isCurrentMonth = isSameMonth(day, viewDate);
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleDateSelect(day)}
+                          className={`h-9 w-9 flex items-center justify-center rounded-xl text-sm font-medium transition-all
+                            ${!isCurrentMonth ? "text-slate-300 dark:text-slate-700 opacity-30" : "text-slate-600 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/30"}
+                            ${isSelected ? "!bg-blue-600 !text-white" : ""}
+                          `}
+                        >
+                          {day.getDate()}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           </div>,
           document.body, // 👈 Teleports to the end of the body

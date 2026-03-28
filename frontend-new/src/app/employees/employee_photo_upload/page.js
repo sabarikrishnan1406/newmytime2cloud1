@@ -157,8 +157,12 @@ export default function AttendanceTable() {
   };
 
   useEffect(() => {
-    fetchScheduledEmployees()
+    fetchScheduledEmployees();
   }, [selectedDepartment]);
+
+  useEffect(() => {
+    fetchScheduledEmployees();
+  }, []);
 
 
   const fetchDevices = async () => {

@@ -32,6 +32,14 @@ const EditAdminFormDialog = ({
   const [roles, setRoles] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState("");
+
+  const validateEmail = (email) => {
+    if (!email) { setEmailError(""); return true; }
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    setEmailError(valid ? "" : "Invalid email format");
+    return valid;
+  };
 
   const [form, setForm] = useState(initialData);
 
@@ -65,6 +73,10 @@ const EditAdminFormDialog = ({
   };
 
   const onSubmit = async () => {
+    if (form.email && !validateEmail(form.email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
     setError(null);
     setLoading(true);
     try {
@@ -108,8 +120,10 @@ const EditAdminFormDialog = ({
             <Input
               type="email"
               value={form.email}
-              onChange={(e) => handleChange("email", e.target.value)}
+              onChange={(e) => { handleChange("email", e.target.value); validateEmail(e.target.value); }}
+              className={emailError ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""}
             />
+            {emailError && <p className="text-red-500 text-xs mt-1">{emailError}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

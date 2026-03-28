@@ -5,6 +5,7 @@ export function useAttendanceSync(initialData = []) {
   const [selectedItems, setSelectedItems] = useState([]);
   const [checkedItems, setCheckedItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSearchTerm, setSelectedSearchTerm] = useState('');
 
   // IMPORTANT: This syncs the hook when the API data arrives
   useEffect(() => {
@@ -54,12 +55,19 @@ export function useAttendanceSync(initialData = []) {
     item.itemId?.toString().includes(searchTerm)
   );
 
+  const filteredSelected = selectedItems.filter(item =>
+    item.name?.toLowerCase().includes(selectedSearchTerm.toLowerCase()) ||
+    item.itemId?.toString().includes(selectedSearchTerm)
+  );
+
   return {
     available: filteredAvailable,
-    selected: selectedItems,
+    selected: filteredSelected,
     checkedItems,
     searchTerm,
     setSearchTerm,
+    selectedSearchTerm,
+    setSelectedSearchTerm,
     toggleCheck,
     moveSelectedToRight,
     moveSelectedToLeft,

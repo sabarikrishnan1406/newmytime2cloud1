@@ -30,6 +30,14 @@ const Create = ({ pageTitle = "Add Item", onSuccess = (e) => { e } }) => {
 
   const [open, setOpen] = useState(false);
   const [globalError, setGlobalError] = useState(null);
+  const [emailError, setEmailError] = useState("");
+
+  const validateEmail = (email) => {
+    if (!email) { setEmailError(""); return true; }
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    setEmailError(valid ? "" : "Invalid email format");
+    return valid;
+  };
 
 
   const [branches, setBranches] = useState([]);
@@ -68,6 +76,10 @@ const Create = ({ pageTitle = "Add Item", onSuccess = (e) => { e } }) => {
   };
 
   const onSubmit = async () => {
+    if (form.email && !validateEmail(form.email)) {
+      setGlobalError("Please enter a valid email address");
+      return;
+    }
     setGlobalError(null);
     setLoading(true);
     try {
@@ -119,8 +131,10 @@ const Create = ({ pageTitle = "Add Item", onSuccess = (e) => { e } }) => {
               <Input
                 type="email"
                 value={form.email}
-                onChange={(e) => handleChange("email", e.target.value)}
+                onChange={(e) => { handleChange("email", e.target.value); validateEmail(e.target.value); }}
+                className={emailError ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""}
               />
+              {emailError && <p className="text-red-500 text-xs mt-1">{emailError}</p>}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

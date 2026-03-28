@@ -46,6 +46,14 @@ const EmployeeContact = ({ action = "Add", payload }) => {
     const router = useRouter();
 
     const [loading, setLoading] = useState(false);
+    const [emailErrors, setEmailErrors] = useState({});
+
+    const validateEmail = (field, email) => {
+        if (!email || email === "---") { setEmailErrors(prev => ({ ...prev, [field]: "" })); return true; }
+        const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        setEmailErrors(prev => ({ ...prev, [field]: valid ? "" : "Invalid email format" }));
+        return valid;
+    };
     const [contactInfo, setContactInfo] = useState(CONTACT_DEFAULT_PAYLOAD);
     const [presentAddress, setPresentAddress] = useState(PRESENT_ADDRESS_DEFAULT_PAYLOAD);
     const [permanentAddress, setPermanentAddress] = useState(PERMANENT_ADDRESS_DEFAULT_PAYLOAD);
@@ -100,6 +108,20 @@ const EmployeeContact = ({ action = "Add", payload }) => {
 
 
     const onSubmit = async () => {
+        const emailFields = [
+            { field: "work_email", value: contactInfo.work_email },
+            { field: "person_email", value: contactInfo.person_email },
+            { field: "primary_email", value: primaryContact.email },
+            { field: "secondary_email", value: secondaryContact.email },
+        ];
+        let hasInvalidEmail = false;
+        emailFields.forEach(({ field, value }) => {
+            if (!validateEmail(field, value)) hasInvalidEmail = true;
+        });
+        if (hasInvalidEmail) {
+            await notify("Oops!", "Please fix invalid email addresses.", "error");
+            return;
+        }
 
         setLoading(true);
 
@@ -151,11 +173,15 @@ const EmployeeContact = ({ action = "Add", payload }) => {
                         <div className="grid grid-cols-12 gap-4">
                             <div className="col-span-6">
                                 <Label>Work Email</Label>
-                                <Input value={contactInfo.work_email} onChange={(e) => setContactInfo({ ...contactInfo, work_email: e.target.value })} placeholder="employee@email.com" />
+                                <Input value={contactInfo.work_email} onChange={(e) => { setContactInfo({ ...contactInfo, work_email: e.target.value }); validateEmail("work_email", e.target.value); }} placeholder="employee@email.com"
+                                    className={emailErrors.work_email ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""} />
+                                {emailErrors.work_email && <p className="text-red-500 text-xs mt-1">{emailErrors.work_email}</p>}
                             </div>
                             <div className="col-span-6">
                                 <Label>Personal Email</Label>
-                                <Input value={contactInfo.person_email} onChange={(e) => setContactInfo({ ...contactInfo, person_email: e.target.value })} placeholder="employee@email.com" />
+                                <Input value={contactInfo.person_email} onChange={(e) => { setContactInfo({ ...contactInfo, person_email: e.target.value }); validateEmail("person_email", e.target.value); }} placeholder="employee@email.com"
+                                    className={emailErrors.person_email ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""} />
+                                {emailErrors.person_email && <p className="text-red-500 text-xs mt-1">{emailErrors.person_email}</p>}
                             </div>
                             <div className="col-span-6">
                                 <Label>Work Phone</Label>
@@ -316,7 +342,9 @@ const EmployeeContact = ({ action = "Add", payload }) => {
                             </div>
                             <div className="col-span-6">
                                 <Label>Email Address</Label>
-                                <Input value={primaryContact.email} onChange={(e) => setPrimaryContact({ ...primaryContact, email: e.target.value })} placeholder="Email Address" className="bg-slate-50 dark:bg-slate-800 text-slate-500" />
+                                <Input value={primaryContact.email} onChange={(e) => { setPrimaryContact({ ...primaryContact, email: e.target.value }); validateEmail("primary_email", e.target.value); }} placeholder="Email Address"
+                                    className={`bg-slate-50 dark:bg-slate-800 text-slate-500 ${emailErrors.primary_email ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""}`} />
+                                {emailErrors.primary_email && <p className="text-red-500 text-xs mt-1">{emailErrors.primary_email}</p>}
                             </div>
 
                         </div>
@@ -357,7 +385,9 @@ const EmployeeContact = ({ action = "Add", payload }) => {
                             </div>
                             <div className="col-span-6">
                                 <Label>Email Address</Label>
-                                <Input value={secondaryContact.email} onChange={(e) => setSecondaryContact({ ...secondaryContact, email: e.target.value })} placeholder="Email Address" className="bg-slate-50 dark:bg-slate-800 text-slate-500" />
+                                <Input value={secondaryContact.email} onChange={(e) => { setSecondaryContact({ ...secondaryContact, email: e.target.value }); validateEmail("secondary_email", e.target.value); }} placeholder="Email Address"
+                                    className={`bg-slate-50 dark:bg-slate-800 text-slate-500 ${emailErrors.secondary_email ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""}`} />
+                                {emailErrors.secondary_email && <p className="text-red-500 text-xs mt-1">{emailErrors.secondary_email}</p>}
                             </div>
 
                         </div>

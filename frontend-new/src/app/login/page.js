@@ -68,7 +68,8 @@ const Login = () => {
 
         try {
             let payload = { user_type: role, ...credentials };
-            let endpoint = `${"http://localhost:8000/api"}/login`;
+            const apiBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/+$/, "");
+            let endpoint = `${apiBase}/login`;
 
             const { data } = await axios.post(endpoint, payload);
             const token = data?.token;
