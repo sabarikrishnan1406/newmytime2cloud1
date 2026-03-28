@@ -3,7 +3,7 @@ import { LayoutDashboard, Palmtree, Timer, CreditCard } from 'lucide-react';
 import { hhmmToMinutes } from '@/lib/utils';
 
 const ShiftPreview = ({ shift }) => {
-    const week_offs = shift?.weekoff_days || [];
+    const week_offs = shift?.weekoff_rules?.days || shift?.weekoff_days || [];
     const halfday_rules = shift?.halfday_rules;
 
     // Helper to convert "HH:mm" to percentage of a 24h day
@@ -40,10 +40,20 @@ const ShiftPreview = ({ shift }) => {
 
                 {scheduleData.map((item) => {
                     const isOff = week_offs.includes(item.short_key);
-                    const isHalfDay = item.short_key === halfday_rules?.day;
+                    const isHalfDay = halfday_rules?.enabled && item.short_key === halfday_rules?.day;
 
-                    // Calculate width for half day (usually 50% of the normal duty duration)
-                    const barWidth = isHalfDay ? durationPercent / 2 : durationPercent;
+                    let barStart = startPercent;
+                    let barWidth = durationPercent;
+                    if (isHalfDay) {
+                        const hdStart = getPercent(halfday_rules?.onDuty || halfday_rules?.on_duty);
+                        const hdEnd = getPercent(halfday_rules?.offDuty || halfday_rules?.off_duty);
+                        if (hdStart || hdEnd) {
+                            barStart = hdStart;
+                            barWidth = hdEnd - hdStart;
+                        } else {
+                            barWidth = durationPercent / 2;
+                        }
+                    }
 
                     return (
                         <div key={item.day} className={`flex items-center gap-3 group ${isOff ? 'opacity-40' : ''}`}>
@@ -58,7 +68,7 @@ const ShiftPreview = ({ shift }) => {
                                             : 'bg-emerald-500 shadow-emerald-500/40'
                                             }`}
                                         style={{
-                                            left: `${startPercent}%`,
+                                            left: `${barStart}%`,
                                             width: `${barWidth}%`
                                         }}
                                     />

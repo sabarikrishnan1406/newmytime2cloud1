@@ -7,6 +7,15 @@ import TimePicker from "../ui/TimePicker";
 import ToggleCard from "../ui/ToggleCard";
 import { minutesToHHMM, hhmmToMinutes } from "../../lib/utils";
 
+const shiftTime = (timeStr, offsetMinutes) => {
+  if (!timeStr) return "00:00";
+  const [h, m] = timeStr.split(":").map(Number);
+  let total = h * 60 + m + offsetMinutes;
+  if (total < 0) total += 1440;
+  total = total % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+};
+
 const DEFAULT_HALFDAY = {
   enabled: false,
   day: "S",
@@ -125,6 +134,18 @@ export default function AttendanceRules({ shift, handleChange }) {
   useEffect(() => {
     handleChange("halfday_rules", halfDay);
   }, [halfDay]);
+
+  // Auto-update Beginning/Ending Window when onDuty/offDuty changes
+  useEffect(() => {
+    if (!halfDay.onDuty || !halfDay.offDuty) return;
+    setHalfDay((p) => ({
+      ...p,
+      beginStart: shiftTime(p.onDuty, -60),
+      beginEnd: shiftTime(p.onDuty, 60),
+      endStart: shiftTime(p.offDuty, -60),
+      endEnd: shiftTime(p.offDuty, 60),
+    }));
+  }, [halfDay.onDuty, halfDay.offDuty]);
 
   useEffect(() => {
     if (beforeDuty && afterDuty) {
@@ -318,7 +339,7 @@ export default function AttendanceRules({ shift, handleChange }) {
                       }
                     />
 
-                    <div className="block bg-gray-200 dark:bg-gray-700 w-9 h-5 rounded-full transition-colors peer-checked:bg-primary" />
+                    <div className="block bg-gray-300 dark:bg-gray-700 w-9 h-5 rounded-full transition-colors peer-checked:bg-emerald-500 peer-checked:dark:bg-emerald-500" />
                     <div className="absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform transform peer-checked:translate-x-full" />
                   </div>
                   <span className="ml-2 text-[10px] font-medium text-gray-600 dark:text-gray-400">
@@ -336,8 +357,13 @@ export default function AttendanceRules({ shift, handleChange }) {
                   </label>
                   <DropDown
                     items={[
-                      { id: "S", name: "Saturday" },
+                      { id: "M", name: "Monday" },
+                      { id: "T", name: "Tuesday" },
+                      { id: "W", name: "Wednesday" },
+                      { id: "Th", name: "Thursday" },
                       { id: "F", name: "Friday" },
+                      { id: "S", name: "Saturday" },
+                      { id: "Su", name: "Sunday" },
                     ]}
                     value={halfDay.day}
                     onChange={(e) => setHalfDay((p) => ({ ...p, day: e }))}
@@ -402,7 +428,7 @@ export default function AttendanceRules({ shift, handleChange }) {
                         Start
                       </label>
                       <TimePicker
-                        defaultValue={halfDay.beginStart}
+                        value={halfDay.beginStart}
                         onChange={(e) =>
                           setHalfDay((p) => ({ ...p, beginStart: e }))
                         }
@@ -414,7 +440,7 @@ export default function AttendanceRules({ shift, handleChange }) {
                         End
                       </label>
                       <TimePicker
-                        defaultValue={halfDay.beginEnd}
+                        value={halfDay.beginEnd}
                         onChange={(e) =>
                           setHalfDay((p) => ({ ...p, beginEnd: e }))
                         }
@@ -434,7 +460,7 @@ export default function AttendanceRules({ shift, handleChange }) {
                         Start
                       </label>
                       <TimePicker
-                        defaultValue={halfDay.endStart}
+                        value={halfDay.endStart}
                         onChange={(e) =>
                           setHalfDay((p) => ({ ...p, endStart: e }))
                         }
@@ -446,7 +472,7 @@ export default function AttendanceRules({ shift, handleChange }) {
                         End
                       </label>
                       <TimePicker
-                        defaultValue={halfDay.endEnd}
+                        value={halfDay.endEnd}
                         onChange={(e) =>
                           setHalfDay((p) => ({ ...p, endEnd: e }))
                         }

@@ -3,8 +3,11 @@ import { LayoutDashboard, Palmtree, Timer, CreditCard } from 'lucide-react';
 import { hhmmToMinutes } from '@/lib/utils';
 
 const LiveInsightSidebar = ({ shift }) => {
-    const week_offs = shift?.weekoff_days || [];
+    const week_offs = shift?.weekoff_rules?.days || shift?.weekoff_days || [];
     const halfday_rules = shift?.halfday_rules;
+    const beforeOt = shift?.overtime_type === "Both" || shift?.overtime_type === "Before";
+    const afterOt = shift?.overtime_type === "Both" || shift?.overtime_type === "After";
+    const hasOt = beforeOt || afterOt;
 
     // Helper to convert "HH:mm" to percentage of a 24h day
     const getPercent = (timeStr) => {
@@ -56,22 +59,26 @@ const LiveInsightSidebar = ({ shift }) => {
                     </div>
                 </div>
 
-                <div className="bg-white/5 border dark:border-white/10 rounded-xl p-4 flex flex-col justify-between h-28 col-span-2 relative overflow-hidden group hover:bg-white/10 transition-all">
+                <div className="bg-white/5 border dark:border-white/10 rounded-xl p-4 flex flex-col gap-3 col-span-2 relative overflow-hidden group hover:bg-white/10 transition-all">
                     <CreditCard className="absolute -top-2 -right-2 w-16 h-16 opacity-10 group-hover:opacity-20 transition-opacity text-gray-600 dark:text-slate-300" />
                     <div className="flex justify-between items-start">
                         <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Overtime Threshold</span>
-                        <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-bold">ACTIVE</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${hasOt ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                            {hasOt ? 'ACTIVE' : 'INACTIVE'}
+                        </span>
                     </div>
-                    <div className="flex gap-8 mt-2">
-                        <div>
-                            <span className="text-2xl font-bold text-gray-600 dark:text-slate-300">Pre</span>
-                            <p className="text-xs text-slate-400">Before {shift.on_duty_time}</p>
-                        </div>
-                        <div className="w-px bg-white/10 h-full" />
-                        <div>
-                            <span className="text-2xl font-bold text-gray-600 dark:text-slate-300">Post</span>
-                            <p className="text-xs text-slate-400">After {shift.off_duty_time}</p>
-                        </div>
+                    <div className="grid grid-cols-4 gap-2 pt-2 border-t border-white/5">
+                        {[
+                            { label: "Before", active: beforeOt },
+                            { label: "After", active: afterOt },
+                            { label: "Weekend", active: !!shift.weekend_allowed_ot },
+                            { label: "Holiday", active: !!shift.holiday_allowed_ot },
+                        ].map((item) => (
+                            <div key={item.label} className="flex items-center gap-1.5">
+                                <div className={`w-2 h-2 rounded-full ${item.active ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.6)]' : 'bg-slate-600'}`} />
+                                <span className={`text-[10px] font-medium ${item.active ? 'text-emerald-400' : 'text-slate-500'}`}>{item.label}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -94,10 +101,21 @@ const LiveInsightSidebar = ({ shift }) => {
 
                     {scheduleData.map((item) => {
                         const isOff = week_offs.includes(item.short_key);
-                        const isHalfDay = item.short_key === halfday_rules?.day;
-                        
-                        // Calculate width for half day (usually 50% of the normal duty duration)
-                        const barWidth = isHalfDay ? durationPercent / 2 : durationPercent;
+                        const isHalfDay = halfday_rules?.enabled && item.short_key === halfday_rules?.day;
+
+                        // Use half day's own times if available
+                        let barStart = startPercent;
+                        let barWidth = durationPercent;
+                        if (isHalfDay) {
+                            const hdStart = getPercent(halfday_rules?.onDuty || halfday_rules?.on_duty);
+                            const hdEnd = getPercent(halfday_rules?.offDuty || halfday_rules?.off_duty);
+                            if (hdStart || hdEnd) {
+                                barStart = hdStart;
+                                barWidth = hdEnd - hdStart;
+                            } else {
+                                barWidth = durationPercent / 2;
+                            }
+                        }
 
                         return (
                             <div key={item.day} className={`flex items-center gap-3 group ${isOff ? 'opacity-40' : ''}`}>
@@ -108,13 +126,13 @@ const LiveInsightSidebar = ({ shift }) => {
                                     {!isOff && (
                                         <div
                                             className={`absolute h-full shadow-lg transition-all duration-500 ${
-                                                isHalfDay 
-                                                ? 'bg-blue-500 shadow-blue-500/40' 
+                                                isHalfDay
+                                                ? 'bg-blue-500 shadow-blue-500/40'
                                                 : 'bg-emerald-500 shadow-emerald-500/40'
                                             }`}
-                                            style={{ 
-                                                left: `${startPercent}%`, 
-                                                width: `${barWidth}%` 
+                                            style={{
+                                                left: `${barStart}%`,
+                                                width: `${barWidth}%`
                                             }}
                                         />
                                     )}

@@ -94,8 +94,108 @@ class DocumentInfoController extends Controller
     public function saveFile($file, $id)
     {
         $filename = $file->getClientOriginalName();
-        $file->move(public_path('documents/' . $id . "/"), $filename);
+        $destDir = public_path('documents/' . $id . "/");
+        $file->move($destDir, $filename);
+
+        $filePath = $destDir . $filename;
+        $maxSizeKB = 200;
+
+        $mime = mime_content_type($filePath);
+
+        // Compress images (JPG/PNG) to ~200KB
+        if (in_array($mime, ['image/jpeg', 'image/png', 'image/jpg']) && filesize($filePath) > $maxSizeKB * 1024) {
+            $this->compressImage($filePath, $maxSizeKB);
+        }
+
+        // Compress PDF to reduce size
+        if ($mime === 'application/pdf' && filesize($filePath) > $maxSizeKB * 1024) {
+            $this->compressPdf($filePath);
+        }
+
         return $filename;
+    }
+
+    private function compressPdf($filePath)
+    {
+        // Try Ghostscript paths (Windows)
+        $gsBinaries = ['gs', 'gswin64c', 'gswin32c'];
+        $gsPath = null;
+
+        foreach ($gsBinaries as $bin) {
+            $check = shell_exec("where $bin 2>&1");
+            if ($check && !str_contains($check, 'not find')) {
+                $gsPath = trim($check);
+                break;
+            }
+        }
+
+        // Also check common install paths
+        if (!$gsPath) {
+            $commonPaths = glob('C:/Program Files/gs/gs*/bin/gswin64c.exe');
+            if (!empty($commonPaths)) {
+                $gsPath = end($commonPaths);
+            }
+        }
+
+        if (!$gsPath) return; // Ghostscript not available
+
+        $tempPath = $filePath . '.compressed.pdf';
+        $cmd = '"' . $gsPath . '" -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dPDFSETTINGS=/screen -dNOPAUSE -dQUIET -dBATCH -sOutputFile="' . $tempPath . '" "' . $filePath . '" 2>&1';
+
+        shell_exec($cmd);
+
+        // Replace original only if compressed is smaller
+        if (file_exists($tempPath) && filesize($tempPath) > 0 && filesize($tempPath) < filesize($filePath)) {
+            unlink($filePath);
+            rename($tempPath, $filePath);
+        } elseif (file_exists($tempPath)) {
+            unlink($tempPath);
+        }
+    }
+
+    private function compressImage($filePath, $maxSizeKB = 200)
+    {
+        $mime = mime_content_type($filePath);
+        $image = $mime === 'image/png' ? imagecreatefrompng($filePath) : imagecreatefromjpeg($filePath);
+
+        if (!$image) return;
+
+        $width = imagesx($image);
+        $height = imagesy($image);
+
+        // Step 1: Scale down dimensions progressively
+        $maxDim = 1920;
+        while ($maxDim >= 800) {
+            if ($width > $maxDim || $height > $maxDim) {
+                $ratio = min($maxDim / $width, $maxDim / $height);
+                $newW = (int)($width * $ratio);
+                $newH = (int)($height * $ratio);
+                $resized = imagecreatetruecolor($newW, $newH);
+                imagecopyresampled($resized, $image, 0, 0, 0, 0, $newW, $newH, $width, $height);
+                imagedestroy($image);
+                $image = $resized;
+                $width = $newW;
+                $height = $newH;
+            }
+
+            // Step 2: Try quality 75 first (good clarity)
+            imagejpeg($image, $filePath, 75);
+            if (filesize($filePath) <= $maxSizeKB * 1024) {
+                imagedestroy($image);
+                return;
+            }
+
+            $maxDim -= 200;
+        }
+
+        // Step 3: If still too large, reduce quality (minimum 50 for clarity)
+        $quality = 70;
+        do {
+            imagejpeg($image, $filePath, $quality);
+            $quality -= 5;
+        } while (filesize($filePath) > $maxSizeKB * 1024 && $quality >= 50);
+
+        imagedestroy($image);
     }
 
     public function cleanRecord($id)

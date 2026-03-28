@@ -48,8 +48,8 @@ const DocumentModal = ({ onSuccess = () => { }, employee_id }) => {
           const tryCompress = () => {
             canvas.toBlob(
               (blob) => {
-                if (blob.size > maxSizeKB * 1024 && quality > 0.1) {
-                  quality -= 0.1;
+                if (blob.size > maxSizeKB * 1024 && quality > 0.5) {
+                  quality -= 0.05;
                   tryCompress();
                 } else {
                   const compressed = new File([blob], file.name, { type: "image/jpeg", lastModified: Date.now() });

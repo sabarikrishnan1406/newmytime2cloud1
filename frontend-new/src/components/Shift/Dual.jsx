@@ -1,8 +1,36 @@
+import { useEffect } from "react";
 import Input from "../Theme/Input";
 import TimePicker from "../ui/TimePicker";
 import { hhmmToMinutes, minutesToHHMM } from "@/lib/utils";
 
+const shiftTime = (timeStr, offsetMinutes) => {
+  if (!timeStr) return "00:00";
+  const [h, m] = timeStr.split(":").map(Number);
+  let total = h * 60 + m + offsetMinutes;
+  if (total < 0) total += 1440;
+  total = total % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+};
+
 const Dual = ({ shift = "", handleChange = () => {} }) => {
+  // Auto-update S1 Clock-In/Out Window
+  useEffect(() => {
+    if (!shift.on_duty_time || !shift.off_duty_time) return;
+    handleChange("beginning_in", shiftTime(shift.on_duty_time, -60));
+    handleChange("beginning_out", shiftTime(shift.on_duty_time, 60));
+    handleChange("ending_in", shiftTime(shift.off_duty_time, -60));
+    handleChange("ending_out", shiftTime(shift.off_duty_time, 60));
+  }, [shift.on_duty_time, shift.off_duty_time]);
+
+  // Auto-update S2 Clock-In/Out Window
+  useEffect(() => {
+    if (!shift.on_duty_time1 || !shift.off_duty_time1) return;
+    handleChange("beginning_in1", shiftTime(shift.on_duty_time1, -60));
+    handleChange("beginning_out1", shiftTime(shift.on_duty_time1, 60));
+    handleChange("ending_in1", shiftTime(shift.off_duty_time1, -60));
+    handleChange("ending_out1", shiftTime(shift.off_duty_time1, 60));
+  }, [shift.on_duty_time1, shift.off_duty_time1]);
+
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">

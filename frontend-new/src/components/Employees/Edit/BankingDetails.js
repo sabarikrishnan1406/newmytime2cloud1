@@ -66,7 +66,7 @@ const BankingDetails = ({ action = "Add", payload }) => {
                 <h2 className="text-[10px] font-bold uppercase tracking-widest text-primary">New Enrollment</h2>
               </div>
             }
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mt-3">{action} Bank Details</h1>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mt-3">{action} Banking Details</h1>
           </div>
           <div className="hidden md:flex items-center gap-4">
             <a href="#" className="group flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-red-600 dark:text-slate-400 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full transition-all border border-slate-200 dark:border-slate-600 shadow-sm">
@@ -85,25 +85,25 @@ const BankingDetails = ({ action = "Add", payload }) => {
             <div className="grid grid-cols-12 gap-4">
               <div className="col-span-6">
                 <Label>Account Name</Label>
-                <Input value={bankInfo.account_title} onChange={(e) => setBankInfo({ ...bankInfo, account_title: e.target.value })} placeholder="employee@email.com" />
+                <Input value={bankInfo.account_title} onChange={(e) => setBankInfo({ ...bankInfo, account_title: e.target.value })} placeholder="John Doe" />
               </div>
               <div className="col-span-6">
                 <Label>Account Number</Label>
-                <Input value={bankInfo.account_no} onChange={(e) => setBankInfo({ ...bankInfo, account_no: e.target.value })} placeholder="employee@email.com" />
+                <Input value={bankInfo.account_no} onChange={(e) => setBankInfo({ ...bankInfo, account_no: e.target.value })} placeholder="1234567890" />
               </div>
               <div className="col-span-6">
                 <Label>Iban</Label>
-                <Input value={bankInfo.iban} onChange={(e) => setBankInfo({ ...bankInfo, iban: e.target.value })} placeholder="971xxxxxxxx" />
+                <Input value={bankInfo.iban} onChange={(e) => setBankInfo({ ...bankInfo, iban: e.target.value })} placeholder="AE123456789012345" />
               </div>
 
               <div className="col-span-6">
                 <Label>Bank Name</Label>
-                <Input value={bankInfo.bank_name} onChange={(e) => setBankInfo({ ...bankInfo, bank_name: e.target.value })} placeholder="971xxxxxxxx"
+                <Input value={bankInfo.bank_name} onChange={(e) => setBankInfo({ ...bankInfo, bank_name: e.target.value })} placeholder="Emirates NBD"
                 />
               </div>
               <div className="col-span-6">
                 <Label>Bank Branch</Label>
-                <Input value={bankInfo.address} onChange={(e) => setBankInfo({ ...bankInfo, address: e.target.value })} placeholder="971xxxxxxxx"
+                <Input value={bankInfo.address} onChange={(e) => setBankInfo({ ...bankInfo, address: e.target.value })} placeholder="Dubai Main Branch"
                 />
               </div>
 

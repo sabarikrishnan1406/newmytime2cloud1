@@ -1,7 +1,26 @@
+import { useEffect } from "react";
 import { hhmmToMinutes, minutesToHHMM } from "@/lib/utils";
 import TimePicker from "../ui/TimePicker";
 
+const shiftTime = (timeStr, offsetMinutes) => {
+  if (!timeStr) return "00:00";
+  const [h, m] = timeStr.split(":").map(Number);
+  let total = h * 60 + m + offsetMinutes;
+  if (total < 0) total += 1440;
+  total = total % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+};
+
 const SingleAndNight = ({ shift = "", handleChange = () => {} }) => {
+  // Auto-update Beginning/Ending Window when on_duty/off_duty changes
+  useEffect(() => {
+    if (!shift.on_duty_time || !shift.off_duty_time) return;
+    handleChange("beginning_in", shiftTime(shift.on_duty_time, -60));
+    handleChange("beginning_out", shiftTime(shift.on_duty_time, 60));
+    handleChange("ending_in", shiftTime(shift.off_duty_time, -60));
+    handleChange("ending_out", shiftTime(shift.off_duty_time, 60));
+  }, [shift.on_duty_time, shift.off_duty_time]);
+
   return (
     <section className="space-y-4">
       <h3 className="text-lg font-bold text-gray-600 dark:text-slate-300 flex items-center gap-2">
@@ -47,7 +66,7 @@ const SingleAndNight = ({ shift = "", handleChange = () => {} }) => {
                   Start
                 </span>
                 <TimePicker
-                  defaultValue={shift.beginning_in}
+                  value={shift.beginning_in}
                   onChange={(val) => handleChange("beginning_in", val)}
                 />
               </div>
@@ -56,7 +75,7 @@ const SingleAndNight = ({ shift = "", handleChange = () => {} }) => {
                   End
                 </span>
                 <TimePicker
-                  defaultValue={shift.beginning_out}
+                  value={shift.beginning_out}
                   onChange={(val) => handleChange("beginning_out", val)}
                 />
               </div>
@@ -73,7 +92,7 @@ const SingleAndNight = ({ shift = "", handleChange = () => {} }) => {
                 </span>
 
                 <TimePicker
-                  defaultValue={shift.ending_in}
+                  value={shift.ending_in}
                   onChange={(val) => handleChange("ending_in", val)}
                 />
               </div>
@@ -82,7 +101,7 @@ const SingleAndNight = ({ shift = "", handleChange = () => {} }) => {
                   End
                 </span>
                 <TimePicker
-                  defaultValue={shift.ending_out}
+                  value={shift.ending_out}
                   onChange={(val) => handleChange("ending_out", val)}
                 />
               </div>
@@ -120,7 +139,7 @@ const SingleAndNight = ({ shift = "", handleChange = () => {} }) => {
                 }}
               />
               {/* Custom Toggle Switch */}
-              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500 peer-checked:dark:bg-emerald-500"></div>
               <span className="ml-2 text-xs font-medium text-gray-700 dark:text-gray-300">
                 Auto-Deduct Break
               </span>
