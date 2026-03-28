@@ -148,38 +148,23 @@
       color: #374151 !important;
     }
 
-    /* PDF page break - remove extra white space */
-    @media print {
-      * {
-        page-break-inside: auto !important;
-      }
-      tr {
-        page-break-inside: avoid !important;
-      }
-      table {
-        page-break-inside: auto !important;
-      }
+    /* Reduce row height to fit more content per page */
+    table tr {
+      line-height: 1.2 !important;
     }
 
-    /* Remove fixed height on page containers to eliminate blank space in PDF */
-    [class*="min-h-screen"],
-    [class*="min-h-"] {
-      min-height: auto !important;
+    /* Reduce spacing between sections */
+    .gap-6, [class*="gap-6"] {
+      gap: 12px !important;
     }
-
-    /* Page containers - remove forced full height */
-    div[style*="page-break-after"],
-    div[class*="page-break"],
-    [style*="min-height"],
-    [style*="height: 100vh"] {
-      min-height: auto !important;
-      height: auto !important;
+    .gap-4, [class*="gap-4"] {
+      gap: 8px !important;
     }
-
-    /* Target page wrapper divs that force 100vh */
-    #root > div > div {
-      min-height: auto !important;
-      height: auto !important;
+    .p-3, [class*="p-3"] {
+      padding: 8px !important;
+    }
+    .mb-4, [class*="mb-4"] {
+      margin-bottom: 8px !important;
     }
   </style>
 </head>

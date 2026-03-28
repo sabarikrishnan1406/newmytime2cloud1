@@ -2,7 +2,7 @@ export const downloadReport = async (reportUrl, fileName = "Daily-Summary-Report
     let objectUrl = null;
 
     try {
-        const response = await fetch("https://report.mytime2cloud.com/pdf", {
+        const response = await fetch("http://localhost:3002/pdf", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url: reportUrl })
