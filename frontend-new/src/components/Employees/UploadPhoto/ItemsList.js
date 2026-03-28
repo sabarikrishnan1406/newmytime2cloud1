@@ -7,7 +7,7 @@ import ProfilePicture from '@/components/ProfilePicture';
 
 const PersonnelRow = ({ person, isChecked, onToggle, theme = 'slate' }) => {
   return (
-    <label className="group flex items-center px-5 py-3.5 border border-border transition-all cursor-pointer">
+    <label className="group flex items-center px-4 py-2 border border-border transition-all cursor-pointer">
       <div className="relative flex items-center justify-center">
         <input
           type="checkbox"
@@ -54,8 +54,8 @@ const ItemsList = ({
   const isIndigo = theme === 'indigo';
 
   return (
-    <div className="lg:col-span-5 flex flex-col h-[520px] bg-white/80 dark:bg-slate-900 backdrop-blur-xl rounded-xl shadow-lg border border-border overflow-hidden">
-      <div className="p-5 bg-white/30 dark:bg-slate-900">
+    <div className="lg:col-span-5 flex flex-col h-[280px] bg-white/80 dark:bg-slate-900 backdrop-blur-xl rounded-xl shadow-lg border border-border overflow-hidden">
+      <div className="px-4 py-3 bg-white/30 dark:bg-slate-900">
         <div className="flex items-center gap-3">
           <h2 className="font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2 shrink-0">
             <Icon className={`${isIndigo ? 'text-indigo-400/80' : 'text-slate-400/80'} w-5 h-5`} />

@@ -60,8 +60,8 @@ const SyncStatusModal = ({ results, total, currentCount, isOpen, onClose, isLoad
                   <td className="p-3 text-slate-500 text-xs">{res.device_id}</td>
                   <td className="p-3">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${res.status == 200
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                       }`}>
                       {res.status == 200 ? (
                         <>
@@ -282,7 +282,7 @@ export default function AttendanceTable() {
   };
 
   return (
-    <div className='p-6 space-y-6 pb-32 overflow-y-auto max-h-[calc(100vh-100px)]'>
+    <div className='p-4 space-y-8 pb-24 overflow-y-auto max-h-[calc(100vh-80px)]'>
 
       <SyncStatusModal
         isOpen={showStatusModal}
@@ -294,7 +294,7 @@ export default function AttendanceTable() {
       />
 
       {/* HEADER SECTION */}
-      <header className="flex flex-col lg:flex-row justify-between items-center gap-6 bg-surface p-4 px-6 rounded-2xl shadow-glass border border-glass-border">
+      <header className="flex flex-col lg:flex-row justify-between items-center gap-3 bg-surface p-3 px-5 rounded-2xl shadow-glass border border-glass-border">
         {/* Left Side: Title & Subtitle */}
         <div className="flex flex-col whitespace-nowrap">
           <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200 leading-tight">
@@ -338,24 +338,20 @@ export default function AttendanceTable() {
       </header>
 
       {/* SECTION 1: PERSONNEL */}
-      <div className="space-y-4">
-        <SyncGrid sync={personSync} leftTitle="Available Employees" rightTitle="Selected Personnel" leftIcon={Users} />
-      </div>
+      <SyncGrid sync={personSync} leftTitle="Available Employees" rightTitle="Selected Personnel" leftIcon={Users} />
 
       {/* SECTION 2: DEVICES */}
-      <div className="space-y-4">
-        <SyncGrid sync={deviceSync} leftTitle="Available Devices" rightTitle="Target Hardware" leftIcon={Cpu} theme="indigo" />
-      </div>
+      <SyncGrid sync={deviceSync} leftTitle="Available Devices" rightTitle="Target Hardware" leftIcon={Cpu} theme="indigo" />
 
 
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
+      <div className="fixed bottom-6 left-0 right-0 flex justify-center z-50 pl-16">
         <button disabled={loading} onClick={onSubmit}
-          className="group relative px-10 py-4 bg-slate-900 text-white text-sm font-bold uppercase tracking-widest rounded-2xl shadow-[0_10px_40px_-10px_rgba(79,70,229,0.5)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(79,70,229,0.6)] overflow-hidden">
+          className="group relative px-6 py-2.5 bg-slate-900 text-white text-xs font-bold uppercase tracking-widest rounded-xl shadow-[0_10px_40px_-10px_rgba(79,70,229,0.5)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-10px_rgba(79,70,229,0.6)] overflow-hidden">
           <div
             className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 opacity-80 group-hover:opacity-100 transition-opacity duration-300">
           </div>
           <div className="relative flex items-center gap-3">
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             {loading ? 'Synchronizing...' : 'Synchronize Data'}
           </div>
           <div
