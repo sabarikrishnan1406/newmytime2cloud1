@@ -13,7 +13,7 @@ import Columns from "./columns";
 import MultiDropDown from '@/components/ui/MultiDropDown';
 import { formatDateDubai, notify, parseApiError } from '@/lib/utils';
 import RegenerateReport from '@/components/Report/Regenerate';
-import { getAttendanceTabs, startReportGeneration } from '@/lib/endpoint/attendance';
+import { getAttendanceTabs } from '@/lib/endpoint/attendance';
 import LoadingProgressDialog from './LoadingProgressDialog';
 import { API_BASE_URL } from '@/config';
 import { getUser } from "@/config/index";
@@ -33,7 +33,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { downloadReport } from '@/lib/endpoint/report';
+import { downloadDailyPDF, downloadMonthlyDetailPDF, downloadMonthlyGridPDF } from '@/lib/endpoint/report';
 
 const reportTemplates = [
   // { id: `Template1`, name: `Monthly Report Format A` },
@@ -279,7 +279,7 @@ export default function AttendanceTable() {
 
   // --- NEW DIALOG STATE ---
   const [isProgressOpen, setIsProgressOpen] = useState(false);
-  const [queryStringUrl, setQueryStringUrl] = useState("");
+  const [queryStringUrl] = useState("");
 
   const process_file_in_child_comp = async (type, actionType) => {
     if (selectedEmployeeIds.length === 0) {
@@ -371,18 +371,26 @@ export default function AttendanceTable() {
 
       const fullQsUrl = `${baseUrl}?${queryObj.toString()}`;
 
-      // 3. Handle PDF/Async Generation
+      // 3. Handle PDF Download (Direct DOMPDF)
       if (actionType !== "EXCEL") {
-        const payload = {
-          ...commonParams,
-          overtime: 0,
-          employee_id: selectedEmployeeIds,
-          'employee_id[]': selectedEmployeeIds,
-          filterType: 'Monthly'
+        const pdfParams = {
+          from_date: fromDate,
+          to_date: toDate,
+          branch_ids: selectedBranchIds,
+          department_ids: selectedDepartmentIds,
+          employee_ids: selectedEmployeeIds,
         };
-        await startReportGeneration(payload);
-        setQueryStringUrl(fullQsUrl);
-        setIsProgressOpen(true);
+
+        if (selectedReportTemplate === 'Template3') {
+          // Daily report
+          await downloadDailyPDF({ date: fromDate, ...pdfParams });
+        } else if (selectedReportTemplate === 'Template2') {
+          // Monthly detail (per employee)
+          await downloadMonthlyDetailPDF(pdfParams);
+        } else {
+          // Monthly grid (default)
+          await downloadMonthlyGridPDF(pdfParams);
+        }
         return;
       }
 

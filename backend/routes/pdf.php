@@ -15,6 +15,12 @@ use App\Http\Controllers\Reports\MonthlyMimoController;
 use App\Http\Controllers\Reports\PDFController;
 use App\Http\Controllers\Reports\PDFTestController;
 use App\Http\Controllers\Reports\WeeklyMimoController;
+use App\Http\Controllers\Reports\AttendanceReportController;
+
+// Professional PDF Reports
+Route::get('/report/daily_pdf', [AttendanceReportController::class, 'dailyPDF']);
+Route::get('/report/monthly_detail_pdf', [AttendanceReportController::class, 'monthlyDetailPDF']);
+Route::get('/report/monthly_grid_pdf', [AttendanceReportController::class, 'monthlyGridPDF']);
 
 
 Route::get('/process_reports', [DailyController::class, 'process_reports']);
