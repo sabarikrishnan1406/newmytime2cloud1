@@ -22,9 +22,63 @@ const DocumentModal = ({ onSuccess = () => { }, employee_id }) => {
 
   const toggleModal = () => setIsOpen(!isOpen);
 
-  const handleFileChange = (e) => {
+  const compressImage = (file, maxSizeKB = 200) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let { width, height } = img;
+
+          // Scale down if image is very large
+          const maxDim = 1920;
+          if (width > maxDim || height > maxDim) {
+            const ratio = Math.min(maxDim / width, maxDim / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+
+          let quality = 0.9;
+          const tryCompress = () => {
+            canvas.toBlob(
+              (blob) => {
+                if (blob.size > maxSizeKB * 1024 && quality > 0.1) {
+                  quality -= 0.1;
+                  tryCompress();
+                } else {
+                  const compressed = new File([blob], file.name, { type: "image/jpeg", lastModified: Date.now() });
+                  resolve(compressed);
+                }
+              },
+              "image/jpeg",
+              quality
+            );
+          };
+          tryCompress();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileChange = async (e) => {
     if (e.target.files.length > 0) {
-      setForm({ ...form, file: e.target.files?.[0] ?? null })
+      let selectedFile = e.target.files[0];
+
+      // Auto-compress images over 200KB
+      if (selectedFile.type.startsWith("image/") && selectedFile.size > 200 * 1024) {
+        selectedFile = await compressImage(selectedFile, 200);
+      }
+
+      setFile(selectedFile.name);
+      setForm({ ...form, file: selectedFile });
     }
   };
 
@@ -145,7 +199,7 @@ const DocumentModal = ({ onSuccess = () => { }, employee_id }) => {
                       <p className="text-slate-900 dark:text-white text-sm font-medium leading-tight">
                         {file === "No file chosen" ? "Click to upload or drag and drop" : file}
                       </p>
-                      <p className="text-slate-500 text-xs mt-1">PDF, JPG or PNG (max. 5MB)</p>
+                      <p className="text-slate-500 text-xs mt-1">PDF, JPG or PNG (images auto-compressed)</p>
                     </div>
                     <label className="shrink-0 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-sm font-bold rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer">
                       Browse

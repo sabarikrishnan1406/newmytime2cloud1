@@ -12,33 +12,42 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { updateEmployeeContact } from '@/lib/endpoint/employees';
 
 const CONTACT_DEFAULT_PAYLOAD = {
-    work_email: "---",
-    person_email: "---",
-    work_phone: "---",
-    mobile_phone: "---"
+    work_email: "",
+    person_email: "",
+    work_phone: "",
+    mobile_phone: ""
 };
 
 const PRESENT_ADDRESS_DEFAULT_PAYLOAD = {
-    room_no: "---",
-    building: "---",
-    street_address: "---",
-    landmark: "---",
-    city: "---",
-    state: "---",
-    country: "---",
-    zip_code: "---",
+    room_no: "",
+    building: "",
+    street_address: "",
+    landmark: "",
+    city: "",
+    state: "",
+    country: "",
+    zip_code: "",
 };
 
 const PRIMARY_CONTACT_DEFAULT_PAYLOAD = {
-    full_name: "---",
-    relation: "---",
-    primary_phone: "---",
-    alternative_phone: "---",
-    email: "tet"
+    full_name: "",
+    relation: "",
+    primary_phone: "",
+    alternative_phone: "",
+    email: ""
 };
 
 const PERMANENT_ADDRESS_DEFAULT_PAYLOAD = PRESENT_ADDRESS_DEFAULT_PAYLOAD;
 const SECONDARY_CONTACT_DEFAULT_PAYLOAD = PRIMARY_CONTACT_DEFAULT_PAYLOAD;
+
+const cleanDashes = (obj) => {
+    if (!obj) return obj;
+    const cleaned = {};
+    for (const key in obj) {
+        cleaned[key] = obj[key] === "---" ? "" : obj[key];
+    }
+    return cleaned;
+};
 
 const EmployeeContact = ({ action = "Add", payload }) => {
 
@@ -62,23 +71,23 @@ const EmployeeContact = ({ action = "Add", payload }) => {
 
 
     useEffect(() => {
-        setContactInfo(contact || CONTACT_DEFAULT_PAYLOAD)
+        setContactInfo(cleanDashes(contact) || CONTACT_DEFAULT_PAYLOAD)
     }, [contact]);
 
     useEffect(() => {
-        setPresentAddress(present_address || PRESENT_ADDRESS_DEFAULT_PAYLOAD)
+        setPresentAddress(cleanDashes(present_address) || PRESENT_ADDRESS_DEFAULT_PAYLOAD)
     }, [present_address]);
 
     useEffect(() => {
-        setPermanentAddress(permanent_address || PERMANENT_ADDRESS_DEFAULT_PAYLOAD)
+        setPermanentAddress(cleanDashes(permanent_address) || PERMANENT_ADDRESS_DEFAULT_PAYLOAD)
     }, [permanent_address]);
 
     useEffect(() => {
-        setPrimaryContact(primary_contact || PRIMARY_CONTACT_DEFAULT_PAYLOAD)
+        setPrimaryContact(cleanDashes(primary_contact) || PRIMARY_CONTACT_DEFAULT_PAYLOAD)
     }, [primary_contact]);
 
     useEffect(() => {
-        setSecondaryContact(secondary_contact || SECONDARY_CONTACT_DEFAULT_PAYLOAD)
+        setSecondaryContact(cleanDashes(secondary_contact) || SECONDARY_CONTACT_DEFAULT_PAYLOAD)
     }, [secondary_contact]);
 
 
@@ -105,7 +114,11 @@ const EmployeeContact = ({ action = "Add", payload }) => {
         }
     };
 
-
+    useEffect(() => {
+        if (isPermanetButtonButtonClicked) {
+            setPermanentAddress({ ...presentAddress });
+        }
+    }, [presentAddress, isPermanetButtonButtonClicked]);
 
     const onSubmit = async () => {
         const emailFields = [
