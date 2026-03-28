@@ -1,11 +1,4 @@
 <?php
-
-// One-time migration: add approved_by column to attendance_logs
-\Illuminate\Support\Facades\Route::get('migrate_approved_by', function () {
-    \Illuminate\Support\Facades\DB::statement("ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS approved_by INTEGER DEFAULT NULL");
-    return ['status' => true, 'message' => 'approved_by column added'];
-});
-
 include('admin.php');
 include('company.php');
 include('pdf.php');

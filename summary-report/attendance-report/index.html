@@ -166,12 +166,80 @@
     .mb-4, [class*="mb-4"] {
       margin-bottom: 8px !important;
     }
+
+    /* A4 professional PDF format */
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+
+    @media print {
+      body {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      tr {
+        page-break-inside: avoid !important;
+      }
+      /* Last page footer at bottom */
+      [data-employee].last-section {
+        min-height: calc(100vh - 20mm) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+      }
+    }
+
+    /* Hide repeated page header on continuation pages (not first page of employee) */
+    [data-employee] .continuation-header {
+      display: none !important;
+    }
   </style>
 </head>
 
 <body class="">
   <div id="root"></div>
 
+  <script>
+    const observer = new MutationObserver(function() {
+      // Remove spacer divs
+      document.querySelectorAll('[class*="min-h-"]').forEach(function(el) {
+        if (!el.querySelector('table') && !el.querySelector('img')) {
+          el.style.minHeight = '0';
+        }
+      });
+
+      // Group sections by employee
+      var sections = document.querySelectorAll('[data-employee]');
+      var seen = {};
+      sections.forEach(function(el, i) {
+        var empId = el.getAttribute('data-employee');
+
+        if (seen[empId]) {
+          // Continuation page — hide header only, keep table and footer
+          var children = Array.from(el.children);
+          // First child is always the header component — hide it
+          if (children.length > 0) {
+            children[0].style.display = 'none';
+          }
+        } else {
+          seen[empId] = true;
+        }
+
+        // Keep page-break on all sections except the very last
+        if (i < sections.length - 1) {
+          el.style.pageBreakAfter = 'always';
+          el.style.breakAfter = 'page';
+          el.classList.remove('last-section');
+        } else {
+          el.style.pageBreakAfter = 'auto';
+          el.style.breakAfter = 'auto';
+          el.classList.add('last-section');
+        }
+      });
+    });
+    observer.observe(document.getElementById('root'), { childList: true, subtree: true });
+  </script>
 </body>
 
 </html>

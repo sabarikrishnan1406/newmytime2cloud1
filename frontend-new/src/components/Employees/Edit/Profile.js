@@ -81,19 +81,13 @@ const Profile = ({ action = "Add", payload }) => {
 
 
     useEffect(() => {
-        // Reset departments and department_id if no branch is selected
-        if (!form.branch_id) {
-            setDepartments([]);
-            return;
-        }
-
         const fetchDepartments = async () => {
             try {
-                setDepartments(await getDepartments(form.branch_id));
+                const result = await getDepartments();
+                setDepartments(result.data || result);
             } catch (error) {
                 console.error("Error fetching departments:", error);
-                await notify("Oops!", "Error fetching departments", "error")
-                setDepartments([]); // Clear departments on error
+                setDepartments([]);
             }
         };
         fetchDepartments();
