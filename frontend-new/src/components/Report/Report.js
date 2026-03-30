@@ -33,7 +33,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { downloadDailyPDF, downloadMonthlyDetailPDF, downloadMonthlyGridPDF } from '@/lib/endpoint/report';
+import { downloadDailyPDF, downloadMonthlyDetailPDF, downloadMonthlyGridPDF, downloadReport } from '@/lib/endpoint/report';
+import PDFProgressOverlay from './PDFProgressOverlay';
 
 const reportTemplates = [
   // { id: `Template1`, name: `Monthly Report Format A` },
@@ -51,6 +52,8 @@ export default function AttendanceTable() {
   const [isLogsLoading, setIsLogsLoading] = useState(false);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState(0);
+  const [isPdfDownloading, setIsPdfDownloading] = useState(false);
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -334,7 +337,7 @@ export default function AttendanceTable() {
       //   return;
       // }
 
-      // 1. Handle Template4 Redirect (Special Case)
+      // 1. Handle Template4 (Format A - Puppeteer PDF)
       if (selectedReportTemplate === "Template4" && actionType !== "EXCEL") {
         const t4Params = new URLSearchParams({
           employee_ids: selectedEmployeeIds.join(","),
@@ -347,8 +350,15 @@ export default function AttendanceTable() {
 
         let templateUrl = `http://localhost:5555/attendance-report/?${t4Params.toString()}`;
 
-        //await downloadReport(templateUrl, `Attendance-Report-${fromDate}-to-${toDate}.pdf`);
-        window.open(templateUrl, "_blank");
+        setIsPdfDownloading(true);
+        setPdfProgress(0);
+        try {
+          await downloadReport(templateUrl, `Attendance-Report-${fromDate}-to-${toDate}.pdf`, (p) => setPdfProgress(p));
+        } catch (err) {
+          await notify("Error", `Download failed: ${err.message}`, "error");
+        } finally {
+          setTimeout(() => { setIsPdfDownloading(false); setPdfProgress(0); }, 1000);
+        }
         return;
       }
 
@@ -379,17 +389,24 @@ export default function AttendanceTable() {
           branch_ids: selectedBranchIds,
           department_ids: selectedDepartmentIds,
           employee_ids: selectedEmployeeIds,
+          onProgress: (p) => setPdfProgress(p),
         };
 
-        if (selectedReportTemplate === 'Template3') {
-          // Daily report
-          await downloadDailyPDF({ date: fromDate, ...pdfParams });
-        } else if (selectedReportTemplate === 'Template2') {
-          // Monthly detail (per employee)
-          await downloadMonthlyDetailPDF(pdfParams);
-        } else {
-          // Monthly grid (default)
-          await downloadMonthlyGridPDF(pdfParams);
+        setIsPdfDownloading(true);
+        setPdfProgress(0);
+
+        try {
+          if (selectedReportTemplate === 'Template3') {
+            await downloadDailyPDF({ date: fromDate, ...pdfParams });
+          } else if (selectedReportTemplate === 'Template2') {
+            await downloadMonthlyDetailPDF(pdfParams);
+          } else {
+            await downloadMonthlyGridPDF(pdfParams);
+          }
+        } catch (err) {
+          await notify("Error", `Download failed: ${err.message}`, "error");
+        } finally {
+          setTimeout(() => { setIsPdfDownloading(false); setPdfProgress(0); }, 1000);
         }
         return;
       }
@@ -418,6 +435,7 @@ export default function AttendanceTable() {
 
   return (
     <div className='pt-2 pb-4 px-3 md:pt-2 md:pb-6 md:px-6 lg:pt-2 lg:pb-8 lg:px-10 overflow-x-hidden'>
+      <PDFProgressOverlay isOpen={isPdfDownloading} progress={pdfProgress} />
       <h3 className="text-2xl font-extrabold text-gray-600 dark:text-slate-300 flex items-center">
         Attendance Report
       </h3>
