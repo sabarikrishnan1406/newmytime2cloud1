@@ -25,6 +25,11 @@ import {
   File,
   Map,
   LocateFixed,
+  LayoutDashboard,
+  FolderCog,
+  FileCheck,
+  Wallet,
+  BarChart3,
 } from "lucide-react";
 
 // 1️⃣ Reusable menu groups
@@ -32,7 +37,16 @@ const attendanceMenu = [
   { href: "/shift", icon: Clock, label: "Shift" },
   { href: "/schedule", icon: CalendarDays, label: "Schedule" },
   { href: "/attendance/change_request", icon: File, label: "Change Request" },
+  { href: "/leave-dashboard", icon: Calendar, label: "Leave Dashboard" },
   // { href: "/access_control_logs", icon: Lock, label: "Access Control Logs" },
+];
+
+const leaveMenu = [
+  { href: "/leave-dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/leave-dashboard/calendar", icon: CalendarDays, label: "Team Calendar" },
+  { href: "/leaves", icon: FileCheck, label: "Requests" },
+  { href: "/leave-dashboard/balances", icon: Wallet, label: "Balances" },
+  { href: "/leave-dashboard/reports", icon: BarChart3, label: "Reports" },
 ];
 
 const reportMenu = [
@@ -56,6 +70,7 @@ const companyMenu = [
   { href: "/announcements", icon: Megaphone, label: "Announcements" },
   { href: "/activity", icon: ActivitySquare, label: "Activity" },
   { href: "/payslips", icon: DollarSign, label: "Payroll" },
+  { href: "/settings/leave", icon: Calendar, label: "Leave" },
 ];
 
 const payrollMenu = [
@@ -87,15 +102,19 @@ export const leftNavLinks = {
   "/visitor": visitorMenu,
   "/employees": employeesMenu,
   "/employee_photo_upload": employeesMenu,
-  "/leaves": employeesMenu,
+  "/leaves": leaveMenu,
   "/document-expiry": employeesMenu,
 
-   "/report": reportMenu,
-   "/manual-logs": reportMenu,
+  "/report": reportMenu,
+  "/manual-logs": reportMenu,
 
   "/shift": attendanceMenu,
   "/schedule": attendanceMenu,
   "/change_request": attendanceMenu,
+  "/leave-dashboard": leaveMenu,
+  "/leave-dashboard/calendar": leaveMenu,
+  "/leave-dashboard/balances": leaveMenu,
+  "/leave-dashboard/reports": leaveMenu,
   // "/access_control_logs": attendanceMenu,
 
   "/setup": companyMenu,
@@ -107,6 +126,7 @@ export const leftNavLinks = {
   "/payslips": payrollMenu,
   "/geo-fencing": companyMenu,
   "/live-tracker": companyMenu,
+  "/settings/leave": companyMenu,
 };
 
 // notificaiton top is missing

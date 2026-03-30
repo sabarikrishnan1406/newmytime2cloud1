@@ -31,6 +31,7 @@ class UpdateRequest extends FormRequest
             'company_id' => 'required',
             'branch_id' => 'required',
             'group_name' => 'required',
+            'description' => 'nullable|string',
             //'leave_type_count' => 'required',
 
         ];

@@ -1,5 +1,5 @@
 // columns.js
-import { MoreVertical, Pencil, Trash } from "lucide-react";
+import { Eye, MoreVertical, Pencil, Trash } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuTrigger,
@@ -42,6 +42,20 @@ export default (deleteItem, editItem) => {
             ),
         },
 
+        {
+            key: "frequency",
+            header: "Report Type",
+            render: (e) => (
+                <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                    e.frequency === "Daily" ? "bg-emerald-500/20 text-emerald-400" :
+                    e.frequency === "Weekly" ? "bg-blue-500/20 text-blue-400" :
+                    e.frequency === "Monthly" ? "bg-purple-500/20 text-purple-400" :
+                    "bg-slate-500/20 text-slate-400"
+                }`}>
+                    {e.frequency || "Daily"}
+                </span>
+            ),
+        },
         {
             key: "days",
             header: "Days",

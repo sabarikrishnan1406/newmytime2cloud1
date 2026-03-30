@@ -10,6 +10,11 @@ import TimePicker from "@/components/ui/TimePicker";
 import { storeReportNotification, updateReportNotification } from "@/lib/endpoint/automation";
 import { getUser } from "@/config";
 
+// Use the shared endpoint function for updating
+async function updateAttendanceNotification(id, payload) {
+    return await updateReportNotification(id, payload);
+}
+
 const DayCircle = ({ active, label, onClick }) => (
     <button
         type="button"
@@ -41,12 +46,12 @@ const ChipToggle = ({ active, label, onClick }) => (
     </button>
 );
 
-export default function DocumentExpiryAutomationDialog({
+export default function AttendanceAutomationDialog({
     editItemPayload = null,
-    onSaved = () => { },
+    onSaved = () => {},
     triggerLabel = "Add",
     idEditOpen = false,
-    setIdEditOpen = () => { },
+    setIdEditOpen = () => {},
 }) {
     const open = idEditOpen;
     const [loading, setLoading] = useState(false);
@@ -71,13 +76,12 @@ export default function DocumentExpiryAutomationDialog({
             branch_id: "",
             subject: "Your Subject here",
             time: "09:00",
+            report_type: "15 Days",
             days: ["1"],
-            mediums: ["Email", "Whatsapp"],
-            managers: [
-                { name: "", email: "", whatsapp_number: "" },
-                { name: "", email: "", whatsapp_number: "" },
-                { name: "", email: "", whatsapp_number: "" },
-            ],
+            weekly_day: "Monday",
+            monthly_date: "1",
+            mediums: ["Email"],
+            managers: [],
         }),
         []
     );
@@ -115,25 +119,14 @@ export default function DocumentExpiryAutomationDialog({
                 branch_id: editItemPayload?.branch_id || "",
                 subject: editItemPayload?.subject || "Your Subject here",
                 time: editItemPayload?.time || "09:00",
+                report_type: editItemPayload?.frequency || "Daily",
                 days: editItemPayload?.days || ["1"],
-                mediums: editItemPayload?.mediums || ["Email", "Whatsapp"],
-                managers: [
-                    {
-                        name: editItemPayload?.managers?.[0]?.name || "",
-                        email: editItemPayload?.managers?.[0]?.email || "",
-                        whatsapp_number: editItemPayload?.managers?.[0]?.whatsapp_number || "",
-                    },
-                    {
-                        name: editItemPayload?.managers?.[1]?.name || "",
-                        email: editItemPayload?.managers?.[1]?.email || "",
-                        whatsapp_number: editItemPayload?.managers?.[1]?.whatsapp_number || "",
-                    },
-                    {
-                        name: editItemPayload?.managers?.[2]?.name || "",
-                        email: editItemPayload?.managers?.[2]?.email || "",
-                        whatsapp_number: editItemPayload?.managers?.[2]?.whatsapp_number || "",
-                    },
-                ],
+                monthly_date: editItemPayload?.monthly_date || "1",
+                mediums: editItemPayload?.mediums || ["Email"],
+                managers: (editItemPayload?.managers || []).map(m => ({
+                    name: m.name || "",
+                    email: m.email || "",
+                })),
             });
         } else {
             setForm(defaultForm);
@@ -181,11 +174,15 @@ export default function DocumentExpiryAutomationDialog({
                 days: form.days,
                 mediums: form.mediums,
                 managers: form.managers.map(e => ({ ...e, company_id: user.company_id, branch_id: form.branch_id })).filter((m) => m.name || m.email || m.whatsapp_number),
-                frequency: "Daily",
+                frequency: form.report_type,
+                day: null,
+                date: null,
             };
 
+            console.log(payload);
+
             const data = editItemPayload?.id
-                ? await updateReportNotification(editItemPayload.id, payload)
+                ? await updateAttendanceNotification(editItemPayload.id, payload)
                 : await storeReportNotification(payload);
 
             if (data?.status === false) {
@@ -215,22 +212,22 @@ export default function DocumentExpiryAutomationDialog({
                 <div
                     aria-modal="true"
                     role="dialog"
-                    className="fixed inset-0 z-50 flex items-center justify-center px-4"
+                    className="fixed inset-0 z-50 flex justify-end"
                 >
                     {/* Backdrop */}
                     <div
-                        className="absolute inset-0 bg-black/70 frosted-glass transition-opacity animate-in fade-in duration-300"
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in duration-300"
                         onClick={toggleModal}
                     />
 
-                    {/* ✅ Responsive width (NOT full width) */}
+                    {/* Right-side drawer */}
                     <div
                         className={[
-                            "relative w-[92vw] sm:w-[90vw] lg:w-[980px] xl:w-[1100px] 2xl:w-[1200px]",
-                            "max-h-[calc(100vh-96px)] overflow-hidden",
-                            "bg-white dark:bg-slate-800 rounded-2xl shadow-2xl",
-                            "border border-gray-100 dark:border-white/10",
-                            "transform transition-all animate-in fade-in zoom-in duration-200",
+                            "relative w-full max-w-2xl",
+                            "h-full overflow-hidden",
+                            "bg-white dark:bg-slate-800 shadow-2xl",
+                            "border-l border-gray-100 dark:border-white/10",
+                            "transform transition-all animate-in slide-in-from-right duration-200",
                             "flex flex-col",
                         ].join(" ")}
                     >
@@ -238,10 +235,10 @@ export default function DocumentExpiryAutomationDialog({
                         <div className="px-6 py-5 border-b border-gray-200 dark:border-white/10 flex justify-between items-center">
                             <div>
                                 <h3 className="text-lg font-bold text-gray-600 dark:text-gray-300">
-                                    {editItemPayload?.id ? "Edit Document Expiry Automation" : "Add Document Expiry Automation"}
+                                    {editItemPayload?.id ? "Edit Document Expiry Notification" : "Add Document Expiry Notification"}
                                 </h3>
                                 <p className="text-xs text-slate-400 mt-0.5">
-                                    Create notification rule for document expiry
+                                    Create notification rule for attendance
                                 </p>
                                 {error ? <p className="mt-2 text-xs text-red-500">{String(error)}</p> : null}
                             </div>
@@ -256,124 +253,156 @@ export default function DocumentExpiryAutomationDialog({
                         </div>
 
                         {/* Body */}
-                        <div className="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar bg-surface-variant/30 dark:bg-black/20">
-                            <div className="flex flex-col gap-6">
-                                <section className="bg-surface-light dark:bg-surface-dark rounded-3xl p-6 shadow-elevation-1 border border-gray-200 dark:border-white/5">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h2 className="text-lg font-bold text-gray-600 dark:text-white">
-                                            Rule Configuration
-                                        </h2>
-                                    </div>
+                        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-surface-variant/30 dark:bg-black/20">
+                            <div className="flex flex-col gap-4">
+                                <section className="bg-surface-light dark:bg-surface-dark rounded-2xl p-5 shadow-elevation-1 border border-gray-200 dark:border-white/5">
+                                    <h2 className="text-sm font-bold text-gray-600 dark:text-white mb-4">
+                                        Rule Configuration
+                                    </h2>
 
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-semibold text-slate-700 dark:text-gray-200 ml-1">
-                                                Branch
-                                            </label>
-
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1 uppercase tracking-wider">Branch</label>
                                             <DropDown value={form.branch_id} items={branches} onChange={(e) => setField("branch_id", e)} />
                                         </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-semibold text-slate-700 dark:text-gray-200 ml-1">
-                                                Subject
-                                            </label>
-                                            <Input
-                                                value={form.subject}
-                                                onChange={(e) => setField("subject", e.target.value)}
-                                                placeholder="E.g. Notify Managers about today's document expiry"
-                                            />
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1 uppercase tracking-wider">Subject</label>
+                                            <Input value={form.subject} onChange={(e) => setField("subject", e.target.value)} placeholder="E.g. Notify Managers" />
                                         </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-semibold text-slate-700 dark:text-gray-200 ml-1">
-                                                Time
-                                            </label>
-
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1 uppercase tracking-wider">Time</label>
                                             <TimePicker inputClassName="h-11" defaultValue={form.time} onChange={(e) => setField("time", e)} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1 uppercase tracking-wider">Report Type</label>
+                                            <DropDown
+                                                value={form.report_type}
+                                                items={[
+                                                    { id: "15 Days", name: "15 Days Before Expiry" },
+                                                    { id: "30 Days", name: "30 Days Before Expiry" },
+                                                ]}
+                                                onChange={(e) => setField("report_type", e)}
+                                            />
                                         </div>
                                     </div>
 
-                                    <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-semibold text-slate-700 dark:text-gray-200 ml-1">
-                                                Medium
-                                            </label>
-                                            <div className="flex flex-wrap gap-3">
-                                                <ChipToggle
-                                                    label="Email"
-                                                    active={form.mediums.includes("Email")}
-                                                    onClick={() => toggleMedium("Email")}
-                                                />
-                                                <ChipToggle
-                                                    label="Whatsapp"
-                                                    active={form.mediums.includes("Whatsapp")}
-                                                    onClick={() => toggleMedium("Whatsapp")}
-                                                />
+                                    <div className="mt-4 grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1 uppercase tracking-wider">Medium</label>
+                                            <div className="flex flex-wrap gap-2 mt-1">
+                                                <ChipToggle label="Email" active={form.mediums.includes("Email")} onClick={() => toggleMedium("Email")} />
                                             </div>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-semibold text-slate-700 dark:text-gray-200 ml-1">
-                                                Days
-                                            </label>
-                                            <div className="flex gap-2">
-                                                {daysList.map((d) => (
-                                                    <DayCircle
-                                                        key={d.id}
-                                                        label={d.name}
-                                                        active={form.days.includes(d.id)}
-                                                        onClick={() => toggleDay(d.id)}
-                                                    />
-                                                ))}
+                                        {form.report_type === "Daily" && (
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-slate-700 dark:text-gray-200 ml-1">
+                                                    Days
+                                                </label>
+                                                <div className="flex gap-2">
+                                                    {daysList.map((d) => (
+                                                        <DayCircle
+                                                            key={d.id}
+                                                            label={d.name}
+                                                            active={form.days.includes(d.id)}
+                                                            onClick={() => toggleDay(d.id)}
+                                                        />
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
+
+                                        {form.report_type === "Weekly" && (
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-slate-700 dark:text-gray-200 ml-1">
+                                                    Week Day
+                                                </label>
+                                                <DropDown
+                                                    value={form.weekly_day}
+                                                    items={[
+                                                        { id: "Monday", name: "Monday" },
+                                                        { id: "Tuesday", name: "Tuesday" },
+                                                        { id: "Wednesday", name: "Wednesday" },
+                                                        { id: "Thursday", name: "Thursday" },
+                                                        { id: "Friday", name: "Friday" },
+                                                        { id: "Saturday", name: "Saturday" },
+                                                        { id: "Sunday", name: "Sunday" },
+                                                    ]}
+                                                    onChange={(e) => setField("weekly_day", e)}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {form.report_type === "Monthly" && (
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-slate-700 dark:text-gray-200 ml-1">
+                                                    Date
+                                                </label>
+                                                <DropDown
+                                                    value={form.monthly_date}
+                                                    items={Array.from({ length: 31 }, (_, i) => ({ id: String(i + 1), name: String(i + 1) }))}
+                                                    onChange={(e) => setField("monthly_date", e)}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 </section>
 
-                                <section className="bg-surface-light dark:bg-surface-dark rounded-3xl p-6 shadow-elevation-1 border border-gray-200 dark:border-white/5">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h2 className="text-lg font-bold text-gray-600 dark:text-white">
+                                <section className="bg-surface-light dark:bg-surface-dark rounded-2xl p-5 shadow-elevation-1 border border-gray-200 dark:border-white/5">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h2 className="text-sm font-bold text-gray-600 dark:text-white">
                                             Managers
                                         </h2>
-                                        <p className="text-xs text-slate-400">Up to 3 recipients</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm(p => ({ ...p, managers: [...p.managers, { name: "", email: "" }] }))}
+                                            className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-blue-600 transition-all flex items-center gap-1"
+                                        >
+                                            <span className="material-symbols-outlined text-[16px]">add</span>
+                                            Add Manager
+                                        </button>
                                     </div>
 
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                        {[0, 1, 2].map((i) => (
-                                            <div
-                                                key={i}
-                                                className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 p-4"
-                                            >
-                                                <div className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-3">
-                                                    Manager {i + 1}
-                                                </div>
+                                    {form.managers.length === 0 ? (
+                                        <p className="text-sm text-slate-500 text-center py-6">No managers added. Click "Add Manager" to add recipients.</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {form.managers.map((m, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 p-4"
+                                                >
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <div className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                                            Manager {i + 1}
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setForm(p => ({ ...p, managers: p.managers.filter((_, idx) => idx !== i) }))}
+                                                            className="text-slate-400 hover:text-red-400 transition-colors"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                                                        </button>
+                                                    </div>
 
-                                                <div className="space-y-3">
-                                                    <input
-                                                        value={form.managers[i].name}
-                                                        onChange={(e) => setManagerField(i, "name", e.target.value)}
-                                                        placeholder="Name"
-                                                        className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-primary/20"
-                                                    />
-                                                    <input
-                                                        value={form.managers[i].email}
-                                                        onChange={(e) => setManagerField(i, "email", e.target.value)}
-                                                        placeholder="Email"
-                                                        className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-primary/20"
-                                                    />
-                                                    <input
-                                                        value={form.managers[i].whatsapp_number}
-                                                        onChange={(e) =>
-                                                            setManagerField(i, "whatsapp_number", e.target.value)
-                                                        }
-                                                        placeholder="Whatsapp Number"
-                                                        className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-primary/20"
-                                                    />
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <input
+                                                            value={m.name}
+                                                            onChange={(e) => setManagerField(i, "name", e.target.value)}
+                                                            placeholder="Name"
+                                                            className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-primary/20"
+                                                        />
+                                                        <input
+                                                            value={m.email}
+                                                            onChange={(e) => setManagerField(i, "email", e.target.value)}
+                                                            placeholder="Email"
+                                                            className="w-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-primary/20"
+                                                        />
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </section>
                             </div>
                         </div>

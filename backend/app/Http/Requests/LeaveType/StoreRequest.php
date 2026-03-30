@@ -26,11 +26,13 @@ class StoreRequest extends FormRequest
     public function rules()
     {
         return [
-
             'name' => 'required',
             'short_name' => 'required',
             'company_id' => 'required',
             'branch_id' => 'required',
+            'description' => 'nullable|string',
+            'paid' => 'nullable|boolean',
+            'carry_forward' => 'nullable|boolean',
         ];
     }
 }

@@ -97,7 +97,7 @@ class LeaveGroupsController extends Controller
             $isExist = LeaveGroups::where('company_id', '=', $request->company_id)->where('group_name', '=', $request->group_name)->first();
             if ($isExist == null) {
 
-                $record = LeaveGroups::create($request->only(['group_name', 'company_id', 'branch_id']));
+                $record = LeaveGroups::create($request->only(['group_name', 'description', 'company_id', 'branch_id']));
                 $leaveCountArray = $request->leave_counts;
 
                 foreach ($leaveCountArray as $key => $value) {
@@ -105,16 +105,21 @@ class LeaveGroupsController extends Controller
                         ->where('leave_type_id', $value['id'])
                         ->where('group_id', $record->id);
 
+                    $countData = [
+                        "leave_type_count" => $value['leave_type_count'],
+                        "accrual" => $value['accrual'] ?? 'monthly',
+                        "carry_forward_max" => $value['carry_forward_max'] ?? 0,
+                        "max_limit" => $value['max_limit'] ?? 0,
+                    ];
+
                     if ($leave_count->count() != 0) {
-                        $leave_count->update(["leave_type_count" => $value['leave_type_count']]);
+                        $leave_count->update($countData);
                     } else {
-                        $data = [
+                        $data = array_merge([
                             "company_id" => $value['company_id'],
                             "leave_type_id" => $value['id'],
                             "group_id" => $record->id,
-                            "leave_type_count" => $value['leave_type_count']
-                        ];
-
+                        ], $countData);
 
                         $leave_count->create($data);
                     }
@@ -145,7 +150,7 @@ class LeaveGroupsController extends Controller
                 ->first();
             if ($isExist == null) {
 
-                $record = LeaveGroups::find($id)->update($request->only(['group_name', 'company_id', 'branch_id']));
+                $record = LeaveGroups::find($id)->update($request->only(['group_name', 'description', 'company_id', 'branch_id']));
 
                 $leaveCountArray = $request->leave_counts;
 
@@ -154,16 +159,21 @@ class LeaveGroupsController extends Controller
                         ->where('leave_type_id', $value['id'])
                         ->where('group_id', $id);
 
+                    $countData = [
+                        "leave_type_count" => $value['leave_type_count'],
+                        "accrual" => $value['accrual'] ?? 'monthly',
+                        "carry_forward_max" => $value['carry_forward_max'] ?? 0,
+                        "max_limit" => $value['max_limit'] ?? 0,
+                    ];
+
                     if ($leave_count->count() != 0) {
-                        $leave_count->update(["leave_type_count" => $value['leave_type_count']]);
+                        $leave_count->update($countData);
                     } else {
-                        $data = [
+                        $data = array_merge([
                             "company_id" => $value['company_id'],
                             "leave_type_id" => $value['id'],
                             "group_id" => $id,
-                            "leave_type_count" => $value['leave_type_count']
-                        ];
-
+                        ], $countData);
 
                         $leave_count->create($data);
                     }
