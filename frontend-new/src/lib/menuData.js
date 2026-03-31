@@ -30,6 +30,7 @@ import {
   FileCheck,
   Wallet,
   BarChart3,
+  Video,
 } from "lucide-react";
 
 // 1️⃣ Reusable menu groups
@@ -64,6 +65,7 @@ const companyMenu = [
   { href: "/department-tabs", icon: Layers, label: "Department" },
   { href: "/login/manager-login", icon: LogInIcon, label: "Login" },
   { href: "/device", icon: DoorClosedIcon, label: "Device" },
+  { href: "/live-camera", icon: Video, label: "Live Camera" },
   { href: "/automation", icon: Workflow, label: "Automation" },
   { href: "/roles", icon: Shield, label: "Roles" },
   { href: "/holiday", icon: CalendarDays, label: "Holidays" },
@@ -123,6 +125,7 @@ export const leftNavLinks = {
   "/login/manager-login": companyMenu,
   "/department-tabs": companyMenu,
   "/device": companyMenu,
+  "/live-camera": companyMenu,
   "/payslips": payrollMenu,
   "/geo-fencing": companyMenu,
   "/live-tracker": companyMenu,
