@@ -2,61 +2,73 @@
 
 import "./staff.css";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const navItems = [
   { href: "/staff/dashboard", icon: "grid_view", label: "Dashboard" },
+  { href: "/staff/announcement", icon: "campaign", label: "Announcement" },
+  { href: "/staff/chat", icon: "chat_bubble", label: "Chat" },
+  { href: "/staff/visitor", icon: "group", label: "Visitor" },
   { href: "/staff/attendance", icon: "calendar_today", label: "Attendance" },
+  { href: "/staff/performance", icon: "query_stats", label: "Performance" },
+  { href: "/staff/schedule", icon: "event_note", label: "Schedule" },
+  { href: "/staff/holidays", icon: "celebration", label: "Holidays" },
+  { href: "/staff/leave", icon: "event_available", label: "Leave" },
+  { href: "/staff/change-request", icon: "fact_check", label: "Change Request" },
   { href: "/staff/payroll", icon: "payments", label: "Payroll" },
   { href: "/staff/profile", icon: "person", label: "Profile" },
 ];
 
 export default function StaffLayout({ children }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    router.push("/login");
+  };
 
   return (
     <div className="staff-portal flex min-h-screen antialiased overflow-x-hidden">
       {/* SIDEBAR */}
-      <aside className="fixed left-0 top-0 h-screen w-20 flex flex-col items-center py-6 gap-8 bg-[#050B18]/90 border-r border-white/5 staff-sidebar-glow z-50">
+      <aside className="group/sidebar fixed left-0 top-0 z-50 flex h-screen w-14 hover:w-52 flex-col border-r border-white/5 bg-[#050B18]/95 backdrop-blur-xl transition-all duration-300 ease-in-out staff-sidebar-glow overflow-hidden">
         {/* Logo */}
-        <div className="w-12 h-12 staff-glass-card rounded-2xl flex items-center justify-center border-[#81ecff]/20">
-          <span className="material-symbols-outlined text-[#81ecff] scale-125">fingerprint</span>
+        <div className="flex items-center gap-3 px-3 py-4 shrink-0">
+          <img src="https://mytime2cloud.com/logo22.png" alt="MyTime Cloud" className="h-8 w-auto object-contain brightness-110 shrink-0" />
         </div>
 
         {/* Nav */}
-        <nav className="flex flex-col items-center gap-6 flex-1">
+        <nav className="flex flex-1 flex-col gap-2.5 px-2 py-2 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                title={item.label}
-                className={`w-12 h-12 flex items-center justify-center rounded-xl transition-colors ${
-                  isActive
-                    ? "bg-[#81ecff]/10 text-[#81ecff]"
-                    : "text-slate-500 hover:text-white"
-                }`}
+                className={`flex items-center gap-3 h-10 px-2 rounded-xl transition-colors whitespace-nowrap ${isActive
+                    ? "bg-[#7c3aed] text-white"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
               >
-                <span className="material-symbols-outlined">{item.icon}</span>
+                <span className="material-symbols-outlined text-xl shrink-0">{item.icon}</span>
+                <span className="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Bottom */}
-        <div className="flex flex-col items-center gap-6">
-          <button className="w-12 h-12 flex items-center justify-center text-slate-500 hover:text-white">
-            <span className="material-symbols-outlined">settings</span>
+        {/* Logout */}
+        <div className="shrink-0 px-2 pb-4">
+          <button onClick={handleLogout} className="flex items-center gap-3 h-10 px-2 w-full rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all whitespace-nowrap">
+            <span className="material-symbols-outlined text-xl shrink-0">logout</span>
+            <span className="text-sm font-medium opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">Logout</span>
           </button>
-          <div className="w-10 h-10 rounded-xl overflow-hidden ring-1 ring-white/10 bg-[#0A1628]">
-            <span className="material-symbols-outlined text-slate-400 w-full h-full flex items-center justify-center text-2xl">person</span>
-          </div>
         </div>
       </aside>
 
       {/* MAIN */}
-      <main className="ml-20 flex-1 min-h-screen overflow-y-auto h-screen">{children}</main>
+      <main className="h-screen min-h-screen flex-1 overflow-y-auto ml-14">{children}</main>
     </div>
   );
 }

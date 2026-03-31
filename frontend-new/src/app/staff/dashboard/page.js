@@ -34,12 +34,12 @@ const SmallMetric = ({ icon, iconBg, label, value, unit, badge, badgeColor }) =>
 );
 
 /* ── Data ── */
-const feedTabs = ["Feed", "Holidays", "My Docs", "Visitors"];
+const feedTabs = ["Announcement", "Holidays", "My Docs", "Visitors"];
 
 const activityLog = [
-  { date: "Oct 24", time: "08:55 AM", timeColor: "text-cyan-400 font-bold", action: "Clock In", actionStyle: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", actionIcon: "login", status: "On Time", dotColor: "bg-emerald-500", flag: null },
-  { date: "Oct 23", time: "05:02 PM", timeColor: "text-slate-400", action: "Clock Out", actionStyle: "bg-slate-800 text-slate-400 border-white/5", actionIcon: "logout", status: "Standard", dotColor: "bg-cyan-400", flag: null },
-  { date: "Oct 23", time: "09:15 AM", timeColor: "text-slate-400", action: "Clock In", actionStyle: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", actionIcon: "login", status: "Late (+15m)", dotColor: "bg-amber-500", flag: "FLAGGED" },
+  { date: "Oct 24", weekday: "Tuesday", time: "08:55:12", timeColor: "text-cyan-400 font-bold", action: "In", actionStyle: "text-emerald-400", modeIcon: "frame_person", modeLabel: "Face Verify", deviceName: "Icarus", deviceLocation: "Souq Al Bahar", status: "On Time", dotColor: "bg-emerald-500", flag: null },
+  { date: "Oct 23", weekday: "Monday", time: "17:02:33", timeColor: "text-slate-400", action: "Out", actionStyle: "text-red-400", modeIcon: "frame_person", modeLabel: "Face Verify", deviceName: "Icarus", deviceLocation: "Souq Al Bahar", status: "Standard", dotColor: "bg-cyan-400", flag: null },
+  { date: "Oct 23", weekday: "Monday", time: "09:15:41", timeColor: "text-slate-400", action: "In", actionStyle: "text-emerald-400", modeIcon: "frame_person", modeLabel: "Face Verify", deviceName: "Icarus", deviceLocation: "Souq Al Bahar", status: "Late (+15m)", dotColor: "bg-amber-500", flag: "FLAGGED" },
 ];
 
 const weeklyChart = [
@@ -53,10 +53,10 @@ const weeklyChart = [
 ];
 
 export default function StaffDashboard() {
-  const [activeFeedTab, setActiveFeedTab] = useState("Feed");
+  const [activeFeedTab, setActiveFeedTab] = useState("Announcement");
 
   return (
-    <div className="p-8 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
       {/* HEADER */}
       <header className="flex justify-between items-center mb-8">
         <div>
@@ -265,29 +265,48 @@ export default function StaffDashboard() {
               </button>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left">
+              <table className="w-full min-w-[980px] text-left">
                 <thead>
                   <tr className="text-[9px] uppercase font-black text-slate-500 tracking-widest border-b border-white/5 bg-slate-900/30">
                     <th className="px-6 py-4">Date</th>
                     <th className="px-6 py-4">Time</th>
                     <th className="px-6 py-4">Action</th>
+                    <th className="px-6 py-4">Mode</th>
+                    <th className="px-6 py-4">Device Name</th>
                     <th className="px-6 py-4">Punctuality</th>
                   </tr>
                 </thead>
                 <tbody className="text-slate-300 divide-y divide-white/5">
                   {activityLog.map((row, i) => (
                     <tr key={i} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="px-6 py-5 flex items-center gap-3">
-                        <span className="material-symbols-outlined text-slate-600 text-base">calendar_today</span>
-                        <span className="text-xs font-medium">{row.date}</span>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center">
+                          <div className="flex flex-col">
+                            <span className="text-xs font-medium text-slate-200">{row.date}</span>
+                            <span className="text-[10px] text-slate-500 mt-1">{row.weekday}</span>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-5">
                         <span className={`text-xs font-mono ${row.timeColor}`}>{row.time}</span>
                       </td>
                       <td className="px-6 py-5">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase border ${row.actionStyle}`}>
-                          <span className="material-symbols-outlined text-[14px]">{row.actionIcon}</span> {row.action}
+                        <span className={`text-[11px] font-bold uppercase ${row.actionStyle}`}>
+                          {row.action}
                         </span>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 rounded-xl bg-slate-900/60 border border-white/5 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-lg text-slate-300">{row.modeIcon}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-semibold text-slate-200">{row.deviceName}</span>
+                          <span className="text-[10px] text-slate-500 mt-1">{row.deviceLocation}</span>
+                        </div>
                       </td>
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-2">
@@ -308,18 +327,18 @@ export default function StaffDashboard() {
             <div className="absolute -right-8 -top-8 w-32 h-32 bg-purple-500/20 blur-[40px] rounded-full"></div>
             <div className="flex items-center gap-3 mb-6 relative z-10">
               <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-              <span className="text-[10px] font-black tracking-widest text-blue-400 uppercase">Nexus AI Active</span>
+              <span className="text-[10px] font-black tracking-widest text-blue-400 uppercase">AI Feeds</span>
             </div>
             <div className="flex-1 relative z-10">
               <p className="text-sm italic text-slate-200 leading-relaxed">
                 &ldquo;I noticed you clocked in late yesterday. Need to file an exception request?&rdquo;
               </p>
             </div>
-            <div className="mt-8 flex gap-3 relative z-10">
-              <button className="flex-1 py-2 rounded-xl bg-purple-600 text-white text-[11px] font-bold shadow-[0_0_15px_rgba(147,51,234,0.3)] hover:scale-[1.02] transition-transform">
+            <div className="mt-8 flex flex-wrap gap-3 relative z-10">
+              <button className="inline-flex items-center justify-center px-5 py-1.5 rounded-xl bg-purple-600 text-white text-[10px] font-bold shadow-[0_0_15px_rgba(147,51,234,0.3)] hover:scale-[1.02] transition-transform">
                 Yes, please
               </button>
-              <button className="flex-1 py-2 rounded-xl bg-slate-800 text-slate-400 text-[11px] font-bold border border-white/5 hover:bg-slate-700 transition-colors">
+              <button className="inline-flex items-center justify-center px-5 py-1.5 rounded-xl bg-slate-800 text-slate-400 text-[10px] font-bold border border-white/5 hover:bg-slate-700 transition-colors">
                 Maybe later
               </button>
             </div>

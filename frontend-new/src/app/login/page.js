@@ -123,222 +123,174 @@ const Login = () => {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row w-full overflow-hidden font-sans dark:bg-slate-50 dark:bg-slate-950 text-slate-900 antialiased">
+        <div className="relative min-h-screen w-full font-sans antialiased overflow-hidden">
+            {/* Full-screen background */}
+            <div className="absolute inset-0 z-0">
+                <img
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9quZCvIjVlQL6X_XAulwnuRzVyiwbnVR0FcONLLQ8OVwVYYTVchCvz8Ly60e-BJf_M327SvaKt3bdgrlEdwXWS7oTFRCYoCUjbepAD5azOW3E8sB133d9e34HdlPfTdWUkZxjDc5WlnGdIKz0sHIM-wM1Qz8s0BNVtVaajnOpQIl2ETK0Q4xQDvw26aFuZFHxCIaen3w_tPtd_ZEHru--lGDSO1cc788CnFDRReCpwY3LW7L8kOzxqF7nISMVZMEbxZ8t4pNkqhIa"
+                    alt="Background"
+                    className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#050B18]/95 via-[#0A1628]/90 to-[#050B18]/95" />
+            </div>
 
-            {/* Left Side: Branding & Visual (40%) */}
-            <div className="relative hidden lg:flex w-full lg:w-[60%] flex-col justify-between p-12 overflow-hidden bg-slate-900">
-                {/* Background Image - Using object-cover for better scaling */}
-                <div className="absolute inset-0 z-0">
+            {/* Content */}
+            <div className="relative z-10 flex min-h-screen flex-col lg:flex-row items-center justify-center gap-8 lg:gap-10 xl:gap-14 px-6 py-10 lg:px-12 xl:px-16">
+
+                {/* Left: Branding */}
+                <div className="hidden lg:flex flex-col flex-1 max-w-xl justify-center">
                     <img
-                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9quZCvIjVlQL6X_XAulwnuRzVyiwbnVR0FcONLLQ8OVwVYYTVchCvz8Ly60e-BJf_M327SvaKt3bdgrlEdwXWS7oTFRCYoCUjbepAD5azOW3E8sB133d9e34HdlPfTdWUkZxjDc5WlnGdIKz0sHIM-wM1Qz8s0BNVtVaajnOpQIl2ETK0Q4xQDvw26aFuZFHxCIaen3w_tPtd_ZEHru--lGDSO1cc788CnFDRReCpwY3LW7L8kOzxqF7nISMVZMEbxZ8t4pNkqhIa"
-                        alt="Background"
-                        className="w-full h-full object-cover opacity-60"
+                        src="https://mytime2cloud.com/logo22.png"
+                        alt="MyTime Cloud Logo"
+                        className="h-14 w-auto object-contain brightness-110 mb-10 self-start"
                     />
-                    {/* Refined Gradient: Deep at the bottom/left, clearer at the top/right */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-slate-900 via-slate-900/70 to-transparent" />
-                </div>
-
-                {/* Logo Area */}
-                <div className="relative z-10 flex items-center gap-4">
-                    <div className="flex items-center justify-center">
-                        <img
-                            src="https://mytime2cloud.com/logo22.png"
-                            alt="MyTime Cloud Logo"
-                            className="h-12 w-auto object-contain brightness-110"
-                        // If the logo has a white background you want to hide, 
-                        // add: className="mix-blend-screen"
-                        />
-                    </div>
-                </div>
-
-                {/* Value Proposition */}
-                <div className="relative z-10 mb-12 max-w-md">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 mb-8 text-[10px] font-bold tracking-[0.2em] text-emerald-400 uppercase rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_10px_#34d399]"></span>
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-8 text-[10px] font-bold tracking-[0.2em] text-emerald-400 uppercase rounded-full bg-emerald-500/10 border border-emerald-500/20 w-fit">
+                        <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
                         Enterprise Intelligence
                     </div>
-                    <h2 className="text-4xl lg:text-5xl font-extrabold text-white mb-6 leading-tight">
-                        Empower your workforce with <span className="text-emerald-400">next-gen</span> intelligence.
+                    <h2 className="text-4xl xl:text-[3.25rem] font-extrabold text-white mb-5 leading-[1.1]">
+                        Empower your<br />workforce with<br /><span className="text-emerald-400">next-gen</span><br />intelligence.
                     </h2>
-                    <p className="text-slate-300 text-lg font-medium leading-relaxed">
-                        Streamline attendance, optimize complex scheduling, and gain real-time insights with our award-winning platform.
+                    <p className="text-slate-400 text-base leading-relaxed">
+                        Streamline attendance, optimize complex scheduling,<br />and gain real-time insights with our award-winning<br />platform.
                     </p>
                 </div>
 
-                {/* Bottom Decorative Element */}
-                <div className="relative z-10 flex items-center gap-4 text-white/40 text-xs tracking-wide uppercase">
-                    <ShieldCheck className="w-5 h-5 text-emerald-500/50" />
-                    <span className="font-semibold">Bank-grade security encryption active</span>
+                {/* Right: Login Card */}
+                <div className="w-full max-w-[520px] rounded-2xl border border-white/10 bg-[#0D1626]/80 backdrop-blur-xl p-10 sm:p-12 shadow-2xl shadow-black/30">
+                    {/* Mobile Logo */}
+                    <div className="lg:hidden mb-8">
+                        <img src="https://mytime2cloud.com/logo22.png" alt="Logo" className="h-8 w-auto" />
+                    </div>
+
+                    <h2 className="text-2xl font-bold text-white mb-1">Welcome Back</h2>
+                    <p className="text-slate-400 text-sm mb-8">Sign in to your enterprise dashboard</p>
+
+                    <form className="flex flex-col gap-5" onSubmit={handleLogin}>
+                        {/* Role Selector */}
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] mb-2 block">
+                                Access Level
+                            </label>
+                            <div className="grid grid-cols-3 p-1 bg-slate-800/50 rounded-xl border border-white/5">
+                                {[
+                                    { id: 'company', label: 'Admin', icon: LayoutDashboard },
+                                    { id: 'manager', label: 'Manager', icon: Users },
+                                    { id: 'employee', label: 'Staff', icon: UserCircle }
+                                ].map((item) => (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        onClick={() => setRole(item.id)}
+                                        className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                                            role === item.id
+                                                ? 'bg-[#3713ec] text-white shadow-lg shadow-[#3713ec]/20'
+                                                : 'text-slate-400 hover:text-white'
+                                        }`}
+                                    >
+                                        <item.icon className="w-3.5 h-3.5" />
+                                        {item.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Email */}
+                        <div>
+                            <label className="text-sm font-semibold text-slate-300 mb-1.5 block" htmlFor="email">
+                                Username or Email
+                            </label>
+                            <div className="relative group">
+                                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-[#3713ec] transition-colors w-4 h-4" />
+                                <input
+                                    id="email"
+                                    type="text"
+                                    required
+                                    value={credentials.email}
+                                    onChange={handleInputChange}
+                                    className="w-full h-11 pl-10 pr-4 bg-slate-800/40 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#3713ec]/30 focus:border-[#3713ec]/50 transition-all text-sm"
+                                    placeholder="j.doe@company.com"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Password */}
+                        <div>
+                            <label className="text-sm font-semibold text-slate-300 mb-1.5 block" htmlFor="password">
+                                Password
+                            </label>
+                            <div className="relative group">
+                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-[#3713ec] transition-colors w-4 h-4" />
+                                <input
+                                    id="password"
+                                    type={showPassword ? "text" : "password"}
+                                    required
+                                    value={credentials.password}
+                                    onChange={handleInputChange}
+                                    className="w-full h-11 pl-10 pr-11 bg-slate-800/40 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#3713ec]/30 focus:border-[#3713ec]/50 transition-all text-sm"
+                                    placeholder="Enter your password"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {msg && (
+                            <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                                {msg}
+                            </div>
+                        )}
+
+                        {/* Remember / Forgot */}
+                        <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2 cursor-pointer group">
+                                <input
+                                    id="rememberMe"
+                                    type="checkbox"
+                                    checked={credentials.rememberMe}
+                                    onChange={handleInputChange}
+                                    className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-[#3713ec] focus:ring-[#3713ec]/20 cursor-pointer"
+                                />
+                                <span className="text-xs font-medium text-slate-400 group-hover:text-slate-300 transition-colors select-none">
+                                    Remember me
+                                </span>
+                            </label>
+                            <a href="#" className="text-xs font-semibold text-[#3713ec] hover:text-[#5b3ff5] transition-colors">
+                                Forgot Password?
+                            </a>
+                        </div>
+
+                        {/* Login Button */}
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full h-11 bg-[#3713ec] hover:bg-[#2c0fb8] disabled:opacity-70 text-white text-sm font-bold rounded-xl shadow-lg shadow-[#3713ec]/25 hover:shadow-[#3713ec]/40 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 group"
+                        >
+                            {loading ? 'Signing in...' : 'Sign In'}
+                            {!loading && <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />}
+                        </button>
+                    </form>
                 </div>
             </div>
 
-            {/* Right Side: Login Workspace (60%) */}
-            <div className="flex-1 flex flex-col min-h-screen overflow-y-auto bg-white dark:bg-[#131022] relative">
-
-                {/* Mobile Header */}
-                <div className="lg:hidden p-6 flex items-center justify-between bg-white dark:bg-[#131022] border-b border-slate-200 dark:border-slate-800">
-                    <div className="flex items-center gap-2">
-                        <RefreshCw className="text-[#3713ec] w-6 h-6" />
-                        <h1 className="text-slate-900 dark:text-white text-lg font-bold">MYTIME CLOUD</h1>
+            {/* Footer */}
+            <footer className="relative z-10 absolute bottom-0 left-0 right-0 px-6 py-4 lg:px-16">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+                        &copy; 2024 MyTime Cloud Systems
+                    </span>
+                    <div className="flex gap-6">
+                        <a href="#" className="text-[10px] font-semibold text-slate-500 hover:text-white transition-colors uppercase tracking-widest">Privacy</a>
+                        <a href="#" className="text-[10px] font-semibold text-slate-500 hover:text-white transition-colors uppercase tracking-widest">Terms</a>
+                        <a href="#" className="text-[10px] font-semibold text-slate-500 hover:text-white transition-colors uppercase tracking-widest">Help</a>
                     </div>
                 </div>
-
-                {/* Main Content */}
-                <main className="flex-1 bg-white dark:bg-slate-900 flex items-center justify-center p-6 sm:p-12 lg:p-24">
-                    <div className="w-full max-w-[440px] flex flex-col gap-10">
-
-                        {/* Header */}
-                        <div className="flex flex-col gap-3">
-                            <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-                                Welcome Back
-                            </h2>
-                            <p className="text-slate-600 dark:text-slate-300 text-base">
-                                Securely log in to your enterprise dashboard.
-                            </p>
-                        </div>
-
-                        {/* Login Form */}
-                        <form className="flex flex-col gap-6" onSubmit={handleLogin}>
-
-                            {/* Role Selector */}
-                            <div className="flex flex-col gap-3">
-                                <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] ml-1">
-                                    Access Level
-                                </label>
-                                <div className="grid grid-cols-3 p-1.5 bg-slate-100 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800">
-                                    {[
-                                        { id: 'company', label: 'Admin', icon: LayoutDashboard },
-                                        { id: 'manager', label: 'Manager', icon: Users },
-                                        { id: 'employee', label: 'Staff', icon: UserCircle }
-                                    ].map((item) => (
-                                        <button
-                                            key={item.id}
-                                            type="button"
-                                            onClick={() => setRole(item.id)}
-                                            className={`
-                        flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all duration-300
-                        ${role === item.id
-                                                    ? 'bg-white dark:bg-slate-800 text-[#3713ec] dark:text-white shadow-sm ring-1 ring-slate-200 dark:ring-slate-700'
-                                                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}
-                      `}
-                                        >
-                                            <item.icon className="w-4 h-4" />
-                                            {item.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Inputs */}
-                            <div className="flex flex-col gap-5">
-                                <div className="flex flex-col gap-2.5">
-                                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300" htmlFor="email">
-                                        Username or Email
-                                    </label>
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                            <User className="text-slate-400 group-focus-within:text-[#3713ec] transition-colors w-5 h-5" />
-                                        </div>
-                                        <input
-                                            id="email"
-                                            type="text"
-                                            required
-                                            value={credentials.email}
-                                            onChange={handleInputChange}
-                                            className="w-full h-14 pl-12 pr-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#3713ec]/10 focus:border-[#3713ec] transition-all text-base font-medium"
-                                            placeholder="e.g. j.doe@company.com"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Password */}
-                                <div className="flex flex-col gap-2.5">
-                                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300" htmlFor="password">
-                                        Password
-                                    </label>
-                                    <div className="relative group">
-                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                            <Lock className="text-slate-400 group-focus-within:text-[#3713ec] transition-colors w-5 h-5" />
-                                        </div>
-                                        <input
-                                            id="password"
-                                            type={showPassword ? "text" : "password"}
-                                            required
-                                            value={credentials.password}
-                                            onChange={handleInputChange}
-                                            className="w-full h-14 pl-12 pr-12 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-[#3713ec]/10 focus:border-[#3713ec] transition-all text-base font-medium"
-                                            placeholder="••••••••••••"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors"
-                                        >
-                                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                        </button>
-                                    </div>
-
-                                    <div className="text-center pt-4 mb-5 pb-1">
-                                        {msg && <span className="text-red-500 block mb-3">{msg}</span>}
-                                    </div>
-
-                                </div>
-                            </div>
-
-                            {/* Actions Row */}
-                            <div className="flex items-center justify-between">
-                                <label className="flex items-center gap-3 cursor-pointer group">
-                                    <div className="relative flex items-center">
-                                        <input
-                                            id="rememberMe"
-                                            type="checkbox"
-                                            checked={credentials.rememberMe}
-                                            onChange={handleInputChange}
-                                            className="peer h-5 w-5 rounded-lg border-slate-300 dark:border-slate-700 text-[#3713ec] focus:ring-[#3713ec]/20 cursor-pointer transition-all"
-                                        />
-                                    </div>
-                                    <span className="text-sm font-semibold text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors select-none">
-                                        Remember me
-                                    </span>
-                                </label>
-                                <a href="#" className="text-sm font-bold text-[#3713ec] hover:text-[#2c0fb8] transition-colors">
-                                    Forgot Password?
-                                </a>
-                            </div>
-
-                            {/* Login Button */}
-                            <button
-                                type="submit"
-                                className="w-full h-14 bg-[#3713ec] hover:bg-[#2c0fb8] text-white font-bold rounded-2xl shadow-xl shadow-[#3713ec]/20 hover:shadow-[#3713ec]/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 flex items-center justify-center gap-2 group mt-4"
-                            >
-                                <span> {loading ? 'Logging in...' : 'Login'} </span>
-                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                            </button>
-                        </form>
-
-
-                        <div className="lg:hidden text-center">
-                            <p className="text-sm font-medium text-slate-500">
-                                Facing issues? <a href="#" className="text-[#3713ec] font-bold hover:underline">Support Center</a>
-                            </p>
-                        </div>
-                    </div>
-                </main>
-
-                {/* Footer */}
-                <footer className="w-full p-8 lg:px-24 bg-white bg-white dark:bg-slate-900">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                            © 2024 MYTIME CLOUD SYSTEMS
-                        </span>
-                        <div className="flex gap-8">
-                            <a href="#" className="text-xs font-bold text-slate-400 hover:text-[#3713ec] transition-colors uppercase tracking-widest">Privacy</a>
-                            <a href="#" className="text-xs font-bold text-slate-400 hover:text-[#3713ec] transition-colors uppercase tracking-widest">Terms</a>
-                            <a href="#" className="text-xs font-bold text-slate-400 hover:text-[#3713ec] transition-colors uppercase tracking-widest">Help</a>
-                        </div>
-                    </div>
-                </footer>
-            </div>
+            </footer>
         </div>
     );
 };
