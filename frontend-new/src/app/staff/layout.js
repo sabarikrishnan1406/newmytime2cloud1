@@ -6,10 +6,9 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/staff/dashboard", icon: "grid_view", label: "Dashboard" },
-  { href: "/staff/attendance", icon: "event_available", label: "Attendance" },
-  { href: "/staff/schedule", icon: "schedule", label: "Schedule" },
-  { href: "/staff/documents", icon: "description", label: "Documents" },
-  { href: "/staff/reports", icon: "bar_chart", label: "Reports" },
+  { href: "/staff/attendance", icon: "calendar_today", label: "Attendance" },
+  { href: "/staff/payroll", icon: "payments", label: "Payroll" },
+  { href: "/staff/profile", icon: "person", label: "Profile" },
 ];
 
 export default function StaffLayout({ children }) {
@@ -17,17 +16,15 @@ export default function StaffLayout({ children }) {
 
   return (
     <div className="staff-portal flex min-h-screen antialiased overflow-x-hidden">
-      {/* SIDE NAVIGATION */}
-      <aside className="fixed left-0 top-0 h-screen w-16 flex flex-col items-center py-6 gap-4 bg-[#070e1b]/80 backdrop-blur-xl border-r border-[#81ecff]/10 shadow-[20px_0_40px_rgba(0,0,0,0.4)] z-50">
+      {/* SIDEBAR */}
+      <aside className="fixed left-0 top-0 h-screen w-20 flex flex-col items-center py-6 gap-8 bg-[#050B18]/90 border-r border-white/5 staff-sidebar-glow z-50">
         {/* Logo */}
-        <div className="mb-2">
-          <div className="w-10 h-10 bg-[#00e3fd] rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(129,236,255,0.4)]">
-            <span className="material-symbols-outlined text-[#004d57] font-bold text-[20px]">bolt</span>
-          </div>
+        <div className="w-12 h-12 staff-glass-card rounded-2xl flex items-center justify-center border-[#81ecff]/20">
+          <span className="material-symbols-outlined text-[#81ecff] scale-125">fingerprint</span>
         </div>
 
-        {/* Nav Items */}
-        <nav className="flex flex-col items-center gap-4 flex-1">
+        {/* Nav */}
+        <nav className="flex flex-col items-center gap-6 flex-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
             return (
@@ -35,10 +32,10 @@ export default function StaffLayout({ children }) {
                 key={item.href}
                 href={item.href}
                 title={item.label}
-                className={`w-10 h-10 flex items-center justify-center rounded-2xl hover:scale-110 transition-all duration-200 ${
+                className={`w-12 h-12 flex items-center justify-center rounded-xl transition-colors ${
                   isActive
-                    ? "bg-[#00e3fd]/10 text-[#81ecff] shadow-[0_0_15px_rgba(129,236,255,0.2)]"
-                    : "text-[#a5abbd] hover:bg-[#81ecff]/5"
+                    ? "bg-[#81ecff]/10 text-[#81ecff]"
+                    : "text-slate-500 hover:text-white"
                 }`}
               >
                 <span className="material-symbols-outlined">{item.icon}</span>
@@ -47,19 +44,19 @@ export default function StaffLayout({ children }) {
           })}
         </nav>
 
-        {/* Bottom: Settings & Profile */}
-        <div className="flex flex-col items-center gap-4 mt-auto">
-          <button className="w-10 h-10 flex items-center justify-center text-[#a5abbd] hover:bg-[#81ecff]/5 rounded-2xl hover:scale-110 transition-all duration-200">
+        {/* Bottom */}
+        <div className="flex flex-col items-center gap-6">
+          <button className="w-12 h-12 flex items-center justify-center text-slate-500 hover:text-white">
             <span className="material-symbols-outlined">settings</span>
           </button>
-          <div className="w-9 h-9 rounded-lg overflow-hidden ring-2 ring-[#81ecff]/20 bg-[#1c2639]">
-            <span className="material-symbols-outlined text-[#a5abbd] w-full h-full flex items-center justify-center text-xl">person</span>
+          <div className="w-10 h-10 rounded-xl overflow-hidden ring-1 ring-white/10 bg-[#0A1628]">
+            <span className="material-symbols-outlined text-slate-400 w-full h-full flex items-center justify-center text-2xl">person</span>
           </div>
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
-      <main className="ml-16 flex-1 min-h-screen overflow-y-auto h-screen">{children}</main>
+      {/* MAIN */}
+      <main className="ml-20 flex-1 min-h-screen overflow-y-auto h-screen">{children}</main>
     </div>
   );
 }
