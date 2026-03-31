@@ -392,6 +392,9 @@ class DeviceController extends Controller
             }
 
             $data = $request->validated();
+            if (!empty($data['camera_password'])) {
+                $data['camera_password'] = \Illuminate\Support\Facades\Crypt::encryptString($data['camera_password']);
+            }
 
             if ($data["model_number"] == "OX-900") {
                 $data["camera_sdk_url"] = env('OX900_SDK_URL');
@@ -890,7 +893,11 @@ class DeviceController extends Controller
 
 
         try {
-            $record = $Device->update($request->validated());
+            $data = $request->validated();
+            if (!empty($data['camera_password'])) {
+                $data['camera_password'] = \Illuminate\Support\Facades\Crypt::encryptString($data['camera_password']);
+            }
+            $record = $Device->update($data);
 
             //update to Device
             if ($request->model_number == 'OX-900') {
