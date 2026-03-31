@@ -22,7 +22,11 @@ let defaultPayload = {
   function: "auto",
   device_type: "all",
   status_id: 1,
-  ip: "0.0.0.0"
+  ip: "0.0.0.0",
+  camera_rtsp_ip: "",
+  camera_rtsp_port: "554",
+  camera_username: "",
+  camera_password: "",
 };
 
 const DeviceCreate = ({ onSuccess = () => { } }) => {
@@ -259,6 +263,61 @@ const DeviceCreate = ({ onSuccess = () => { } }) => {
                     items={STATUSSES} />
                 </div>
               </div>
+
+                {/* Camera Settings */}
+                <div className="pt-4 border-t border-gray-200 dark:border-white/10">
+                  <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-4">Camera Settings (Optional)</h4>
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-medium text-slate-400">
+                          Camera IP Address
+                        </label>
+                        <Input
+                          placeholder="e.g. 192.168.1.100"
+                          value={form.camera_rtsp_ip}
+                          onChange={(e) => handleChange("camera_rtsp_ip", e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-medium text-slate-400">
+                          Camera Port
+                        </label>
+                        <Input
+                          placeholder="554"
+                          value={form.camera_rtsp_port}
+                          onChange={(e) => handleChange("camera_rtsp_port", e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-medium text-slate-400">
+                          Camera Username
+                        </label>
+                        <Input
+                          placeholder="admin"
+                          value={form.camera_username}
+                          onChange={(e) => handleChange("camera_username", e.target.value)}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-sm font-medium text-slate-400">
+                          Camera Password
+                        </label>
+                        <Input
+                          type="password"
+                          placeholder="********"
+                          value={form.camera_password}
+                          onChange={(e) => handleChange("camera_password", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
             </div>
 
             {/* Action Buttons */}
