@@ -67,9 +67,14 @@ const Login = () => {
         setLoading(true);
 
         try {
-            let payload = { user_type: role, ...credentials };
+            const { source, ...rest } = credentials;
+            let payload = role === 'employee'
+                ? { ...rest }
+                : { user_type: role, ...credentials };
             const apiBase = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/+$/, "");
-            let endpoint = `${apiBase}/login`;
+            let endpoint = role === 'employee'
+                ? `${apiBase}/employee/login`
+                : `${apiBase}/login`;
 
             const { data } = await axios.post(endpoint, payload);
             const token = data?.token;
@@ -89,10 +94,19 @@ const Login = () => {
                 localStorage.setItem("token", token);
                 localStorage.setItem("user", JSON.stringify(data?.user));
 
-                window.location.href = "/";
+                // Redirect based on role
+                if (role === 'employee') {
+                    window.location.href = "/staff/dashboard";
+                } else {
+                    window.location.href = "/";
+                }
             }
         } catch (error) {
-            setMsg('Login failed.');
+            const errMsg = error?.response?.data?.message
+                || error?.response?.data?.errors?.email?.[0]
+                || 'Login failed.';
+            setMsg(errMsg);
+            console.error('Login error:', error);
         } finally {
             setLoading(false);
         }

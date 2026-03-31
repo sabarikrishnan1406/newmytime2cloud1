@@ -1,8 +1,6 @@
 // app/layout.js
 import "./globals.css";
-import LeftMenu from "@/components/leftMenu";
-import Header from "@/components/Header";
-import MainContentWrapper from "@/components/MainContentWrapper";
+import LayoutShell from "@/components/LayoutShell";
 import { DarkModeProvider } from "@/context/DarkModeContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { LiveAttendanceProvider } from "@/context/LiveAttendanceContext";
@@ -18,6 +16,12 @@ export default function RootLayout({ children }) {
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap"
+        />
+
+        {/* Plus Jakarta Sans & Inter (Staff Portal) */}
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500&display=swap"
         />
 
         {/* ✅ Material Icons */}
@@ -50,11 +54,7 @@ export default function RootLayout({ children }) {
         <DarkModeProvider>
           <AuthProvider>
             <LiveAttendanceProvider>
-              <Header />
-              <div className="flex flex-1">
-                <LeftMenu />
-                <MainContentWrapper>{children}</MainContentWrapper>
-              </div>
+              <LayoutShell>{children}</LayoutShell>
             </LiveAttendanceProvider>
           </AuthProvider>
         </DarkModeProvider>
