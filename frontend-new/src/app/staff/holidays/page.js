@@ -210,34 +210,12 @@ export default function StaffHolidaysPage() {
 
       <div>
         <section className="mb-8 rounded-2xl border border-cyan-300/10 bg-[#070e1b]/80 px-6 py-5 backdrop-blur-xl">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col">
             <div>
               <h1 className="font-headline text-2xl font-bold tracking-tight text-slate-100">
                 Holidays &amp; Calendar
               </h1>
               <p className="mt-1 text-sm text-slate-500">Official holiday schedule, regional observances, and quick leave planning.</p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="relative min-w-0 sm:w-64">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">search</span>
-                <input
-                  className="w-full rounded-full border border-white/10 bg-slate-800/70 py-2 pl-10 pr-4 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-300/40 focus:ring-1 focus:ring-cyan-300/40"
-                  placeholder="Search events..."
-                  type="text"
-                />
-              </div>
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                <button className="rounded-full p-2 text-slate-500 transition hover:bg-cyan-300/10 hover:text-cyan-300">
-                  <span className="material-symbols-outlined">notifications</span>
-                </button>
-                <button className="rounded-full p-2 text-slate-500 transition hover:bg-cyan-300/10 hover:text-cyan-300">
-                  <span className="material-symbols-outlined">settings</span>
-                </button>
-                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-cyan-300/20 bg-slate-800 text-sm font-bold text-cyan-300">
-                  AP
-                </div>
-              </div>
             </div>
           </div>
         </section>
@@ -366,22 +344,6 @@ export default function StaffHolidaysPage() {
               </div>
             </section>
 
-            <section className="relative overflow-hidden rounded-2xl p-6">
-              <div className="absolute inset-0 bg-gradient-to-br from-[#6001d1] to-slate-800"></div>
-              <div className="absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-cyan-300/20 blur-3xl transition duration-700 group-hover:scale-125"></div>
-              <div className="relative z-10">
-                <h4 className="mb-2 font-headline text-lg font-bold text-slate-100">Need time off?</h4>
-                <p className="mb-6 text-sm leading-relaxed text-slate-200/80">
-                  Planning a vacation or need a personal break? Apply for leave in just a few clicks.
-                </p>
-                <Link
-                  href="/staff/leave/apply"
-                  className="block w-full rounded-xl bg-cyan-300 py-3 text-center font-black tracking-wider text-[#004d57] shadow-[0_4px_20px_rgba(0,227,253,0.3)] transition duration-300 hover:scale-[1.02] hover:shadow-[0_4px_30px_rgba(0,227,253,0.45)] active:scale-95"
-                >
-                  Apply for Leave
-                </Link>
-              </div>
-            </section>
           </aside>
         </div>
       </div>

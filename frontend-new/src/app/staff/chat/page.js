@@ -38,38 +38,6 @@ export default function StaffChatPage() {
   return (
     <div className="h-screen overflow-hidden p-4 sm:p-6 lg:p-8">
       <div className="flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-white/5 bg-[#081223]/40">
-        <header className="flex flex-col gap-4 border-b border-cyan-300/10 bg-[#070e1b]/80 px-4 py-4 backdrop-blur-xl sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-4">
-            <span className="font-headline text-xl font-bold tracking-tighter text-cyan-300">HR Pulse</span>
-            <div className="relative hidden md:block">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">search</span>
-              <input
-                className="w-64 rounded-full bg-slate-800/70 py-1.5 pl-10 pr-4 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:ring-1 focus:ring-cyan-300/50"
-                placeholder="Search pulses..."
-                type="text"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-6 lg:justify-end">
-            <div className="flex gap-2">
-              <button className="rounded-full p-2 text-slate-500 transition hover:bg-cyan-300/10 hover:text-cyan-300">
-                <span className="material-symbols-outlined">notifications</span>
-              </button>
-              <button className="rounded-full p-2 text-slate-500 transition hover:bg-cyan-300/10 hover:text-cyan-300">
-                <span className="material-symbols-outlined">help_outline</span>
-              </button>
-              <button className="rounded-full p-2 text-slate-500 transition hover:bg-cyan-300/10 hover:text-cyan-300">
-                <span className="material-symbols-outlined">settings</span>
-              </button>
-            </div>
-
-            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/20 bg-slate-800 text-xs font-bold text-cyan-300">
-              AP
-            </div>
-          </div>
-        </header>
-
         <main className="flex min-h-0 flex-1 flex-col xl:flex-row">
           <section className="flex w-full min-h-0 flex-col border-b border-cyan-300/10 bg-slate-950/20 xl:w-96 xl:border-b-0 xl:border-r">
             <div className="p-6">

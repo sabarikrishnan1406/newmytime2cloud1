@@ -34,27 +34,13 @@ const updates = [
   },
 ];
 
-const trendingTopics = ["#CompanyRetreat", "#SecurityFirst", "#Health2025", "#NexusHackathon", "#PulseUpdate"];
-
-const quickResources = [
-  { icon: "menu_book", label: "Employee Handbook" },
-  { icon: "calendar_month", label: "Holiday Calendar" },
-  { icon: "support_agent", label: "IT Service Desk" },
-];
-
-const aiTasks = [
-  { icon: "check_circle", label: "Submit Expense Reports", done: true },
-  { icon: "radio_button_unchecked", label: "Complete Security Module" },
-  { icon: "radio_button_unchecked", label: "Verify 2025 Health Plan" },
-];
-
 export default function StaffAnnouncementPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
       <div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-          <div className="flex flex-col gap-8 lg:col-span-8">
+          <div className="flex flex-col gap-8 lg:col-span-12">
             <section className="group relative overflow-hidden rounded-[1.75rem] shadow-2xl">
               <img
                 alt="Company retreat background"
@@ -127,85 +113,6 @@ export default function StaffAnnouncementPage() {
                   </div>
                 </article>
               ))}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-8 lg:col-span-4">
-            <div className="staff-glass-card group relative overflow-hidden rounded-[1.75rem] p-6">
-              <div className="absolute right-0 top-0 p-4 opacity-20">
-                <span className="material-symbols-outlined text-6xl text-cyan-300">auto_awesome</span>
-              </div>
-              <div className="mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-cyan-300">insights</span>
-                <h3 className="font-headline font-bold text-white">AI Pulse Summary</h3>
-              </div>
-              <p className="mb-6 text-sm leading-relaxed text-slate-500">
-                This week focuses on <span className="font-semibold text-cyan-300">Security Compliance</span> and{" "}
-                <span className="font-semibold text-purple-300">Benefits Enrollment</span>. 82% of your department has completed the IT training.
-              </p>
-              <div className="flex flex-col gap-3">
-                {aiTasks.map((task) => (
-                  <div
-                    key={task.label}
-                    className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 p-3 transition group-hover:bg-white/10"
-                  >
-                    <span className={`material-symbols-outlined text-sm ${task.done ? "text-cyan-300" : "text-slate-500"}`}>{task.icon}</span>
-                    <span className="text-sm text-slate-100">{task.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <h3 className="px-2 font-headline text-sm font-bold uppercase tracking-widest text-white">Trending Topics</h3>
-              <div className="flex flex-wrap gap-2">
-                {trendingTopics.map((topic, index) => (
-                  <span
-                    key={topic}
-                    className={`cursor-pointer rounded-full border px-4 py-2 text-xs font-semibold transition ${
-                      index === 0
-                        ? "border-cyan-300/20 bg-slate-800 text-cyan-300 hover:bg-cyan-300/10"
-                        : "border-white/10 bg-slate-800 text-slate-500 hover:border-cyan-300/50 hover:text-slate-100"
-                    }`}
-                  >
-                    {topic}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="staff-glass-card rounded-[1.75rem] p-6">
-              <h3 className="mb-6 font-headline font-bold text-white">Quick Resources</h3>
-              <nav className="flex flex-col gap-2">
-                {quickResources.map((resource) => (
-                  <a
-                    key={resource.label}
-                    className="flex items-center justify-between rounded-xl p-3 text-slate-500 transition hover:bg-white/5 hover:text-white"
-                    href="#"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-xl text-cyan-300">{resource.icon}</span>
-                      <span className="text-sm font-medium">{resource.label}</span>
-                    </div>
-                    <span className="material-symbols-outlined text-sm">open_in_new</span>
-                  </a>
-                ))}
-              </nav>
-            </div>
-
-            <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-[#6001d1] to-[#6514d6] p-6">
-              <div className="absolute -bottom-4 -right-4 opacity-20">
-                <span className="material-symbols-outlined rotate-12 text-9xl text-white">celebration</span>
-              </div>
-              <div className="relative z-10">
-                <h3 className="mb-2 font-headline text-xl font-extrabold text-white">Refer a Friend</h3>
-                <p className="mb-6 text-sm leading-relaxed text-purple-100">
-                  Know someone who would be a perfect fit? Refer them and earn a $1,000 bonus!
-                </p>
-                <button className="w-full rounded-xl bg-white py-3 font-headline font-bold text-[#6001d1] transition hover:scale-[1.02] hover:bg-white/90">
-                  Check Job Board
-                </button>
-              </div>
             </div>
           </div>
         </div>

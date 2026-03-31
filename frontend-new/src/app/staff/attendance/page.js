@@ -109,7 +109,7 @@ export default function StaffAttendancePage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
       <div>
-        <section className="mb-6 flex flex-col gap-5 xl:mb-8 xl:flex-row xl:items-end xl:justify-between">
+        <section className="mb-6 xl:mb-8">
           <div>
             <nav className="mb-2 flex flex-wrap items-center gap-2 text-xs font-medium tracking-wide text-slate-500">
               <span>DASHBOARD</span>
@@ -117,18 +117,6 @@ export default function StaffAttendancePage() {
               <span className="text-cyan-300">ATTENDANCE LOGS</span>
             </nav>
             <h1 className="font-headline text-2xl font-bold tracking-tight text-slate-100">Attendance Logs</h1>
-          </div>
-
-          <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:items-center">
-            <div className="grid grid-cols-3 rounded-2xl bg-slate-800/70 p-1 sm:flex">
-              <button className="rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-slate-400 transition hover:text-slate-100">Daily</button>
-              <button className="rounded-xl bg-cyan-400/10 px-3.5 py-1.5 text-[11px] font-bold text-cyan-300 shadow-sm">Weekly</button>
-              <button className="rounded-xl px-3.5 py-1.5 text-[11px] font-bold text-slate-400 transition hover:text-slate-100">Monthly</button>
-            </div>
-            <button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-slate-800/70 px-4 py-2 text-[13px] font-semibold text-slate-100 shadow-lg transition hover:bg-slate-700/70 sm:w-auto">
-              <span className="material-symbols-outlined text-sm">download</span>
-              Export
-            </button>
           </div>
         </section>
 
@@ -172,7 +160,7 @@ export default function StaffAttendancePage() {
         </section>
 
         <section className="staff-glass-card mb-6 rounded-[1.35rem] border border-white/5 p-3 sm:mb-8 sm:rounded-[1.5rem] sm:p-4">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
               <button className="flex w-full items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-800/70 px-3.5 py-2 text-[13px] font-semibold text-slate-100 sm:w-auto">
                 <span className="material-symbols-outlined text-sm text-slate-500">calendar_today</span>
@@ -182,24 +170,6 @@ export default function StaffAttendancePage() {
               <button className="flex w-full items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-800/70 px-3.5 py-2 text-[13px] font-semibold text-slate-100 sm:w-auto">
                 Status: All
                 <span className="material-symbols-outlined text-sm text-slate-500">arrow_drop_down</span>
-              </button>
-              <button className="flex w-full items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-800/70 px-3.5 py-2 text-[13px] font-semibold text-slate-100 sm:w-auto">
-                Location: HQ
-                <span className="material-symbols-outlined text-sm text-slate-500">arrow_drop_down</span>
-              </button>
-              <button className="px-1 text-left text-xs font-bold uppercase tracking-widest text-cyan-300 transition hover:text-cyan-200 sm:px-2">
-                Clear All Filters
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-              <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-300 px-4 py-2 text-[13px] font-bold text-slate-900 shadow-[0_4px_15px_rgba(90,228,208,0.2)] transition hover:shadow-[0_4px_25px_rgba(90,228,208,0.35)] sm:w-auto">
-                <span className="material-symbols-outlined text-sm">login</span>
-                Clock In
-              </button>
-              <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-slate-800 px-4 py-2 text-[13px] font-bold text-slate-100 transition hover:bg-slate-700 sm:w-auto">
-                <span className="material-symbols-outlined text-sm">logout</span>
-                Clock Out
               </button>
             </div>
           </div>

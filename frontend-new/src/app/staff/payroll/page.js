@@ -30,16 +30,6 @@ const payrollMetrics = [
     metaIcon: "info",
     metaClass: "text-slate-500",
   },
-  {
-    label: "Tax Deductions",
-    value: "$21,450.32",
-    icon: "receipt_long",
-    iconTint: "bg-red-400/10 text-red-300",
-    iconGhost: "text-red-300/10",
-    meta: "23.2% Effective Rate",
-    metaIcon: "analytics",
-    metaClass: "text-slate-500",
-  },
 ];
 
 const payoutHistory = [
@@ -171,13 +161,6 @@ export default function StaffPayrollPage() {
                   <span className="text-sm font-medium text-slate-100">Net Salary</span>
                 </div>
                 <span className="font-bold text-slate-100">$6,337.50</span>
-              </div>
-              <div className="flex items-center justify-between rounded-xl border-l-4 border-purple-300 bg-purple-400/5 px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="h-2 w-2 rounded-full bg-purple-300"></span>
-                  <span className="text-sm font-medium text-slate-100">Taxes &amp; Deductions</span>
-                </div>
-                <span className="font-bold text-slate-100">$2,112.50</span>
               </div>
             </div>
           </div>

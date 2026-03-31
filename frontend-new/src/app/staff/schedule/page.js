@@ -1,46 +1,3 @@
-const metricCards = [
-  {
-    label: "Active Rotation",
-    value: "Alpha-7",
-    icon: "sync",
-    iconClass: "bg-purple-400/10 text-purple-300",
-    badge: "In Progress",
-    badgeClass: "bg-purple-400/20 text-purple-200",
-    helper: "System maintenance cycle active",
-    helperIcon: "info",
-  },
-  {
-    label: "Total Weekly Hours",
-    value: "42.5",
-    suffix: "/ 40.0",
-    icon: "schedule",
-    iconClass: "bg-cyan-400/10 text-cyan-300",
-    badge: "+2.5 Overtime",
-    badgeClass: "bg-cyan-400/20 text-cyan-300",
-    progress: "w-[85%]",
-  },
-  {
-    label: "Remaining Shift",
-    value: "03:45:12",
-    icon: "hourglass_top",
-    iconClass: "bg-emerald-400/10 text-emerald-300",
-    badge: "Live",
-    badgeClass: "bg-emerald-400/20 text-emerald-300",
-    helper: "Ends at 18:00 Local Time",
-    live: true,
-  },
-  {
-    label: "Next Rest Period",
-    value: "14h",
-    suffix: "Gap",
-    icon: "nightlight",
-    iconClass: "bg-purple-400/10 text-purple-300",
-    badge: "Scheduled",
-    badgeClass: "bg-slate-800 text-slate-400",
-    helper: "Starts Friday, 08:00",
-  },
-];
-
 const weeklyPlanner = [
   {
     day: "Mon",
@@ -197,70 +154,13 @@ export default function StaffSchedulePage() {
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
       <div>
         <header className="sticky top-0 z-20 -mx-4 mb-8 bg-[#081223]/70 px-4 py-4 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-col">
             <div className="flex flex-col">
               <h1 className="font-headline text-2xl font-bold tracking-tight text-slate-100">Shift Schedule</h1>
               <p className="text-sm font-medium text-slate-500">October 23 - October 29, 2023</p>
             </div>
-
-            <div className="flex flex-col gap-3 md:flex-row md:items-center">
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">search</span>
-                <input
-                  className="w-full rounded-full border border-white/10 bg-slate-800/80 py-2.5 pl-11 pr-6 text-sm text-slate-100 outline-none transition focus:border-cyan-400/30 md:w-72"
-                  placeholder="Search shifts or members..."
-                  type="text"
-                />
-              </div>
-              <button className="flex items-center justify-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-5 py-2.5 text-sm font-bold text-cyan-300 shadow-[0_0_20px_rgba(129,236,255,0.1)] transition hover:bg-cyan-400/20">
-                <span className="material-symbols-outlined text-lg">swap_horiz</span>
-                Request Swap
-              </button>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-cyan-400/20 bg-slate-800 font-bold text-slate-100">
-                  MT
-                </div>
-                <div className="hidden lg:block">
-                  <p className="text-xs font-bold text-slate-100 leading-tight">Marcus Thorne</p>
-                  <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Senior Lead</p>
-                </div>
-              </div>
-            </div>
           </div>
         </header>
-
-        <section className="mb-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-          {metricCards.map((card) => (
-            <div key={card.label} className="staff-glass-card rounded-[20px] p-6 transition hover:-translate-y-1">
-              <div className="mb-4 flex items-start justify-between gap-4">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${card.iconClass}`}>
-                  <span className="material-symbols-outlined">{card.icon}</span>
-                </div>
-                <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${card.badgeClass}`}>
-                  {card.badge}
-                </span>
-              </div>
-
-              <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-500">{card.label}</p>
-              <h3 className="font-headline text-3xl font-bold text-slate-100">
-                {card.value}
-                {card.suffix && <span className="ml-1 text-sm font-medium text-slate-500">{card.suffix}</span>}
-              </h3>
-
-              {card.progress ? (
-                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-                  <div className={`h-full bg-gradient-to-r from-cyan-300 to-cyan-400 ${card.progress}`}></div>
-                </div>
-              ) : (
-                <p className="mt-2 flex items-center gap-1 text-[11px] text-slate-500 italic">
-                  {card.live && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300"></span>}
-                  {card.helperIcon && <span className="material-symbols-outlined text-[14px]">{card.helperIcon}</span>}
-                  {card.helper}
-                </p>
-              )}
-            </div>
-          ))}
-        </section>
 
         <section className="staff-glass-card mb-10 rounded-[24px] p-6 xl:p-8">
           <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
