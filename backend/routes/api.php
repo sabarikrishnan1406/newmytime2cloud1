@@ -31,6 +31,7 @@ include('branch.php');
 include('whatsapp.php');
 include('access_control_time_slot.php');
 include('devices.php');
+include('camera-stream.php');
 include('realtime_location.php');
 include('clocking.php');
 include('change_request.php');
