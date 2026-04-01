@@ -77,13 +77,14 @@ class CameraStreamController extends Controller
         return response()->json([
             'status' => true,
             'data' => [
-                'rtsp_url' => "rtsp://{$device->camera_username}:{$password}@{$device->camera_rtsp_ip}:{$device->camera_rtsp_port}/stream1",
+                'rtsp_url' => null,
                 'camera_rtsp_ip' => $device->camera_rtsp_ip,
                 'camera_rtsp_port' => $device->camera_rtsp_port,
                 'camera_username' => $device->camera_username,
                 'camera_password' => $password,
                 'device_name' => $device->name,
                 'branch_id' => $device->branch_id,
+                'company_id' => $device->company_id,
             ]
         ]);
     }

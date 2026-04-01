@@ -126,6 +126,8 @@ export const leftNavLinks = {
   "/department-tabs": companyMenu,
   "/device": companyMenu,
   "/live-camera": companyMenu,
+  "/live-camera/stream": companyMenu,
+  "/live-camera/register": companyMenu,
   "/payslips": payrollMenu,
   "/geo-fencing": companyMenu,
   "/live-tracker": companyMenu,
