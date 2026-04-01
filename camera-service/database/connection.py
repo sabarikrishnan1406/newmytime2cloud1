@@ -20,8 +20,8 @@ def get_connection():
     )
 
 
-def load_all_embeddings(company_id: int) -> dict:
-    """Load all employee face embeddings for a company into memory.
+def load_all_embeddings(company_id: int, branch_id: int | None = None) -> dict:
+    """Load employee face embeddings for a company, optionally scoped to a branch.
 
     Returns:
         {employee_id: {"name": str, "embeddings": [np.array, ...]}}
@@ -29,15 +29,27 @@ def load_all_embeddings(company_id: int) -> dict:
     conn = get_connection()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("""
+            query = """
                 SELECT e.id as employee_id,
                        CONCAT(e.first_name, ' ', e.last_name) as name,
                        ef.embedding
                 FROM employee_face_embeddings ef
                 JOIN employees e ON e.id = ef.employee_id
                 WHERE ef.company_id = %s
+            """
+            params = [company_id]
+
+            if branch_id is not None:
+                query += """
+                  AND e.branch_id = %s
+                """
+                params.append(branch_id)
+
+            query += """
                 ORDER BY e.id
-            """, (company_id,))
+            """
+
+            cur.execute(query, params)
 
             rows = cur.fetchall()
 
@@ -57,7 +69,12 @@ def load_all_embeddings(company_id: int) -> dict:
                 result[eid] = {"name": row["name"], "embeddings": []}
             result[eid]["embeddings"].append(embedding)
 
-        log(f"Loaded {sum(len(v['embeddings']) for v in result.values())} embeddings for {len(result)} employees")
+        scope = f"company {company_id}"
+        if branch_id is not None:
+            scope += f", branch {branch_id}"
+        log(
+            f"Loaded {sum(len(v['embeddings']) for v in result.values())} embeddings for {len(result)} employees in {scope}"
+        )
         return result
 
     finally:
@@ -141,7 +158,7 @@ def get_employee_name(employee_id: int) -> str | None:
         conn.close()
 
 
-def get_employees_with_photos(company_id: int) -> list:
+def get_employees_with_photos(company_id: int, branch_id: int | None = None) -> list:
     """Fetch all employees that have a profile picture.
 
     Returns:
@@ -150,19 +167,26 @@ def get_employees_with_photos(company_id: int) -> list:
     conn = get_connection()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("""
+            query = """
                 SELECT id, CONCAT(first_name, ' ', last_name) as name, profile_picture
                 FROM employees
                 WHERE company_id = %s
                   AND profile_picture IS NOT NULL
                   AND profile_picture != ''
-            """, (company_id,))
+            """
+            params = [company_id]
+
+            if branch_id is not None:
+                query += " AND branch_id = %s"
+                params.append(branch_id)
+
+            cur.execute(query, params)
             return cur.fetchall()
     finally:
         conn.close()
 
 
-def get_employees_without_embeddings(company_id: int) -> list:
+def get_employees_without_embeddings(company_id: int, branch_id: int | None = None) -> list:
     """Fetch employees that have profile photos but no embeddings yet.
 
     Returns:
@@ -171,7 +195,7 @@ def get_employees_without_embeddings(company_id: int) -> list:
     conn = get_connection()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("""
+            query = """
                 SELECT e.id, CONCAT(e.first_name, ' ', e.last_name) as name, e.profile_picture
                 FROM employees e
                 LEFT JOIN employee_face_embeddings ef ON e.id = ef.employee_id
@@ -179,7 +203,14 @@ def get_employees_without_embeddings(company_id: int) -> list:
                   AND e.profile_picture IS NOT NULL
                   AND e.profile_picture != ''
                   AND ef.id IS NULL
-            """, (company_id,))
+            """
+            params = [company_id]
+
+            if branch_id is not None:
+                query += " AND e.branch_id = %s"
+                params.append(branch_id)
+
+            cur.execute(query, params)
             return cur.fetchall()
     finally:
         conn.close()

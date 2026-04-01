@@ -53,6 +53,7 @@ class StoreRequest extends FormRequest
             //'camera_save_images' => 'required'
             'camera_rtsp_ip' => ['nullable', 'ip'],
             'camera_rtsp_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
+            'camera_rtsp_path' => ['nullable', 'string', 'max:255'],
             'camera_username' => ['nullable', 'string', 'max:255'],
             'camera_password' => ['nullable', 'string', 'max:255'],
         ];

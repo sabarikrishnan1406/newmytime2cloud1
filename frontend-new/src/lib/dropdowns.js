@@ -1,4 +1,5 @@
 export const MODEL_NUMBERS = [
+    { id: `Camera`, name: `Camera` },
     { id: `MYTIME1`, name: `MYTIME1` },
     { id: `OX-866`, name: `OX-866` },
     { id: `OX-886`, name: `OX-886` },
@@ -17,7 +18,7 @@ export const FUNCTIONS = [
 ];
 
 export const DEVICE_TYPES = [
-    { id: 'all', name: 'All(Attendance and Access)' },
+    { id: 'all', name: 'All' },
     { id: 'Attendance', name: 'Attendance' },
     { id: 'Access Control', name: 'Access Control' },
 ];

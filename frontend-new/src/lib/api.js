@@ -484,9 +484,23 @@ export const getEmployeesJson = async (company_id) => {
     return data;
 };
 
+export const getDevice = async (id) => {
+    const { data } = await axios.get(`${API_BASE}/device/${id}`);
+    return data;
+};
+
 export const createDevice = async (payload = {}) => {
     const user = await getUser();
     return await axios.post(`${API_BASE}/device`, { ...payload, company_id: user?.company_id || 0 });
+};
+
+export const testCameraConnection = async (payload = {}) => {
+    const user = await getUser();
+    const { data } = await axios.post(`${API_BASE}/camera/test-connection`, {
+        ...payload,
+        company_id: user?.company_id || 0,
+    });
+    return data;
 };
 
 export const updateDevice = async (id, payload = {}) => {

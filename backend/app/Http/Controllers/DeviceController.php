@@ -392,6 +392,9 @@ class DeviceController extends Controller
             }
 
             $data = $request->validated();
+            if (!empty($data['camera_rtsp_ip']) && empty($data['camera_rtsp_port'])) {
+                $data['camera_rtsp_port'] = 554;
+            }
             if (!empty($data['camera_password'])) {
                 $data['camera_password'] = \Illuminate\Support\Facades\Crypt::encryptString($data['camera_password']);
             }
@@ -417,7 +420,18 @@ class DeviceController extends Controller
 
     public function show(Device $model, $id)
     {
-        return $model->with(['status', 'company'])->find($id);
+        $device = $model->with(['status', 'company'])->find($id);
+        
+        // Decrypt camera password if it exists
+        if ($device && !empty($device->camera_password)) {
+            try {
+                $device->camera_password = \Illuminate\Support\Facades\Crypt::decryptString($device->camera_password);
+            } catch (\Exception $e) {
+                // Password may not be encrypted (legacy data), use as-is
+            }
+        }
+        
+        return $device;
     }
 
     public function getDeviceByUserId(Device $model, $id)
@@ -894,7 +908,12 @@ class DeviceController extends Controller
 
         try {
             $data = $request->validated();
-            if (!empty($data['camera_password'])) {
+            if (!empty($data['camera_rtsp_ip']) && empty($data['camera_rtsp_port'])) {
+                $data['camera_rtsp_port'] = 554;
+            }
+            if (empty($data['camera_password'])) {
+                unset($data['camera_password']);
+            } else {
                 $data['camera_password'] = \Illuminate\Support\Facades\Crypt::encryptString($data['camera_password']);
             }
             $record = $Device->update($data);

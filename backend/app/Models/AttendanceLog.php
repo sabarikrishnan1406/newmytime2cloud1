@@ -146,11 +146,13 @@ class AttendanceLog extends Model
         })
             // ->distinct("LogTime", "UserID", "company_id")
             ->when($request->filled('department_ids'), function ($q) use ($request) {
-                $q->whereHas('employee', fn(Builder $query) => $query->where('department_id', $request->department_ids));
+                $ids = (array) $request->input('department_ids');
+                $q->whereHas('employee', fn(Builder $query) => $query->whereIn('department_id', $ids));
             })
 
             ->with('device', function ($q) use ($request) {
-                $q->where('company_id', $request->company_id);
+                $q->where('company_id', $request->company_id)
+                  ->select('id', 'device_id', 'name', 'location', 'device_type', 'function', 'company_id', 'status_id', 'model_number', 'short_name');
             })
             ->with('approver')
             ->when($request->from_date, function ($query) use ($request) {

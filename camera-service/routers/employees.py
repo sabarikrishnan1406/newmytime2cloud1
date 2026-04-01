@@ -37,10 +37,13 @@ async def download_image(url: str) -> np.ndarray | None:
 
 
 @router.get("/employees/sync")
-async def sync_embeddings(company_id: int = Query(default=1)):
+async def sync_embeddings(
+    company_id: int = Query(default=1),
+    branch_id: int | None = Query(default=None),
+):
     """Force reload employee embeddings from the database into memory."""
-    refresh_embeddings(company_id)
-    stored = get_embeddings(company_id)
+    refresh_embeddings(company_id, branch_id)
+    stored = get_embeddings(company_id, branch_id)
 
     total_embeddings = sum(len(v["embeddings"]) for v in stored.values())
 
@@ -49,6 +52,7 @@ async def sync_embeddings(company_id: int = Query(default=1)):
         "message": f"Synced {total_embeddings} embeddings for {len(stored)} employees",
         "data": {
             "company_id": company_id,
+            "branch_id": branch_id,
             "employees": len(stored),
             "total_embeddings": total_embeddings,
         }
@@ -56,7 +60,11 @@ async def sync_embeddings(company_id: int = Query(default=1)):
 
 
 @router.post("/employees/generate-embeddings")
-async def generate_embeddings_from_photos(company_id: int = Query(default=1), force: bool = Query(default=False)):
+async def generate_embeddings_from_photos(
+    company_id: int = Query(default=1),
+    branch_id: int | None = Query(default=None),
+    force: bool = Query(default=False),
+):
     """Auto-generate face embeddings from existing employee profile photos.
 
     Downloads each employee's profile photo, runs ArcFace to detect face
@@ -64,13 +72,14 @@ async def generate_embeddings_from_photos(company_id: int = Query(default=1), fo
 
     Args:
         company_id: Company ID to process
+        branch_id: Optional branch ID to scope processing
         force: If True, regenerate for ALL employees (even those with embeddings).
                If False, only process employees missing embeddings.
     """
     if force:
-        employees = get_employees_with_photos(company_id)
+        employees = get_employees_with_photos(company_id, branch_id)
     else:
-        employees = get_employees_without_embeddings(company_id)
+        employees = get_employees_without_embeddings(company_id, branch_id)
 
     if not employees:
         return {
@@ -123,7 +132,7 @@ async def generate_embeddings_from_photos(company_id: int = Query(default=1), fo
         results.append({"id": emp["id"], "name": emp["name"], "status": "success"})
 
     # Refresh in-memory cache
-    refresh_embeddings(company_id)
+    refresh_embeddings(company_id, branch_id)
 
     log(f"Done: {success} success, {no_face} no face, {failed} download failed")
 
@@ -131,6 +140,8 @@ async def generate_embeddings_from_photos(company_id: int = Query(default=1), fo
         "status": True,
         "message": f"Generated {success} embeddings from profile photos",
         "data": {
+            "company_id": company_id,
+            "branch_id": branch_id,
             "processed": len(employees),
             "success": success,
             "failed": failed,

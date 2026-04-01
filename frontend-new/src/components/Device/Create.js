@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getBranches, createDevice } from "@/lib/api";
+import { getBranches, createDevice, testCameraConnection } from "@/lib/api";
 import { notify, parseApiError } from "@/lib/utils";
 import Input from "../Theme/Input";
 import TextArea from "../Theme/TextArea";
@@ -25,6 +25,7 @@ let defaultPayload = {
   ip: "0.0.0.0",
   camera_rtsp_ip: "",
   camera_rtsp_port: "554",
+  camera_rtsp_path: "",
   camera_username: "",
   camera_password: "",
 };
@@ -47,6 +48,8 @@ const DeviceCreate = ({ onSuccess = () => { } }) => {
   };
 
   const [loading, setLoading] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [cameraTestResult, setCameraTestResult] = useState(null);
 
   const [form, setForm] = useState(defaultPayload);
 
@@ -54,11 +57,19 @@ const DeviceCreate = ({ onSuccess = () => { } }) => {
     if (open) {
       fetchBranches();
       setForm(defaultPayload);
+      setCameraTestResult(null);
     }
   }, [open]);
 
   const handleChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    const updatedForm = { ...form, [field]: value };
+
+    // If model_number is changed to Camera, auto-set function to "auto"
+    if (field === "model_number" && value === "Camera") {
+      updatedForm.function = "auto";
+    }
+
+    setForm(updatedForm);
   };
 
   const onSubmit = async (e) => {
@@ -93,6 +104,46 @@ const DeviceCreate = ({ onSuccess = () => { } }) => {
 
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!form.camera_rtsp_ip && !form.camera_rtsp_path) {
+      notify("Error", "Enter the camera IP address or a full RTSP URL before testing.", "error");
+      return;
+    }
+
+    setTestingConnection(true);
+    setCameraTestResult(null);
+
+    try {
+      const result = await testCameraConnection({
+        camera_rtsp_ip: form.camera_rtsp_ip,
+        camera_rtsp_port: form.camera_rtsp_port,
+        camera_rtsp_path: form.camera_rtsp_path,
+        camera_username: form.camera_username,
+        camera_password: form.camera_password,
+      });
+
+      setCameraTestResult(result);
+
+      const bestCandidate = result?.record?.best_candidate;
+      if (bestCandidate?.camera_rtsp_port) {
+        handleChange("camera_rtsp_port", String(bestCandidate.camera_rtsp_port));
+      }
+      if (bestCandidate?.camera_rtsp_path) {
+        handleChange("camera_rtsp_path", bestCandidate.camera_rtsp_path);
+      }
+
+      notify(
+        result?.status ? "Success" : "Camera Test",
+        result?.message || "Camera test completed",
+        result?.status ? "success" : "error"
+      );
+    } catch (error) {
+      notify("Error", parseApiError(error), "error");
+    } finally {
+      setTestingConnection(false);
     }
   };
 
@@ -199,16 +250,29 @@ const DeviceCreate = ({ onSuccess = () => { } }) => {
                     items={MODEL_NUMBERS} />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-slate-400">
-                    Serial Number <span className="text-red-400">*</span>
-                  </label>
-                  <Input
-                    placeholder=""
-                    value={form.device_id}
-                    onChange={(e) => handleChange("device_id", e.target.value)}
-                  />
-                </div>
+                {form.model_number !== "Camera" ? (
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-400">
+                      Serial Number <span className="text-red-400">*</span>
+                    </label>
+                    <Input
+                      placeholder=""
+                      value={form.device_id}
+                      onChange={(e) => handleChange("device_id", e.target.value)}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-400">
+                      Camera IP Address <span className="text-red-400">*</span>
+                    </label>
+                    <Input
+                      placeholder="e.g. 192.168.1.100"
+                      value={form.camera_rtsp_ip}
+                      onChange={(e) => handleChange("camera_rtsp_ip", e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
 
 
@@ -229,14 +293,47 @@ const DeviceCreate = ({ onSuccess = () => { } }) => {
                   <label className="block text-sm font-medium text-slate-400">
                     Function <span className="text-red-400">*</span>
                   </label>
-                  <DropDown
-                    placeholder="Select Function"
-                    width="w-full"
-                    value={form.function}
-                    onChange={(value) => handleChange("function", value)}
-                    items={FUNCTIONS} />
+                  {form.model_number === "Camera" ? (
+                    <div className="px-3 py-2 rounded-lg border border-gray-300 dark:border-white/10 bg-gray-100 dark:bg-gray-700/50 text-slate-600 dark:text-gray-300">
+                      Auto
+                    </div>
+                  ) : (
+                    <DropDown
+                      placeholder="Select Function"
+                      width="w-full"
+                      value={form.function}
+                      onChange={(value) => handleChange("function", value)}
+                      items={FUNCTIONS} />
+                  )}
                 </div>
               </div>
+
+              {form.model_number === "Camera" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-400">
+                      Camera Username <span className="text-red-400">*</span>
+                    </label>
+                    <Input
+                      placeholder="admin"
+                      value={form.camera_username}
+                      onChange={(e) => handleChange("camera_username", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-slate-400">
+                      Camera Password <span className="text-red-400">*</span>
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="Enter password"
+                      value={form.camera_password}
+                      onChange={(e) => handleChange("camera_password", e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
@@ -263,61 +360,6 @@ const DeviceCreate = ({ onSuccess = () => { } }) => {
                     items={STATUSSES} />
                 </div>
               </div>
-
-                {/* Camera Settings */}
-                <div className="pt-4 border-t border-gray-200 dark:border-white/10">
-                  <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-4">Camera Settings (Optional)</h4>
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-1.5">
-                        <label className="block text-sm font-medium text-slate-400">
-                          Camera IP Address
-                        </label>
-                        <Input
-                          placeholder="e.g. 192.168.1.100"
-                          value={form.camera_rtsp_ip}
-                          onChange={(e) => handleChange("camera_rtsp_ip", e.target.value)}
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="block text-sm font-medium text-slate-400">
-                          Camera Port
-                        </label>
-                        <Input
-                          placeholder="554"
-                          value={form.camera_rtsp_port}
-                          onChange={(e) => handleChange("camera_rtsp_port", e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-1.5">
-                        <label className="block text-sm font-medium text-slate-400">
-                          Camera Username
-                        </label>
-                        <Input
-                          placeholder="admin"
-                          value={form.camera_username}
-                          onChange={(e) => handleChange("camera_username", e.target.value)}
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="block text-sm font-medium text-slate-400">
-                          Camera Password
-                        </label>
-                        <Input
-                          type="password"
-                          placeholder="********"
-                          value={form.camera_password}
-                          onChange={(e) => handleChange("camera_password", e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
             </div>
 
             {/* Action Buttons */}
@@ -333,7 +375,7 @@ const DeviceCreate = ({ onSuccess = () => { } }) => {
                 type="submit"
                 className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-blue-600 transition-all text-sm font-bold shadow-lg shadow-primary/20"
               >
-                {loading ? "Saving..." : "Save Device"}
+                {loading ? "Saving..." : "Add Device"}
               </button>
             </div>
           </form>

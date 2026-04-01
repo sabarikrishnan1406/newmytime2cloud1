@@ -92,72 +92,95 @@ function LiveFeed({ branch_ids, department_ids }) {
   // Fetch device logs API
   const fetchRecords = async () => {
     setIsLoading(true);
-    const today = new Date().toISOString().split("T")[0];
-    const { data } = await getDeviceLogs({
-      page: 1,
-      per_page: 50,
-      from_date: today,
-      to_date: today,
-      branch_ids,
-      department_ids,
-    });
-
-    // Map data to match Vue logic for columns (employee, branch/department, device info, time, in/out, mode, status)
-    let result = data.map((e) => {
-      // Employee name logic
-      const employeeName =
-        [e?.employee?.first_name, e?.employee?.last_name]
-          .filter(Boolean)
-          .join(" ") || "---";
-      // Branch/Department logic
-      const branchDept =
-        [e?.employee?.branch?.branch_name, e?.employee?.department?.name]
-          .filter(Boolean)
-          .join(" / ") || "---";
-      // Device info logic
-      // Fallback to name only if gps_location is null/undefined
-
-      let deviceLocation = e.gps_location ?? e.device.name;
-
-      // Direct replacement for "Unknown"
-      if (deviceLocation === "Unknown") {
-        deviceLocation = "Manual";
-      }
-
-      // In/Out logic
-      let inout = "---";
-      if (e.log_type === "Out") inout = "Out";
-      else if (e.log_type === "In") inout = "In";
-
-      // Mode logic
-      let modes = [];
-      if (e.DeviceID?.includes("Mobile")) {
-        modes = [baseIcons.Mobile];
-      } else if (iconGroups[e.mode]) {
-        modes = iconGroups[e.mode];
-      } else {
-        modes = [baseIcons.Device];
-      }
-
-      return {
-        ...e,
-        id: e?.employee?.employee_id,
-        name: employeeName,
-        dept: branchDept,
-        deviceLocation,
-        time: `${e.time}`,
-        profile_picture: `${e.employee?.profile_picture}`,
-        inout,
-        modes,
-        // Keep status and punctuality as before
-        punctuality: "On Time",
-        punctualityColor: "text-emerald-600",
-        punctualityDot: "bg-emerald-500",
-        status: e.status,
-        statusType: "neutral",
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const params = {
+        page: 1,
+        per_page: 50,
+        from_date: today,
+        to_date: today,
       };
-    });
-    setRecords(result);
+      if (branch_ids?.length > 0) params.branch_ids = branch_ids;
+      if (department_ids?.length > 0) params.department_ids = department_ids;
+      const response = await getDeviceLogs(params);
+      const data = response?.data || response || [];
+      console.log("LiveFeed raw response:", response);
+      console.log("LiveFeed data array:", data, "length:", data?.length);
+
+      if (!Array.isArray(data)) {
+        console.error("LiveFeed: data is not an array", typeof data, data);
+        setRecords([]);
+        return;
+      }
+
+      // Map data to match Vue logic for columns (employee, branch/department, device info, time, in/out, mode, status)
+      let result = data.map((e) => {
+        // Employee name logic
+        const employeeName =
+          [e?.employee?.first_name, e?.employee?.last_name]
+            .filter(Boolean)
+            .join(" ") || "---";
+        // Branch/Department logic
+        const branchDept =
+          [e?.employee?.branch?.branch_name, e?.employee?.department?.name]
+            .filter(Boolean)
+            .join(" / ") || "---";
+        // Device info logic - Use device name and location
+        let deviceName = e?.device?.name || "---";
+        let deviceLocation = e.gps_location ?? e?.device?.location ?? "---";
+
+        // Direct replacement for "Unknown"
+        if (deviceLocation === "Unknown") {
+          deviceLocation = "Manual";
+        }
+
+        // In/Out logic - Show log_type as is
+        let inout = "---";
+        if (e.log_type === "Out") inout = "Out";
+        else if (e.log_type === "In") inout = "In";
+
+        // Mode logic
+        let modes = [];
+        if (e.DeviceID?.includes("Mobile")) {
+          modes = [baseIcons.Mobile];
+        } else if (e.DeviceID?.startsWith("Camera") || e.channel === "camera") {
+          modes = [baseIcons.Face];
+        } else if (iconGroups[e.mode]) {
+          modes = iconGroups[e.mode];
+        } else {
+          modes = [baseIcons.Device];
+        }
+
+        return {
+          ...e,
+          id: e?.employee?.employee_id,
+          name: employeeName,
+          dept: branchDept,
+          deviceName,
+          deviceLocation,
+          deviceFunction: e?.device?.function || "---",
+          deviceType: e?.device?.device_type || "---",
+          time: `${e.time}`,
+          profile_picture: `${e.employee?.profile_picture}`,
+          inout,
+          modes,
+          // Keep status and punctuality as before
+          punctuality: "On Time",
+          punctualityColor: "text-emerald-600",
+          punctualityDot: "bg-emerald-500",
+          status: e.status,
+          statusType: "neutral",
+        };
+      }).sort((a, b) => {
+        // Sort by date and time, most recent first
+        const aTime = new Date(`${a.date} ${a.time}`);
+        const bTime = new Date(`${b.date} ${b.time}`);
+        return bTime - aTime;
+      });
+      setRecords(result);
+    } catch (err) {
+      console.error("LiveFeed fetch error:", err);
+    }
     setIsLoading(false);
   };
 
@@ -221,14 +244,16 @@ function LiveFeed({ branch_ids, department_ids }) {
       </div>
 
       {/* Table Header - Fixed column sizes to match body */}
-      <div className="grid grid-cols-13 px-6 py-3 border-y border-gray-200 dark:border-white/5 text-[11px] font-bold text-slate-500 uppercase tracking-wider bg-white/[0.02]">
+      <div className="grid grid-cols-14 px-6 py-3 border-y border-gray-200 dark:border-white/5 text-[11px] font-bold text-slate-500 uppercase tracking-wider bg-white/[0.02]">
+        <div className="col-span-1">Date</div>
         <div className="col-span-2">Employee</div>
         <div className="col-span-2">Branch / Dept</div>
         <div className="col-span-1">Mode</div>
         <div className="col-span-2">Device</div>
+        <div className="col-span-1">Device Type</div>
+        <div className="col-span-1">Function (Config)</div>
         <div className="col-span-1">Time</div>
-        <div className="col-span-1">In/Out</div>
-        {/* <div className="col-span-1">Punctuality</div> */}
+        <div className="col-span-1">Log Type</div>
         <div className="col-span-2 text-right pr-2">Status</div>
       </div>
 
@@ -237,12 +262,20 @@ function LiveFeed({ branch_ids, department_ids }) {
         {records.map((item, index) => (
           <div
             key={index}
-            className={`grid grid-cols-13 py-4 items-center cursor-pointer group gap-2 transition-colors hover:bg-slate-50 dark:hover:bg-white/5 ${
-              index !== records.length - 1
-                ? "border-b border-gray-100 dark:border-white/5"
-                : ""
-            }`}
+            className={`grid grid-cols-14 py-4 items-center cursor-pointer group gap-2 transition-colors hover:bg-slate-50 dark:hover:bg-white/5 ${index !== records.length - 1
+              ? "border-b border-gray-100 dark:border-white/5"
+              : ""
+              }`}
           >
+            {/* Date & Day */}
+            <div className="col-span-1 pl-2">
+              <span className="text-[11px] font-medium text-gray-600 dark:text-gray-300 block">
+                {item.date}
+              </span>
+              <span className="text-[10px] text-slate-500">
+                {new Date(item.edit_date).toLocaleDateString("en-US", { weekday: "short" })}
+              </span>
+            </div>
             {/* Employee */}
             <div className="col-span-2 flex gap-3 pl-2">
               <div className="size-8 min-w-[32px] rounded-full overflow-hidden relative border border-border flex items-center justify-center">
@@ -269,8 +302,32 @@ function LiveFeed({ branch_ids, department_ids }) {
               ))}
             </div>
 
-            <div className="col-span-2 text-xs text-slate-600 dark:text-slate-300">
-              {item.deviceLocation}
+            {/* Device Name & Location */}
+            <div className="col-span-2">
+              <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                {item.deviceName}
+              </div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                {item.deviceLocation}
+              </div>
+            </div>
+            {/* Device Type */}
+            <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+              {item.deviceType === "all" ? "All" : item.deviceType === "Attendance" ? "Attendance" : item.deviceType === "Access Control" ? "Access Control" : item.deviceType || "—"}
+            </div>
+            {/* Function - Device Configured Function */}
+            <div className="col-span-1">
+              <div className="text-sm font-bold text-slate-600 dark:text-slate-200">
+                {item.deviceFunction
+                  ? (item.deviceFunction.toLowerCase() === "auto" ? "Auto" :
+                    item.deviceFunction.toLowerCase() === "in" ? "In" :
+                      item.deviceFunction.toLowerCase() === "out" ? "Out" :
+                        item.deviceFunction)
+                  : "—"}
+              </div>
+              <div className="text-[9px] text-slate-400 dark:text-slate-500 font-normal">
+                Config
+              </div>
             </div>
             {/* Time */}
             <div className="col-span-1 text-xs text-slate-600 dark:text-slate-300">
@@ -278,28 +335,21 @@ function LiveFeed({ branch_ids, department_ids }) {
             </div>
             {/* In/Out */}
             <div className="col-span-1">
-              {item.log_type === "out" ? (
-                <span style={{ color: "red" }}>{item.log_type}</span>
-              ) : item.log_type === "in" ? (
-                <span style={{ color: "green" }}>{item.log_type}</span>
-              ) : (
-                <span>{item.log_type}</span>
-              )}
+              <div className="text-xs font-bold mb-1">
+                {item.log_type === "out" ? (
+                  <span style={{ color: "red" }}>Out</span>
+                ) : item.log_type === "in" ? (
+                  <span style={{ color: "green" }}>In</span>
+                ) : (
+                  <span>{item.log_type}</span>
+                )}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                (Log)
+              </div>
             </div>
 
-            {/* Status (unchanged) */}
-
-            {/* <div className="col-span-1">
-              <span
-                className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${getPunctualityColor(item.punctuality)}`}
-              >
-                <span
-                  className={`size-1 rounded-full ${getPunctualityDot(item.punctuality)}`}
-                ></span>
-                {item.punctuality}
-              </span>
-            </div> */}
-
+            {/* Status */}
             <div className="col-span-2 text-right pr-2">
               <span
                 className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full font-medium text-[9px] border ${getStatusStyles(item.status)}`}

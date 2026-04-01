@@ -17,6 +17,8 @@ LARAVEL_API_TOKEN = os.getenv("LARAVEL_API_TOKEN", "")
 # ArcFace
 FACE_SIMILARITY_THRESHOLD = float(os.getenv("FACE_SIMILARITY_THRESHOLD", "0.4"))
 FACE_DETECT_INTERVAL = int(os.getenv("FACE_DETECT_INTERVAL", "3"))
+AUTO_LOG_RECOGNIZED_FACES = os.getenv("AUTO_LOG_RECOGNIZED_FACES", "true").strip().lower() in {"1", "true", "yes", "on"}
+ATTENDANCE_DUPLICATE_WINDOW_SECONDS = int(os.getenv("ATTENDANCE_DUPLICATE_WINDOW_SECONDS", "120"))
 
 # Service
 HOST = os.getenv("HOST", "0.0.0.0")
