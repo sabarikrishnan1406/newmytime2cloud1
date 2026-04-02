@@ -99,6 +99,7 @@ class CameraStreamController extends Controller
                 'camera_username' => $device->camera_username,
                 'camera_password' => $password,
                 'device_name' => $device->name,
+                'device_serial' => $device->device_id,
                 'branch_id' => $device->branch_id,
                 'branch_name' => $device->branch->branch_name ?? null,
                 'company_id' => $device->company_id,
@@ -122,6 +123,7 @@ class CameraStreamController extends Controller
             'branch_id' => 'nullable|integer',
             'log_time' => 'required|date',
             'camera_name' => 'nullable|string',
+            'device_serial' => 'nullable|string',
         ]);
 
         $logDate = date('Y-m-d', strtotime($request->log_time));
@@ -173,7 +175,7 @@ class CameraStreamController extends Controller
             $log = AttendanceLog::create([
                 'UserID' => $userId,
                 'LogTime' => $request->log_time,
-                'DeviceID' => 'Camera-' . ($request->camera_name ?? 'unknown'),
+                'DeviceID' => $request->device_serial ?? ('Camera-' . ($request->camera_name ?? 'unknown')),
                 'company_id' => $companyId,
                 'branch_id' => $request->branch_id ?? 0,
                 'status' => 'Allowed',
@@ -197,7 +199,7 @@ class CameraStreamController extends Controller
             $log = AttendanceLog::create([
                 'UserID' => $userId,
                 'LogTime' => $request->log_time,
-                'DeviceID' => 'Camera-' . ($request->camera_name ?? 'unknown'),
+                'DeviceID' => $request->device_serial ?? ('Camera-' . ($request->camera_name ?? 'unknown')),
                 'company_id' => $companyId,
                 'branch_id' => $request->branch_id ?? 0,
                 'status' => 'Allowed',

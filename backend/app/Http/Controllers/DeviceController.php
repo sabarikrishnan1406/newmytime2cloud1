@@ -403,6 +403,10 @@ class DeviceController extends Controller
                 $data["camera_sdk_url"] = env('OX900_SDK_URL');
             }
 
+            // Auto-generate device_id for Camera model if not provided
+            if (empty($data["device_id"]) && ($data["model_number"] ?? '') === 'Camera') {
+                $data["device_id"] = 'CAM-' . time() . '-' . rand(1000, 9999);
+            }
             $data["serial_number"] = $data["device_id"];
             $data["ip"] = "0.0.0.0";
             $data["port"] = "0000";

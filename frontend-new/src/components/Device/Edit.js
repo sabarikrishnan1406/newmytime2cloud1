@@ -281,18 +281,12 @@ const DeviceEdit = ({ open, setOpen, defaultPayload, onSuccess = () => { } }) =>
                                     <label className="block text-sm font-medium text-slate-400">
                                         Function <span className="text-red-400">*</span>
                                     </label>
-                                    {form.model_number === "Camera" ? (
-                                        <div className="px-3 py-2 rounded-lg border border-gray-300 dark:border-white/10 bg-gray-100 dark:bg-gray-700/50 text-slate-600 dark:text-gray-300">
-                                            Auto
-                                        </div>
-                                    ) : (
-                                        <DropDown
-                                            placeholder="Select Function"
-                                            width="w-full"
-                                            value={form.function}
-                                            onChange={(value) => handleChange("function", value)}
-                                            items={FUNCTIONS} />
-                                    )}
+                                    <DropDown
+                                        placeholder="Select Function"
+                                        width="w-full"
+                                        value={form.function}
+                                        onChange={(value) => handleChange("function", value)}
+                                        items={FUNCTIONS} />
                                 </div>
                             </div>
 

@@ -3,10 +3,8 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getCameraStatus } from "@/lib/endpoint/live-camera";
+import { getCameraProxyWsUrl, getCameraServiceWsUrl } from "@/lib/camera-endpoints";
 import { parseApiError } from "@/lib/utils";
-
-const PROXY_URL = process.env.NEXT_PUBLIC_CAMERA_PROXY_URL || "ws://localhost:8501";
-const DETECT_URL = process.env.NEXT_PUBLIC_CAMERA_SERVICE_URL || "ws://localhost:8500";
 
 export default function Stream({ deviceId }) {
   const router = useRouter();
@@ -194,7 +192,7 @@ export default function Stream({ deviceId }) {
     const connect = () => {
       if (cancelled) return;
 
-      ws = new WebSocket(`${PROXY_URL}/stream/${deviceId}`);
+      ws = new WebSocket(`${getCameraProxyWsUrl()}/stream/${deviceId}`);
       ws.binaryType = "blob";
 
       ws.onopen = () => {
@@ -290,7 +288,7 @@ export default function Stream({ deviceId }) {
     const connect = () => {
       if (cancelled) return;
 
-      ws = new WebSocket(`${DETECT_URL}/detect/${deviceId}`);
+      ws = new WebSocket(`${getCameraServiceWsUrl()}/detect/${deviceId}`);
 
       ws.onmessage = (event) => {
         try {

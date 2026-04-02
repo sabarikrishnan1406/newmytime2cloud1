@@ -87,6 +87,7 @@ async def detect_worker(device_id: str):
             company_id = device_details["company_id"]
             branch_id = device_details.get("branch_id")
             device_name = device_details["device_name"]
+            device_serial = device_details.get("device_serial")
             device_type = (device_details.get("device_type") or "all").lower()
             attendance_enabled = device_type in ("all", "attendance", "auto", "camera")
 
@@ -139,6 +140,7 @@ async def detect_worker(device_id: str):
                                     device_id=str(device_id),
                                     device_name=device_name,
                                     employee_id=match["employee_id"],
+                                    device_serial=device_serial,
                                 )
                                 if result.get("status") == "created":
                                     log(f"Device {device_id}: attendance logged for {match['name']} ({match['confidence']:.2f})")

@@ -244,25 +244,24 @@ function LiveFeed({ branch_ids, department_ids }) {
       </div>
 
       {/* Table Header - Fixed column sizes to match body */}
-      <div className="grid grid-cols-14 px-6 py-3 border-y border-gray-200 dark:border-white/5 text-[11px] font-bold text-slate-500 uppercase tracking-wider bg-white/[0.02]">
+      <div className="grid grid-cols-12 px-6 py-3 border-y border-gray-200 dark:border-white/5 text-[11px] font-bold text-slate-500 uppercase tracking-wider bg-white/[0.02]">
         <div className="col-span-1">Date</div>
         <div className="col-span-2">Employee</div>
         <div className="col-span-2">Branch / Dept</div>
         <div className="col-span-1">Mode</div>
-        <div className="col-span-2">Device</div>
+        <div className="col-span-1">Device</div>
         <div className="col-span-1">Device Type</div>
-        <div className="col-span-1">Function (Config)</div>
+        <div className="col-span-1">Function</div>
         <div className="col-span-1">Time</div>
-        <div className="col-span-1">Log Type</div>
         <div className="col-span-2 text-right pr-2">Status</div>
       </div>
 
       {/* List Body */}
-      <div className="flex-1 overflow-y-auto px-2">
+      <div className="flex-1 overflow-y-auto px-4">
         {records.map((item, index) => (
           <div
             key={index}
-            className={`grid grid-cols-14 py-4 items-center cursor-pointer group gap-2 transition-colors hover:bg-slate-50 dark:hover:bg-white/5 ${index !== records.length - 1
+            className={`grid grid-cols-12 py-4 items-center cursor-pointer group gap-2 transition-colors hover:bg-slate-50 dark:hover:bg-white/5 ${index !== records.length - 1
               ? "border-b border-gray-100 dark:border-white/5"
               : ""
               }`}
@@ -302,53 +301,27 @@ function LiveFeed({ branch_ids, department_ids }) {
               ))}
             </div>
 
-            {/* Device Name & Location */}
-            <div className="col-span-2">
-              <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                {item.deviceName}
-              </div>
-              <div className="text-xs text-slate-500 dark:text-slate-400">
-                {item.deviceLocation}
-              </div>
+            {/* Device */}
+            <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300 truncate">
+              {item.deviceName}
             </div>
             {/* Device Type */}
             <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300">
               {item.deviceType === "all" ? "All" : item.deviceType === "Attendance" ? "Attendance" : item.deviceType === "Access Control" ? "Access Control" : item.deviceType || "—"}
             </div>
-            {/* Function - Device Configured Function */}
-            <div className="col-span-1">
-              <div className="text-sm font-bold text-slate-600 dark:text-slate-200">
-                {item.deviceFunction
-                  ? (item.deviceFunction.toLowerCase() === "auto" ? "Auto" :
-                    item.deviceFunction.toLowerCase() === "in" ? "In" :
-                      item.deviceFunction.toLowerCase() === "out" ? "Out" :
-                        item.deviceFunction)
-                  : "—"}
-              </div>
-              <div className="text-[9px] text-slate-400 dark:text-slate-500 font-normal">
-                Config
-              </div>
+            {/* Function */}
+            <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+              {item.deviceFunction
+                ? (item.deviceFunction.toLowerCase() === "auto" ? "Auto" :
+                  item.deviceFunction.toLowerCase() === "in" ? "In" :
+                    item.deviceFunction.toLowerCase() === "out" ? "Out" :
+                      item.deviceFunction)
+                : "—"}
             </div>
             {/* Time */}
             <div className="col-span-1 text-xs text-slate-600 dark:text-slate-300">
               {item.time}
             </div>
-            {/* In/Out */}
-            <div className="col-span-1">
-              <div className="text-xs font-bold mb-1">
-                {item.log_type === "out" ? (
-                  <span style={{ color: "red" }}>Out</span>
-                ) : item.log_type === "in" ? (
-                  <span style={{ color: "green" }}>In</span>
-                ) : (
-                  <span>{item.log_type}</span>
-                )}
-              </div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                (Log)
-              </div>
-            </div>
-
             {/* Status */}
             <div className="col-span-2 text-right pr-2">
               <span

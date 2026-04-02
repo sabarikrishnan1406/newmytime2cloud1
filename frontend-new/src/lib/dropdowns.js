@@ -18,7 +18,7 @@ export const FUNCTIONS = [
 ];
 
 export const DEVICE_TYPES = [
-    { id: 'all', name: 'All' },
+    { id: 'all', name: 'All (AC & Attendance)' },
     { id: 'Attendance', name: 'Attendance' },
     { id: 'Access Control', name: 'Access Control' },
 ];

@@ -72,6 +72,7 @@ async def fetch_device_details(device_id: str) -> dict:
                     "branch_id": payload.get("branch_id"),
                     "branch_name": payload.get("branch_name"),
                     "device_name": payload.get("device_name") or f"Camera {device_id}",
+                    "device_serial": payload.get("device_serial"),
                     "device_type": payload.get("device_type", "all"),
                 }
     except Exception as e:
@@ -81,6 +82,7 @@ async def fetch_device_details(device_id: str) -> dict:
         "branch_id": None,
         "branch_name": None,
         "device_name": f"Camera {device_id}",
+        "device_serial": None,
         "device_type": "all",
     }
 
@@ -128,7 +130,7 @@ def build_attendance_record_preview(employee_id: int, attendance_date, options: 
     return record.to_dict()
 
 
-def auto_log_camera_attendance(device_id: str, device_name: str, employee_id: int) -> dict:
+def auto_log_camera_attendance(device_id: str, device_name: str, employee_id: int, device_serial: str | None = None) -> dict:
     """Log camera attendance via Laravel API.
 
     Calls the Laravel endpoint which creates the log via Eloquent,
@@ -173,6 +175,7 @@ def auto_log_camera_attendance(device_id: str, device_name: str, employee_id: in
                 "branch_id": emp["branch_id"] or 0,
                 "log_time": event_time.strftime("%Y-%m-%d %H:%M:%S"),
                 "camera_name": device_name,
+                "device_serial": device_serial,
             },
             timeout=10.0,
         )
@@ -294,6 +297,7 @@ async def detect_stream(websocket: WebSocket, device_id: str):
                                     device_id=device_id,
                                     device_name=device_name,
                                     employee_id=match["employee_id"],
+                                    device_serial=device_details.get("device_serial"),
                                 )
                             except Exception as log_error:
                                 attendance_log = {

@@ -1,4 +1,5 @@
 import { api, buildQueryParams } from "@/lib/api-client";
+import { getCameraServiceHttpUrl } from "@/lib/camera-endpoints";
 
 export const getCameras = async (params = {}) => {
     const { data } = await api.get(`/cameras`, { params: await buildQueryParams(params) });
@@ -15,10 +16,8 @@ export const getCameraCredentials = async (deviceId) => {
     return data;
 };
 
-const CAMERA_SERVICE_URL = process.env.NEXT_PUBLIC_CAMERA_SERVICE_HTTP_URL || "http://localhost:8500";
-
 export const registerFace = async (employeeId, frame, companyId) => {
-    const response = await fetch(`${CAMERA_SERVICE_URL}/register/${employeeId}`, {
+    const response = await fetch(`${getCameraServiceHttpUrl()}/register/${employeeId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ frame, company_id: companyId }),
@@ -29,13 +28,13 @@ export const registerFace = async (employeeId, frame, companyId) => {
 };
 
 export const deleteFaceEmbeddings = async (employeeId) => {
-    const response = await fetch(`${CAMERA_SERVICE_URL}/register/${employeeId}`, {
+    const response = await fetch(`${getCameraServiceHttpUrl()}/register/${employeeId}`, {
         method: "DELETE",
     });
     return await response.json();
 };
 
 export const syncEmbeddings = async (companyId = 1) => {
-    const response = await fetch(`${CAMERA_SERVICE_URL}/employees/sync?company_id=${companyId}`);
+    const response = await fetch(`${getCameraServiceHttpUrl()}/employees/sync?company_id=${companyId}`);
     return await response.json();
 };

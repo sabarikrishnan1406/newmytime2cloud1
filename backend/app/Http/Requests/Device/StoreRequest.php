@@ -36,12 +36,16 @@ class StoreRequest extends FormRequest
             'model_number' => ['nullable', 'min:4', 'max:20'],
 
             'device_id' => [
-                'required',
+                $this->model_number === 'Camera' ? 'nullable' : 'required',
                 Rule::unique('devices')->where(function ($query) use ($deviceId, $companyId) {
                     return $query->where('device_id', $deviceId)
                         ->where('company_id', $companyId);
                 }),
 
+            ],
+            'camera_rtsp_ip' => [
+                $this->model_number === 'Camera' ? 'required' : 'nullable',
+                'ip',
             ],
             'utc_time_zone' => 'required',
             'function' => 'required',
@@ -51,7 +55,6 @@ class StoreRequest extends FormRequest
             'mode' => ['nullable'],
             'ip' => 'nullable',
             //'camera_save_images' => 'required'
-            'camera_rtsp_ip' => ['nullable', 'ip'],
             'camera_rtsp_port' => ['nullable', 'integer', 'min:1', 'max:65535'],
             'camera_rtsp_path' => ['nullable', 'string', 'max:255'],
             'camera_username' => ['nullable', 'string', 'max:255'],
