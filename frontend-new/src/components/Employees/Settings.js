@@ -43,7 +43,7 @@ const Settings = ({ id, user_id, status, web_login_access, mobile_app_login_acce
 
             isUpdating.current = true;
 
-            await updateGeneralSettings(payload, user_id);
+            await updateGeneralSettings(payload, user_id || id);
             notify(`Success`, "Settings updated successfully", 'success');
         } catch (error) {
             notify(`Error`, parseApiError(error), 'error');

@@ -759,7 +759,7 @@ class EmployeeControllerNew extends Controller
     }
 
 
-    public function updateGeneralSettings(Request $request, $id)
+    public function updateGeneralSettings(Request $request, $id = null)
     {
         try {
 
@@ -767,7 +767,14 @@ class EmployeeControllerNew extends Controller
                 Employee::where('id', $request->id)->update(['status' => $request->status]);
             }
 
-            $user = User::find($id);
+            // Try multiple ways to find the user
+            $user = null;
+            if ($id && $id !== 'undefined') {
+                $user = User::find($id);
+            }
+            if (!$user && $request->id) {
+                $user = User::where('employee_id', $request->id)->first();
+            }
 
             if (!$user) {
                 return response()->json([
@@ -776,7 +783,12 @@ class EmployeeControllerNew extends Controller
                 ], 404);
             }
 
-            $user->update($request->all());
+            $user->update($request->only([
+                'web_login_access',
+                'mobile_app_login_access',
+                'tracking_status',
+                'mobile_punch',
+            ]));
 
             return response()->json([
                 'status' => 'success',

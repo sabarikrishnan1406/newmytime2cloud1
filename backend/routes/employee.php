@@ -60,7 +60,7 @@ Route::get('/get-employees-by-department-ids', [EmployeeController::class, 'getE
 Route::put('/employees/{id}/contact-update', [EmployeeControllerNew::class, 'updateContactDetails']);
 
 Route::post('leave-group-and-report-manager-update/{id}', [EmployeeControllerNew::class, 'leaveGroupAndReportManagerUpdate']);
-Route::post('employee-update-general-settings/{id}', [EmployeeControllerNew::class, 'updateGeneralSettings']);
+Route::post('employee-update-general-settings/{id?}', [EmployeeControllerNew::class, 'updateGeneralSettings']);
 Route::post('employee-update-access-settings-new/{id}', [EmployeeControllerNew::class, 'updateAccessSettings']);
 Route::post('employee-update-password/{id}', [EmployeeControllerNew::class, 'updatePassword']);
 Route::post('employee-update-login-new/{id}', [EmployeeControllerNew::class, 'updateLogin']);

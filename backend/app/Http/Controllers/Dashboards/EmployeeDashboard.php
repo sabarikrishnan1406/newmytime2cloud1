@@ -105,6 +105,14 @@ class EmployeeDashboard extends Controller
                 'link' => $this->getLink($request, 'O'),
                 'border_color' => '526C78',
             ],
+            [
+                'Key' => 'OT',
+                'title' => 'Overtime',
+                'value' => $this->getTotalOvertime($records),
+                'icon' => 'fas fa-clock',
+                'color' => 'cyan',
+                'border_color' => '526C78',
+            ],
         ];
     }
 
@@ -161,6 +169,26 @@ class EmployeeDashboard extends Controller
     private function getStatusCount($records, $status): int
     {
         return $records->where('status', $status)->count();
+    }
+
+    private function getTotalOvertime($records): string
+    {
+        $totalMinutes = 0;
+
+        foreach ($records as $record) {
+            $ot = $record->ot;
+            if (!$ot || $ot === '---' || $ot === '00:00') continue;
+
+            if (str_contains($ot, ':')) {
+                $parts = explode(':', $ot);
+                $totalMinutes += (int)$parts[0] * 60 + (int)($parts[1] ?? 0);
+            }
+        }
+
+        $hours = floor($totalMinutes / 60);
+        $mins = $totalMinutes % 60;
+
+        return $hours > 0 || $mins > 0 ? sprintf('%d:%02d', $hours, $mins) : '0:00';
     }
 
     public function getEmployeeAttendanceRecords($request)

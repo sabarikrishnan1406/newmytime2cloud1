@@ -83,8 +83,8 @@ const EditEmployeeRecord = ({ selectedEmployee }) => {
             {activeTab == "Settings" &&
                 <SETTINGRFIDLOGIN
                     id={payload.id}
-                    email={payload?.user.email}
-                    user_id={payload?.user.id}
+                    email={payload?.user?.email}
+                    user_id={payload?.user?.id}
                     web_login_access={payload?.user?.web_login_access}
                     mobile_app_login_access={payload?.user?.mobile_app_login_access}
                     tracking_status={payload?.user?.tracking_status}

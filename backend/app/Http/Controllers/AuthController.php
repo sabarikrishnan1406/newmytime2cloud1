@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AssignedDepartmentEmployee;
 use App\Models\CompanyBranch;
 use App\Models\Role;
+use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -183,6 +184,16 @@ class AuthController extends Controller
         unset($user->employee);
         unset($user->assigned_permissions);
 
+        // Add employee name for staff users
+        if ($user->employee_id) {
+            $emp = Employee::find($user->employee_id);
+            if ($emp) {
+                $user->employee_name = trim($emp->first_name . ' ' . $emp->last_name);
+                $user->employee_profile_picture = $emp->profile_picture;
+                $user->system_user_id = $emp->system_user_id;
+            }
+        }
+
         return [
             'token' => $user->createToken('myApp')->plainTextToken,
             'user' => $user,
@@ -199,6 +210,15 @@ class AuthController extends Controller
         //$user->branch_array = [1,   5];
         $user->permissions = $user->assigned_permissions ? $user->assigned_permissions->permission_names : [];
         unset($user->assigned_permissions);
+
+        // Add employee name for staff dashboard
+        if ($user->employee_id) {
+            $emp = Employee::find($user->employee_id);
+            if ($emp) {
+                $user->employee_name = trim($emp->first_name . ' ' . $emp->last_name);
+                $user->employee_profile_picture = $emp->profile_picture;
+            }
+        }
 
         return ['user' => $user];
     }
