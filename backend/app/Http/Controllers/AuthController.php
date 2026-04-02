@@ -211,12 +211,13 @@ class AuthController extends Controller
         $user->permissions = $user->assigned_permissions ? $user->assigned_permissions->permission_names : [];
         unset($user->assigned_permissions);
 
-        // Add employee name for staff dashboard
+        // Add employee details for staff dashboard
         if ($user->employee_id) {
             $emp = Employee::find($user->employee_id);
             if ($emp) {
                 $user->employee_name = trim($emp->first_name . ' ' . $emp->last_name);
                 $user->employee_profile_picture = $emp->profile_picture;
+                $user->system_user_id = $emp->system_user_id;
             }
         }
 

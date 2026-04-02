@@ -16,6 +16,9 @@ export default function StaffChatPage() {
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef(null);
   const pollRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [attachment, setAttachment] = useState(null);
+  const [attachmentPreview, setAttachmentPreview] = useState(null);
 
   // Fetch contacts
   useEffect(() => {
@@ -63,18 +66,36 @@ export default function StaffChatPage() {
   };
 
   const handleSend = async () => {
-    if (!newMessage.trim() || !activeContact) return;
+    if ((!newMessage.trim() && !attachment) || !activeContact) return;
 
     try {
       const u = getUser();
       const params = await buildQueryParams({});
-      await api.post("/chat/send", {
-        ...params,
-        user_id: u.id,
-        receiver_id: activeContact.id,
-        message: newMessage.trim(),
-      });
+
+      if (attachment) {
+        // Upload file with FormData
+        const formData = new FormData();
+        formData.append("user_id", u.id);
+        formData.append("receiver_id", activeContact.id);
+        formData.append("company_id", params.company_id || u.company_id);
+        formData.append("message", newMessage.trim() || attachment.name);
+        formData.append("type", attachment.type.startsWith("image/") ? "image" : "file");
+        formData.append("file", attachment);
+        await api.post("/chat/send", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        await api.post("/chat/send", {
+          ...params,
+          user_id: u.id,
+          company_id: params.company_id || u.company_id,
+          receiver_id: activeContact.id,
+          message: newMessage.trim(),
+        });
+      }
+
       setNewMessage("");
+      clearAttachment();
 
       // Refresh messages
       const { data } = await api.get(`/chat/messages/${activeContact.id}`, { params: { user_id: u.id } });
@@ -87,6 +108,25 @@ export default function StaffChatPage() {
     } catch (e) {
       console.warn("Send error", e);
     }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAttachment(file);
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setAttachmentPreview(ev.target.result);
+      reader.readAsDataURL(file);
+    } else {
+      setAttachmentPreview(null);
+    }
+  };
+
+  const clearAttachment = () => {
+    setAttachment(null);
+    setAttachmentPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleQuickReply = (reply) => {
@@ -228,7 +268,25 @@ export default function StaffChatPage() {
                               ? "rounded-tr-none border border-cyan-300/20 bg-cyan-300/10"
                               : "rounded-tl-none border border-white/10 bg-slate-800/70"
                           }`}>
-                            <p className="text-sm leading-relaxed text-slate-100">{msg.message}</p>
+                            {msg.type === "image" && msg.attachment && (
+                              <img
+                                src={msg.attachment.startsWith("http") ? msg.attachment : `${process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://192.168.1.115:8000"}/chat_uploads/${msg.attachment}`}
+                                alt=""
+                                className="rounded-xl max-w-[300px] max-h-[200px] object-cover mb-2 cursor-pointer"
+                                onClick={() => window.open(msg.attachment.startsWith("http") ? msg.attachment : `${process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://192.168.1.115:8000"}/chat_uploads/${msg.attachment}`, "_blank")}
+                              />
+                            )}
+                            {msg.type === "file" && msg.attachment && (
+                              <a
+                                href={msg.attachment.startsWith("http") ? msg.attachment : `${process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://192.168.1.115:8000"}/chat_uploads/${msg.attachment}`}
+                                target="_blank"
+                                className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition mb-2"
+                              >
+                                <span className="material-symbols-outlined text-cyan-300">attach_file</span>
+                                <span className="text-xs text-cyan-300 truncate">{msg.message || "File"}</span>
+                              </a>
+                            )}
+                            <p className="text-sm leading-relaxed text-slate-100">{msg.type === "file" ? "" : msg.message}</p>
                           </div>
                           <p className={`text-[10px] text-slate-500 ${isMine ? "text-right" : ""}`}>
                             {msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
@@ -254,10 +312,57 @@ export default function StaffChatPage() {
                     ))}
                   </div>
 
+                  {/* Attachment Preview */}
+                  {attachment && (
+                    <div className="mb-3 flex items-center gap-3 rounded-xl border border-white/10 bg-slate-800/50 p-3">
+                      {attachmentPreview ? (
+                        <img src={attachmentPreview} alt="" className="h-16 w-16 rounded-lg object-cover" />
+                      ) : (
+                        <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-slate-700">
+                          <span className="material-symbols-outlined text-2xl text-slate-400">description</span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-slate-100 truncate">{attachment.name}</p>
+                        <p className="text-[10px] text-slate-500">{(attachment.size / 1024).toFixed(1)} KB</p>
+                      </div>
+                      <button onClick={clearAttachment} className="p-1 text-slate-500 hover:text-red-400 transition">
+                        <span className="material-symbols-outlined">close</span>
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-3">
+                    {/* Hidden file input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                      className="hidden"
+                      onChange={handleFileSelect}
+                    />
+
+                    {/* Attachment buttons */}
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => { fileInputRef.current.accept = "image/*"; fileInputRef.current.click(); }}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-800 hover:text-cyan-300"
+                        title="Send Photo"
+                      >
+                        <span className="material-symbols-outlined text-xl">image</span>
+                      </button>
+                      <button
+                        onClick={() => { fileInputRef.current.accept = ".pdf,.doc,.docx,.xls,.xlsx"; fileInputRef.current.click(); }}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-800 hover:text-purple-300"
+                        title="Send File"
+                      >
+                        <span className="material-symbols-outlined text-xl">attach_file</span>
+                      </button>
+                    </div>
+
                     <div className="relative flex-1">
                       <input
-                        className="w-full rounded-2xl bg-slate-800/80 py-4 pl-5 pr-16 text-sm text-slate-100 shadow-inner outline-none focus:ring-1 focus:ring-cyan-300/50"
+                        className="w-full rounded-2xl bg-slate-800/80 py-3.5 pl-5 pr-5 text-sm text-slate-100 shadow-inner outline-none focus:ring-1 focus:ring-cyan-300/50"
                         placeholder="Type your message here..."
                         type="text"
                         value={newMessage}
@@ -267,7 +372,7 @@ export default function StaffChatPage() {
                     </div>
                     <button
                       onClick={handleSend}
-                      className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-300 to-cyan-400 text-[#005762] shadow-[0_0_20px_rgba(129,236,255,0.3)] transition active:scale-95"
+                      className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-300 to-cyan-400 text-[#005762] shadow-[0_0_20px_rgba(129,236,255,0.3)] transition active:scale-95"
                     >
                       <span className="material-symbols-outlined">send</span>
                     </button>

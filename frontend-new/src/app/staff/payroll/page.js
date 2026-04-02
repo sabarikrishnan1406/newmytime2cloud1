@@ -1,66 +1,23 @@
-const payrollMetrics = [
-  {
-    label: "Next Payout",
-    value: "Oct 31, 2023",
-    icon: "event",
-    iconTint: "bg-cyan-400/10 text-cyan-300",
-    iconGhost: "text-cyan-300/10",
-    meta: "In 12 days",
-    metaIcon: "schedule",
-    metaClass: "text-emerald-300",
-    glow: true,
-  },
-  {
-    label: "Last Payout",
-    value: "$8,450.00",
-    icon: "history",
-    iconTint: "bg-purple-400/10 text-purple-300",
-    iconGhost: "text-purple-300/10",
-    meta: "Paid Oct 15",
-    metaIcon: "check_circle",
-    metaClass: "text-emerald-300",
-  },
-  {
-    label: "Total YTD Earnings",
-    value: "$92,100.00",
-    icon: "payments",
-    iconTint: "bg-cyan-400/10 text-cyan-300",
-    iconGhost: "text-cyan-300/10",
-    meta: "Fiscal Year 2023",
-    metaIcon: "info",
-    metaClass: "text-slate-500",
-  },
-];
+"use client";
 
-const payoutHistory = [
-  { date: "Oct 15, 2023", amount: "$8,450.00", status: "Paid" },
-  { date: "Sep 30, 2023", amount: "$8,450.00", status: "Paid" },
-  { date: "Sep 15, 2023", amount: "$8,210.45", status: "Paid" },
-  { date: "Aug 31, 2023", amount: "$8,210.45", status: "Paid" },
-];
-
-const quickTags = ["W-2 (2022)", "1095-C", "Direct Deposit"];
+import { useEffect, useState } from "react";
+import { getUser } from "@/config";
+import { api, buildQueryParams } from "@/lib/api-client";
 
 function PayrollMetricCard({ label, value, icon, iconTint, iconGhost, meta, metaIcon, metaClass, glow }) {
   return (
-    <div
-      className={`staff-glass-card relative overflow-hidden rounded-[1.6rem] p-5 transition hover:bg-slate-800/45 ${
-        glow ? "shadow-[0_0_20px_rgba(129,236,255,0.12)]" : ""
-      }`}
-    >
+    <div className={`staff-glass-card relative overflow-hidden rounded-2xl p-4 transition hover:bg-slate-800/45 ${glow ? "shadow-[0_0_20px_rgba(129,236,255,0.12)]" : ""}`}>
       <div className={`pointer-events-none absolute right-0 top-0 p-4 ${iconGhost}`}>
-        <span className="material-symbols-outlined text-5xl">{icon}</span>
+        <span className="material-symbols-outlined text-3xl">{icon}</span>
       </div>
-
       <div className="relative z-10 flex items-center gap-3">
         <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconTint}`}>
           <span className="material-symbols-outlined text-xl">{icon}</span>
         </div>
         <span className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</span>
       </div>
-
       <div className="relative z-10 mt-5">
-        <div className="font-headline text-3xl font-bold tracking-tight text-slate-100">{value}</div>
+        <div className="font-headline text-xl font-bold tracking-tight text-slate-100">{value}</div>
         <div className={`mt-2 flex items-center gap-1.5 text-xs ${metaClass}`}>
           <span className="material-symbols-outlined text-xs">{metaIcon}</span>
           <span>{meta}</span>
@@ -70,16 +27,97 @@ function PayrollMetricCard({ label, value, icon, iconTint, iconGhost, meta, meta
   );
 }
 
-function PayoutStatus() {
+function PayoutStatus({ status }) {
+  const isPaid = status === "Paid" || status === "paid";
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-      <span className="h-1.5 w-1.5 rounded-full bg-emerald-300"></span>
-      Paid
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${isPaid ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${isPaid ? "bg-emerald-300" : "bg-amber-300"}`}></span>
+      {isPaid ? "Paid" : "Pending"}
     </span>
   );
 }
 
+const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 export default function StaffPayrollPage() {
+  const [payslips, setPayslips] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const u = getUser();
+        const params = await buildQueryParams({});
+        const empId = u.system_user_id || u.employee_id;
+
+        const { data } = await api.get("/get-payslip-by-employee-year", {
+          params: { ...params, employee_id: empId, year: selectedYear },
+        });
+
+        setPayslips(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.warn("Payroll error", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [selectedYear]);
+
+  const latestPayslip = payslips.length > 0 ? payslips[0] : null;
+  const totalYTD = payslips.reduce((sum, p) => sum + (parseFloat(p.final_salary) || 0), 0);
+  const netPercent = latestPayslip && latestPayslip.basic_salary > 0 ? Math.round((latestPayslip.net_salary / latestPayslip.basic_salary) * 100) : 0;
+  const netOffset = 100 - netPercent;
+
+  const metrics = [
+    {
+      label: "Latest Salary",
+      value: latestPayslip ? `${parseFloat(latestPayslip.final_salary || 0).toLocaleString()}` : "---",
+      icon: "payments",
+      iconTint: "bg-cyan-400/10 text-cyan-300",
+      iconGhost: "text-cyan-300/10",
+      meta: latestPayslip ? `${monthNames[latestPayslip.month] || "---"} ${latestPayslip.year}` : "---",
+      metaIcon: "check_circle",
+      metaClass: "text-emerald-300",
+      glow: true,
+    },
+    {
+      label: "Basic Salary",
+      value: latestPayslip ? `${parseFloat(latestPayslip.basic_salary || 0).toLocaleString()}` : "---",
+      icon: "account_balance_wallet",
+      iconTint: "bg-purple-400/10 text-purple-300",
+      iconGhost: "text-purple-300/10",
+      meta: "Monthly Base",
+      metaIcon: "info",
+      metaClass: "text-slate-500",
+    },
+    {
+      label: "Net Salary",
+      value: latestPayslip ? `${parseFloat(latestPayslip.net_salary || 0).toLocaleString()}` : "---",
+      icon: "savings",
+      iconTint: "bg-emerald-400/10 text-emerald-300",
+      iconGhost: "text-emerald-300/10",
+      meta: "After Deductions",
+      metaIcon: "info",
+      metaClass: "text-slate-500",
+    },
+    {
+      label: `Total YTD (${selectedYear})`,
+      value: totalYTD > 0 ? `${totalYTD.toLocaleString()}` : "---",
+      icon: "trending_up",
+      iconTint: "bg-cyan-400/10 text-cyan-300",
+      iconGhost: "text-cyan-300/10",
+      meta: `${payslips.length} payslips`,
+      metaIcon: "info",
+      metaClass: "text-slate-500",
+    },
+  ];
+
+  if (loading) {
+    return <div className="p-8 flex items-center justify-center min-h-screen"><div className="text-slate-400 text-sm">Loading payroll...</div></div>;
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen relative">
       <div className="pointer-events-none fixed right-[-9rem] top-[12rem] h-80 w-80 rounded-full bg-cyan-400/10 blur-[150px]"></div>
@@ -88,57 +126,38 @@ export default function StaffPayrollPage() {
       <div>
         <section className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <h1 className="font-headline text-2xl font-bold tracking-tight text-slate-100">Payroll Engine</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Detailed employee compensation and tax overview for the current fiscal cycle.
-            </p>
+            <h1 className="font-headline text-2xl font-bold tracking-tight text-slate-100">My Payroll</h1>
+            <p className="mt-1 text-sm text-slate-500">Your compensation and payslip details.</p>
           </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <button className="rounded-xl border border-white/10 bg-slate-800/80 px-6 py-2.5 text-sm font-medium text-slate-100 transition hover:bg-slate-700">
-              Download Report
-            </button>
-            <button className="rounded-xl bg-gradient-to-r from-cyan-300 to-cyan-400 px-6 py-2.5 text-sm font-bold text-[#004d57] shadow-[0_0_20px_rgba(129,236,255,0.3)] transition hover:scale-[1.02] active:scale-95">
-              Update Payment Method
-            </button>
+          <div className="flex gap-3">
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="rounded-xl border border-white/10 bg-slate-800/80 px-4 py-2.5 text-sm text-slate-100"
+            >
+              {[2026, 2025, 2024, 2023].map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
           </div>
         </section>
 
-        <section className="mb-8 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-          {payrollMetrics.map((metric) => (
+        <section className="mb-5 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          {metrics.map((metric) => (
             <PayrollMetricCard key={metric.label} {...metric} />
           ))}
         </section>
 
-        <section className="mb-8 grid gap-8 xl:grid-cols-12">
-          <div className="staff-glass-card rounded-[1.8rem] p-6 xl:col-span-4 xl:p-8">
-            <h3 className="mb-8 font-headline text-xl font-semibold text-slate-100">Pay Breakdown</h3>
-
+        <section className="mb-5 grid gap-8 xl:grid-cols-12">
+          {/* Pay Breakdown */}
+          <div className="staff-glass-card rounded-2xl p-6 xl:col-span-4 xl:p-5">
+            <h3 className="mb-8 font-headline text-sm font-bold text-slate-100">Pay Breakdown</h3>
             <div className="mb-8 flex justify-center">
-              <div className="relative h-64 w-64">
+              <div className="relative h-40 w-40">
                 <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
                   <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="rgba(129,236,255,0.1)" strokeWidth="3"></circle>
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.915"
-                    fill="transparent"
-                    stroke="url(#payroll-primary-gradient)"
-                    strokeDasharray="75 25"
-                    strokeLinecap="round"
-                    strokeWidth="4"
-                  ></circle>
-                  <circle
-                    cx="18"
-                    cy="18"
-                    r="15.915"
-                    fill="transparent"
-                    stroke="#af88ff"
-                    strokeDasharray="25 75"
-                    strokeDashoffset="-75"
-                    strokeLinecap="round"
-                    strokeWidth="4"
-                  ></circle>
+                  <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="url(#payroll-primary-gradient)" strokeDasharray={`${netPercent} ${netOffset}`} strokeLinecap="round" strokeWidth="4"></circle>
+                  <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="#af88ff" strokeDasharray={`${netOffset} ${netPercent}`} strokeDashoffset={`-${netPercent}`} strokeLinecap="round" strokeWidth="4"></circle>
                   <defs>
                     <linearGradient id="payroll-primary-gradient" x1="0%" x2="100%" y1="0%" y2="0%">
                       <stop offset="0%" stopColor="#81ecff"></stop>
@@ -146,128 +165,95 @@ export default function StaffPayrollPage() {
                     </linearGradient>
                   </defs>
                 </svg>
-
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="font-headline text-4xl font-bold text-slate-100">75%</span>
+                  <span className="font-headline text-2xl font-bold text-slate-100">{netPercent}%</span>
                   <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Net Pay</span>
                 </div>
               </div>
             </div>
-
             <div className="space-y-4">
               <div className="flex items-center justify-between rounded-xl border-l-4 border-cyan-300 bg-cyan-400/5 px-4 py-3">
                 <div className="flex items-center gap-3">
                   <span className="h-2 w-2 rounded-full bg-cyan-300"></span>
                   <span className="text-sm font-medium text-slate-100">Net Salary</span>
                 </div>
-                <span className="font-bold text-slate-100">$6,337.50</span>
+                <span className="font-bold text-slate-100">{latestPayslip ? parseFloat(latestPayslip.net_salary || 0).toLocaleString() : "---"}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border-l-4 border-purple-300 bg-purple-400/5 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="h-2 w-2 rounded-full bg-purple-300"></span>
+                  <span className="text-sm font-medium text-slate-100">Basic Salary</span>
+                </div>
+                <span className="font-bold text-slate-100">{latestPayslip ? parseFloat(latestPayslip.basic_salary || 0).toLocaleString() : "---"}</span>
               </div>
             </div>
           </div>
 
-          <div className="staff-glass-card overflow-hidden rounded-[1.8rem] xl:col-span-8">
-            <div className="flex flex-col gap-3 p-6 pb-4 sm:flex-row sm:items-center sm:justify-between xl:p-8 xl:pb-4">
-              <h3 className="font-headline text-xl font-semibold text-slate-100">Recent Payout History</h3>
-              <button className="text-sm font-medium text-cyan-300 transition hover:underline">View All History</button>
+          {/* Payout History */}
+          <div className="staff-glass-card overflow-hidden rounded-2xl xl:col-span-8">
+            <div className="flex flex-col gap-3 p-6 pb-4 sm:flex-row sm:items-center sm:justify-between xl:p-5 xl:pb-4">
+              <h3 className="font-headline text-sm font-bold text-slate-100">Payslip History ({selectedYear})</h3>
+            </div>
+            <div className="hidden overflow-x-auto sm:block">
+              <table className="w-full min-w-[860px] text-left">
+                <thead>
+                  <tr className="border-b border-white/10 text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                    <th className="px-5 py-3 font-medium">Month</th>
+                    <th className="px-5 py-3 font-medium">Basic</th>
+                    <th className="px-5 py-3 font-medium">Net</th>
+                    <th className="px-5 py-3 font-medium">Final</th>
+                    <th className="px-5 py-3 font-medium">Status</th>
+                    <th className="px-5 py-3 text-right font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {payslips.map((p, i) => (
+                    <tr key={i} className="transition hover:bg-slate-900/20">
+                      <td className="px-5 py-3 text-sm font-medium text-slate-100">{monthNames[p.month] || "---"} {p.year}</td>
+                      <td className="px-5 py-3 text-sm text-slate-300">{parseFloat(p.basic_salary || 0).toLocaleString()}</td>
+                      <td className="px-5 py-3 text-sm text-slate-300">{parseFloat(p.net_salary || 0).toLocaleString()}</td>
+                      <td className="px-5 py-3 text-sm font-bold text-slate-100">{parseFloat(p.final_salary || 0).toLocaleString()}</td>
+                      <td className="px-5 py-3"><PayoutStatus status="Paid" /></td>
+                      <td className="px-5 py-3 text-right">
+                        <button
+                          onClick={() => {
+                            const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://192.168.1.115:8000";
+                            window.open(`${baseUrl}/api/donwload-payslip-pdf?payslip_id=${p.id}`, "_blank");
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg p-2 text-cyan-300 transition hover:bg-cyan-400/10"
+                        >
+                          <span className="material-symbols-outlined">receipt</span>
+                          <span className="text-xs">View</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {payslips.length === 0 && (
+                    <tr><td colSpan="6" className="px-8 py-10 text-center text-slate-500">No payslips found for {selectedYear}</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
 
+            {/* Mobile cards */}
             <div className="space-y-4 px-4 pb-4 sm:hidden">
-              {payoutHistory.map((item) => (
-                <div key={`${item.date}-${item.amount}`} className="rounded-[1.25rem] border border-white/5 bg-slate-900/20 p-4">
+              {payslips.map((p, i) => (
+                <div key={i} className="rounded-[1.25rem] border border-white/5 bg-slate-900/20 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-medium text-slate-100">{item.date}</p>
-                      <p className="mt-1 text-[11px] text-slate-500">Employee Payroll</p>
+                      <p className="text-sm font-medium text-slate-100">{monthNames[p.month] || "---"} {p.year}</p>
+                      <p className="mt-1 text-[11px] text-slate-500">Basic: {parseFloat(p.basic_salary || 0).toLocaleString()}</p>
                     </div>
-                    <PayoutStatus />
+                    <PayoutStatus status="Paid" />
                   </div>
                   <div className="mt-4 flex items-center justify-between">
-                    <span className="text-sm font-bold text-slate-100">{item.amount}</span>
+                    <span className="text-sm font-bold text-slate-100">{parseFloat(p.final_salary || 0).toLocaleString()}</span>
                     <button className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-cyan-300 transition hover:bg-cyan-400/10">
                       <span className="material-symbols-outlined text-base">receipt</span>
                       View Payslip
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            <div className="hidden overflow-x-auto sm:block">
-              <table className="w-full min-w-[860px] text-left">
-                <thead>
-                  <tr className="border-b border-white/10 text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                    <th className="px-8 py-4 font-medium">Date</th>
-                    <th className="px-8 py-4 font-medium">Amount</th>
-                    <th className="px-8 py-4 font-medium">Status</th>
-                    <th className="px-8 py-4 text-right font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {payoutHistory.map((item) => (
-                    <tr key={`${item.date}-${item.amount}-desktop`} className="transition hover:bg-slate-900/20">
-                      <td className="px-8 py-5 text-sm font-medium text-slate-100">{item.date}</td>
-                      <td className="px-8 py-5 text-sm font-bold text-slate-100">{item.amount}</td>
-                      <td className="px-8 py-5">
-                        <PayoutStatus />
-                      </td>
-                      <td className="px-8 py-5 text-right">
-                        <button className="inline-flex items-center gap-1 rounded-lg p-2 text-cyan-300 transition hover:bg-cyan-400/10">
-                          <span className="material-symbols-outlined">receipt</span>
-                          <span className="text-xs">View Payslip</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <section className="grid gap-8 md:grid-cols-2">
-          <div className="staff-glass-card relative overflow-hidden rounded-[1.8rem] border-l-4 border-purple-300 p-6 shadow-[0_0_20px_rgba(175,136,255,0.12)] xl:p-8">
-            <div className="pointer-events-none absolute right-[-2rem] top-[-2rem] h-40 w-40 rounded-full bg-purple-400/10 blur-3xl"></div>
-            <div className="relative flex items-start gap-4">
-              <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-purple-400/20 text-purple-200">
-                <span className="material-symbols-outlined text-3xl">psychology</span>
-              </div>
-              <div>
-                <h4 className="font-headline text-lg font-bold text-slate-100">AI Tax Optimization</h4>
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">
-                  Based on your recent earnings, increasing your 401(k) contribution by 2% could reduce your tax liability by an estimated $1,240 for this fiscal year.
-                </p>
-                <button className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-purple-200 transition hover:translate-x-1">
-                  Apply Suggestion
-                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="staff-glass-card group rounded-[1.8rem] border-l-4 border-cyan-300 p-6 transition hover:bg-slate-800/45 xl:p-8">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400/20 text-cyan-300">
-                  <span className="material-symbols-outlined text-3xl">account_balance</span>
-                </div>
-                <div>
-                  <h4 className="font-headline text-lg font-bold text-slate-100">Bank &amp; Tax Forms</h4>
-                  <p className="text-sm text-slate-400">Manage direct deposit and W-2 forms.</p>
-                </div>
-              </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 transition group-hover:bg-cyan-300 group-hover:text-[#004d57]">
-                <span className="material-symbols-outlined">chevron_right</span>
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              {quickTags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-lg border border-white/10 bg-slate-800 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400"
-                >
-                  {tag}
-                </span>
               ))}
             </div>
           </div>

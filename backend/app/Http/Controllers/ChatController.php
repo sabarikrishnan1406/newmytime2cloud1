@@ -104,7 +104,8 @@ class ChatController extends Controller
     {
         $request->validate([
             'receiver_id' => 'required|integer',
-            'message' => 'required|string|max:5000',
+            'message' => 'nullable|string|max:5000',
+            'file' => 'nullable|file|max:10240',
         ]);
 
         $user = $request->user() ?? User::find($request->user_id);
@@ -126,14 +127,28 @@ class ChatController extends Controller
             }
         }
 
+        // Handle file upload
+        $attachmentPath = null;
+        $type = $request->type ?? 'text';
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move(public_path('chat_uploads'), $filename);
+            $attachmentPath = $filename;
+            // Determine type from extension since getMimeType may not work
+            $ext = strtolower($file->getClientOriginalExtension());
+            $imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+            $type = in_array($ext, $imageExts) ? 'image' : 'file';
+        }
+
         $message = ChatMessage::create([
             'sender_id' => $myId,
             'receiver_id' => $request->receiver_id,
             'company_id' => $companyId,
             'branch_id' => Employee::find($myId)?->branch_id,
-            'message' => $request->message,
-            'type' => $request->type ?? 'text',
-            'attachment' => $request->attachment,
+            'message' => $request->message ?? ($attachmentPath ? $attachmentPath : ''),
+            'type' => $type,
+            'attachment' => $attachmentPath,
         ]);
 
         return response()->json([

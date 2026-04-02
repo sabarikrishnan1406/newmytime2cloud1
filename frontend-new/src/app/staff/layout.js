@@ -34,9 +34,7 @@ export default function StaffLayout({ children }) {
       {/* SIDEBAR */}
       <aside className="group/sidebar fixed left-0 top-0 z-50 flex h-screen w-14 hover:w-52 flex-col border-r border-white/5 bg-[#050B18]/95 backdrop-blur-xl transition-all duration-300 ease-in-out staff-sidebar-glow overflow-hidden">
         {/* Logo */}
-        <div className="flex items-center gap-3 px-3 py-4 shrink-0">
-          <img src="https://mytime2cloud.com/logo22.png" alt="MyTime Cloud" className="h-8 w-auto object-contain brightness-110 shrink-0" />
-        </div>
+        <div className="h-14 shrink-0"></div>
 
         {/* Nav */}
         <nav className="flex flex-1 flex-col gap-2.5 px-2 py-2 overflow-y-auto">

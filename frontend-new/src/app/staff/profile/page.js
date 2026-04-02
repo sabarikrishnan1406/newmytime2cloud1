@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getUser } from "@/config";
 import { api, buildQueryParams } from "@/lib/api-client";
+import { getStaffUser } from "@/lib/staff-user";
 import Link from "next/link";
 
 function ContactCard({ label, value, icon, iconClass }) {
@@ -43,7 +44,7 @@ export default function StaffProfilePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const u = getUser();
+        const u = await getStaffUser();
         const params = await buildQueryParams({});
 
         // Get profile from /me
@@ -77,15 +78,13 @@ export default function StaffProfilePage() {
           });
         } catch (e) { console.warn("Profile error", e); }
 
-        // Get stats
+        // Get stats from /staff-stats
         try {
-          const statsRes = await api.get("/employee-statistics", {
-            params: { ...params, employee_id: u.employee_id || u.system_user_id, shift_type_id: 0 },
+          const sysId = u.system_user_id || u.employee_id;
+          const { data: statsData } = await api.get("/staff-stats", {
+            params: { ...params, system_user_id: sysId, user_id: u.id },
           });
-          if (Array.isArray(statsRes.data)) {
-            const getStat = (key) => statsRes.data.find((s) => s.Key === key)?.value ?? 0;
-            setStats({ present: getStat("P"), absent: getStat("A"), leave: getStat("L") });
-          }
+          setStats({ present: statsData.present || 0, absent: statsData.absent || 0, leave: statsData.leave || 0 });
         } catch (e) {}
 
         // Get documents from /documentinfo/{employee_id}

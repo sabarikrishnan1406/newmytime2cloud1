@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getUser } from "@/config";
 import { api, buildQueryParams } from "@/lib/api-client";
+import { getStaffUser } from "@/lib/staff-user";
 
 /* ── Metric Card ── */
 const MetricCard = ({ icon, iconBg, label, value, suffix, badge, badgeColor }) => (
@@ -76,19 +77,19 @@ export default function StaffDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const u = getUser();
+        const u = await getStaffUser();
+        const sysUserId = u.system_user_id || u.employee_id;
+        const empId = sysUserId;
 
-        // Show page immediately with name + photo from localStorage
+        // Show page immediately
         const localName = u?.employee_name || u?.name;
         setUserName(localName && localName !== "---" ? localName : "Employee");
         setProfilePicture(u?.employee_profile_picture || null);
-        setLoading(false); // Show page NOW, data loads in background
+        setLoading(false);
 
         const params = await buildQueryParams({});
-        const empId = u.employee_id || u.system_user_id;
-        const sysUserId = u.system_user_id || u.employee_id;
 
-        // Always fetch from /me to get latest name + photo
+        // Update name/photo (non-blocking)
         api.get("/me").then(({ data }) => {
           const me = data?.user;
           const name = me?.employee_name || me?.name;
@@ -96,24 +97,20 @@ export default function StaffDashboard() {
           if (me?.employee_profile_picture) setProfilePicture(me.employee_profile_picture);
         }).catch(() => {});
 
-        // 1. Fetch monthly statistics from /employee-statistics
+        // 1. Fetch all stats from /staff-stats (calculates from raw logs)
         try {
-          const { data } = await api.get("/employee-statistics", {
-            params: { ...params, employee_id: empId, shift_type_id: 0 },
+          const { data } = await api.get("/staff-stats", {
+            params: { ...params, system_user_id: sysUserId, user_id: u.id },
           });
-          if (Array.isArray(data)) {
-            const getStat = (key) => data.find((s) => s.Key === key)?.value ?? 0;
-            setPresentCount(getStat("P"));
-            setAbsentCount(getStat("A"));
-            setLateCount(getStat("LI"));
-            setEarlyOutCount(getStat("EO"));
-            setIncompleteCount(getStat("M"));
-            setLeaveCount(getStat("L"));
-            setHolidayCount(getStat("H"));
-            setWeekOffCount(getStat("O"));
-            const otStat = data.find((s) => s.Key === "OT");
-            if (otStat) setOvertimeHours(otStat.value || "0:00");
-          }
+          setPresentCount(data.present || 0);
+          setAbsentCount(data.absent || 0);
+          setLateCount(data.late || 0);
+          setEarlyOutCount(data.early_out || 0);
+          setIncompleteCount(data.incomplete || 0);
+          setLeaveCount(data.leave || 0);
+          setHolidayCount(data.holiday || 0);
+          setWeekOffCount(data.week_off || 0);
+          setOvertimeHours(data.overtime || "0:00");
         } catch (e) { console.warn("Stats error", e); }
 
         // 2. Fetch shift schedule
