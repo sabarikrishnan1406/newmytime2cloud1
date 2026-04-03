@@ -33,6 +33,7 @@ include('access_control_time_slot.php');
 include('devices.php');
 include('camera-stream.php');
 include('chat.php');
+include('payroll_management.php');
 include('realtime_location.php');
 include('clocking.php');
 include('change_request.php');

@@ -76,7 +76,13 @@ const companyMenu = [
 ];
 
 const payrollMenu = [
-  { href: "/payslips", icon: DollarSign, label: "Payroll" },
+  { href: "/payslips", icon: DollarSign, label: "Dashboard" },
+  { href: "/payslips/register", icon: FileText, label: "Payroll Register" },
+  { href: "/payslips/salary-structures", icon: Layers, label: "Salary Structures" },
+  { href: "/payslips/adjustments", icon: FileText, label: "Adjustments" },
+  { href: "/payslips/loans", icon: DollarSign, label: "Loans & Advances" },
+  { href: "/payslips/reports", icon: FileText, label: "Reports" },
+  { href: "/payslips/employees", icon: Users, label: "Employees" },
 ];
 
 const employeesMenu = [
@@ -129,6 +135,12 @@ export const leftNavLinks = {
   "/live-camera/stream": companyMenu,
   "/live-camera/register": companyMenu,
   "/payslips": payrollMenu,
+  "/payslips/register": payrollMenu,
+  "/payslips/salary-structures": payrollMenu,
+  "/payslips/adjustments": payrollMenu,
+  "/payslips/loans": payrollMenu,
+  "/payslips/reports": payrollMenu,
+  "/payslips/employees": payrollMenu,
   "/geo-fencing": companyMenu,
   "/live-tracker": companyMenu,
   "/settings/leave": companyMenu,
