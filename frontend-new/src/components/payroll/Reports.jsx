@@ -21,6 +21,37 @@ export default function PayrollReports() {
   const [month, setMonth] = useState("2026-04");
   const [downloading, setDownloading] = useState(null);
 
+  const handlePdfDownload = async (reportId, reportName) => {
+    setDownloading(`${reportId}-pdf`);
+    try {
+      const params = await buildQueryParams({});
+      const { data } = await api.get("/payroll-management/export-report", {
+        params: { ...params, report_type: reportId, month, format: "csv" },
+        responseType: "text",
+      });
+      // Parse CSV and render as printable HTML
+      const lines = data.split("\n").filter(l => l.trim());
+      const headers = lines[0].split(",").map(h => h.replace(/"/g, "").trim());
+      const rows = lines.slice(1).map(l => l.split(",").map(c => c.replace(/"/g, "").trim()));
+      const win = window.open("", "_blank");
+      win.document.write(`<html><head><title>${reportName} - ${month}</title>
+        <style>body{font-family:Arial,sans-serif;padding:30px}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px}
+        th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f5f5f5;font-weight:bold;font-size:10px;text-transform:uppercase}
+        h1{font-size:18px;margin-bottom:4px}p{font-size:12px;color:#666}
+        @media print{body{padding:10px}}</style></head><body>
+        <h1>${reportName}</h1><p>Month: ${month}</p>
+        <table><thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>
+        </body></html>`);
+      win.document.close();
+      win.print();
+    } catch (e) {
+      alert("Download failed. Make sure payroll has been generated for this month.");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
   const handleDownload = async (reportId, format) => {
     setDownloading(`${reportId}-${format}`);
     try {
@@ -72,13 +103,16 @@ export default function PayrollReports() {
                   <h4 className="text-xs font-medium text-gray-800 dark:text-gray-100">{report.name}</h4>
                   <p className="text-[10px] text-gray-500 mt-0.5">{report.desc}</p>
                   <div className="flex gap-1.5 mt-2.5">
-                    {["CSV"].map(fmt => (
-                      <button key={fmt} onClick={() => handleDownload(report.id, fmt.toLowerCase())}
-                        disabled={downloading === `${report.id}-${fmt.toLowerCase()}`}
-                        className="inline-flex items-center gap-1 rounded-md border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-2 py-1 text-[10px] font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50">
-                        <Download className="h-2.5 w-2.5" /> {downloading === `${report.id}-${fmt.toLowerCase()}` ? "..." : fmt}
-                      </button>
-                    ))}
+                    <button onClick={() => handleDownload(report.id, "csv")}
+                      disabled={downloading === `${report.id}-csv`}
+                      className="inline-flex items-center gap-1 rounded-md border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-2 py-1 text-[10px] font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50">
+                      <Download className="h-2.5 w-2.5" /> {downloading === `${report.id}-csv` ? "..." : "CSV"}
+                    </button>
+                    <button onClick={() => handlePdfDownload(report.id, report.name)}
+                      disabled={downloading === `${report.id}-pdf`}
+                      className="inline-flex items-center gap-1 rounded-md border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-900/10 px-2 py-1 text-[10px] font-medium text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 transition disabled:opacity-50">
+                      <Download className="h-2.5 w-2.5" /> {downloading === `${report.id}-pdf` ? "..." : "PDF"}
+                    </button>
                   </div>
                 </div>
               </div>

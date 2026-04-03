@@ -188,6 +188,8 @@ export default function Stream({ deviceId }) {
     let ws = null;
     let reconnectTimer = null;
     let cancelled = false;
+    let reconnectAttempts = 0;
+    let idleTimer = null;
 
     const connect = () => {
       if (cancelled) return;
@@ -196,6 +198,7 @@ export default function Stream({ deviceId }) {
       ws.binaryType = "blob";
 
       ws.onopen = () => {
+        reconnectAttempts = 0;
         setIsConnected(false);
         setStreamMessage("Connected to camera gateway. Waiting for first video frame...");
         setError(null);
@@ -205,6 +208,15 @@ export default function Stream({ deviceId }) {
       };
 
       ws.onmessage = async (event) => {
+        // Reset idle timer on every message
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+          if (!cancelled && ws && ws.readyState === WebSocket.OPEN) {
+            setStreamMessage("Camera stream idle. Reconnecting...");
+            ws.close();
+          }
+        }, 30000); // 30s idle = reconnect
+
         try {
           if (event.data instanceof Blob) {
             const bitmap = await createImageBitmap(event.data);
@@ -255,9 +267,13 @@ export default function Stream({ deviceId }) {
       ws.onclose = () => {
         setIsConnected(false);
         receivedFrameRef.current = false;
-        setStreamMessage("Camera disconnected. Retrying...");
+        if (idleTimer) clearTimeout(idleTimer);
         if (!cancelled) {
-          reconnectTimer = setTimeout(connect, 2000);
+          // Exponential backoff: 2s, 4s, 8s, 16s, max 30s
+          const delay = Math.min(2000 * Math.pow(2, reconnectAttempts), 30000);
+          reconnectAttempts++;
+          setStreamMessage(`Camera disconnected. Retrying in ${Math.round(delay/1000)}s...`);
+          reconnectTimer = setTimeout(connect, delay);
         }
       };
     };
@@ -267,6 +283,7 @@ export default function Stream({ deviceId }) {
     return () => {
       cancelled = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (idleTimer) clearTimeout(idleTimer);
       if (ws) ws.close();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -284,11 +301,14 @@ export default function Stream({ deviceId }) {
     let ws = null;
     let cancelled = false;
     let reconnectTimer = null;
+    let detReconnectAttempts = 0;
 
     const connect = () => {
       if (cancelled) return;
 
       ws = new WebSocket(`${getCameraServiceWsUrl()}/detect/${deviceId}`);
+
+      ws.onopen = () => { detReconnectAttempts = 0; };
 
       ws.onmessage = (event) => {
         try {
@@ -338,9 +358,10 @@ export default function Stream({ deviceId }) {
       ws.onerror = () => console.warn("Detection WebSocket failed — video continues");
 
       ws.onclose = () => {
-        // Auto-reconnect after 2 seconds unless component unmounted
         if (!cancelled) {
-          reconnectTimer = setTimeout(connect, 2000);
+          const delay = Math.min(2000 * Math.pow(2, detReconnectAttempts), 30000);
+          detReconnectAttempts++;
+          reconnectTimer = setTimeout(connect, delay);
         }
       };
     };

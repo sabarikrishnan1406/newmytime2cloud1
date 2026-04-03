@@ -23,8 +23,19 @@ const DEFAULT_RTSP_PATHS = [
 const SOI = Buffer.from([0xff, 0xd8]);
 const EOI = Buffer.from([0xff, 0xd9]);
 
+const HEARTBEAT_INTERVAL_MS = 25000; // 25 seconds
+
 const wss = new WebSocketServer({ port: PORT });
 const deviceStreams = new Map();
+
+// Heartbeat: ping all clients every 25s, terminate dead ones
+setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) return ws.terminate();
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, HEARTBEAT_INTERVAL_MS);
 
 console.log(`Camera proxy running on ws://localhost:${PORT}`);
 
@@ -249,7 +260,7 @@ function getHostPortFromRtspUrl(rtspUrl) {
   }
 }
 
-function checkTcpReachable(host, port, timeoutMs = 1500) {
+function checkTcpReachable(host, port, timeoutMs = 5000) {
   return new Promise((resolve) => {
     const socket = new net.Socket();
     let settled = false;
@@ -476,6 +487,9 @@ async function ensureStreamRunning(stream) {
 }
 
 wss.on("connection", async (ws, req) => {
+  ws.isAlive = true;
+  ws.on("pong", () => { ws.isAlive = true; });
+
   const deviceId = parseDeviceId(req.url);
 
   if (!deviceId) {

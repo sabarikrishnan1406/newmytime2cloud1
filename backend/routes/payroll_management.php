@@ -9,6 +9,10 @@ Route::get('payroll-management/employees', [PayrollManagementController::class, 
 // Dashboard
 Route::get('payroll-management/dashboard', [PayrollManagementController::class, 'dashboardStats']);
 
+// Employee Salary Structure (for Employee Edit page)
+Route::get('payroll-management/employee-salary/{employeeId}', [PayrollManagementController::class, 'employeeSalaryStructure']);
+Route::post('payroll-management/employee-salary/{employeeId}', [PayrollManagementController::class, 'upsertEmployeeSalaryStructure']);
+
 // Salary Structures
 Route::get('payroll-management/salary-structures', [PayrollManagementController::class, 'salaryStructures']);
 Route::post('payroll-management/salary-structures', [PayrollManagementController::class, 'storeSalaryStructure']);

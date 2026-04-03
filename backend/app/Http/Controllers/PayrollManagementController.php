@@ -29,6 +29,41 @@ class PayrollManagementController extends Controller
             ->get();
     }
 
+    // ── Single Employee Salary Structure (for Employee Edit page) ──
+    public function employeeSalaryStructure(Request $request, $employeeId)
+    {
+        $structure = SalaryStructure::where('company_id', $request->company_id)
+            ->where('employee_id', $employeeId)
+            ->where('status', 'active')
+            ->first();
+
+        return response()->json($structure);
+    }
+
+    public function upsertEmployeeSalaryStructure(Request $request, $employeeId)
+    {
+        $data = $request->only([
+            'basic_salary', 'house_allowance', 'transport_allowance',
+            'food_allowance', 'medical_allowance', 'other_allowance',
+            'overtime_eligible', 'loan_deduction', 'advance_deduction',
+            'salary_mode', 'effective_from', 'effective_to',
+        ]);
+        $data['company_id'] = $request->company_id;
+        $data['employee_id'] = $employeeId;
+        $data['branch_id'] = $request->branch_id ?? Employee::find($employeeId)?->branch_id;
+        $data['status'] = 'active';
+        $data['gross_salary'] = ($data['basic_salary'] ?? 0) + ($data['house_allowance'] ?? 0) +
+            ($data['transport_allowance'] ?? 0) + ($data['food_allowance'] ?? 0) +
+            ($data['medical_allowance'] ?? 0) + ($data['other_allowance'] ?? 0);
+
+        $structure = SalaryStructure::updateOrCreate(
+            ['company_id' => $request->company_id, 'employee_id' => $employeeId],
+            $data
+        );
+
+        return response()->json(['status' => true, 'data' => $structure]);
+    }
+
     // ── Salary Structures ──
     public function salaryStructures(Request $request)
     {
@@ -181,7 +216,7 @@ class PayrollManagementController extends Controller
         $companyId = $request->company_id;
         $month = $request->month ?? date('Y-m');
 
-        $batch = PayrollBatch::where('company_id', $companyId)->where('month', $month)->first();
+        $batch = PayrollBatch::where('company_id', $companyId)->where('month', $month)->latest('id')->first();
         $records = $batch ? PayrollRecord::where('batch_id', $batch->id)->get() : collect();
 
         $empCount = Employee::where('company_id', $companyId)->count();
@@ -233,13 +268,11 @@ class PayrollManagementController extends Controller
         $branchId = $request->branch_id;
 
         // Check existing batch
+        // Find existing draft batch to reuse, or create new one
         $existing = PayrollBatch::where('company_id', $companyId)->where('month', $month)
+            ->where('status', 'draft')
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->first();
-
-        if ($existing && $existing->status !== 'draft') {
-            return response()->json(['status' => false, 'message' => 'Payroll already processed for this month'], 400);
-        }
 
         DB::beginTransaction();
         try {
@@ -462,7 +495,7 @@ class PayrollManagementController extends Controller
         $reportType = $request->report_type;
         $format = $request->format ?? 'csv';
 
-        $batch = PayrollBatch::where('company_id', $companyId)->where('month', $month)->first();
+        $batch = PayrollBatch::where('company_id', $companyId)->where('month', $month)->latest('id')->first();
         if (!$batch) {
             return response()->json(['status' => false, 'message' => 'No payroll batch found for this month'], 404);
         }
