@@ -1,6 +1,11 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { api, buildQueryParams } from "@/lib/api-client";
+import { getStaffUser } from "@/lib/staff-user";
 import Link from "next/link";
 
-const leaveBalances = [
+const defaultLeaveBalances = [
   {
     label: "Annual Leave",
     value: "12",
@@ -47,7 +52,7 @@ const leaveBalances = [
   },
 ];
 
-const leaveRequests = [
+const defaultLeaveRequests = [
   {
     type: "Annual Leave",
     icon: "calendar_month",
@@ -114,7 +119,95 @@ function LeaveStatus({ status, statusClass }) {
   );
 }
 
+const statusStyleMap = {
+  0: { status: "Pending", statusClass: "bg-cyan-400/10 text-cyan-300 shadow-[0_0_10px_rgba(129,236,255,0.08)]" },
+  1: { status: "Approved", statusClass: "bg-emerald-400/10 text-emerald-300 shadow-[0_0_10px_rgba(161,255,239,0.08)]" },
+  2: { status: "Rejected", statusClass: "bg-red-400/10 text-red-300 shadow-[0_0_10px_rgba(255,113,108,0.08)]" },
+};
+
+const leaveIconMap = [
+  { icon: "calendar_month", iconClass: "bg-cyan-400/10 text-cyan-300" },
+  { icon: "medical_services", iconClass: "bg-purple-400/10 text-purple-300" },
+  { icon: "beach_access", iconClass: "bg-emerald-400/10 text-emerald-300" },
+  { icon: "event_busy", iconClass: "bg-red-400/10 text-red-300" },
+  { icon: "flight", iconClass: "bg-amber-400/10 text-amber-300" },
+];
+
 export default function StaffLeavePage() {
+  const [leaveBalances, setLeaveBalances] = useState(defaultLeaveBalances);
+  const [leaveRequests, setLeaveRequests] = useState(defaultLeaveRequests);
+  const [activeTab, setActiveTab] = useState("active");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const u = await getStaffUser();
+        const params = await buildQueryParams({});
+
+        // Fetch leave types first
+        let types = [];
+        try {
+          const ltRes = await api.get("/leave", { params });
+          types = ltRes.data?.data || (Array.isArray(ltRes.data) ? ltRes.data : []);
+        } catch (e) {}
+
+        // Fetch leave requests
+        try {
+          const { data } = await api.get("/employee_leaves", {
+            params: { ...params, employee_id: u.employee_id, per_page: 50 },
+          });
+          const items = data?.data || [];
+
+          // Build balance cards from leave types + used count
+          if (types.length > 0) {
+            const progressColors = ["bg-cyan-300", "bg-purple-300", "bg-emerald-300", "bg-red-300", "bg-amber-300"];
+            setLeaveBalances(types.map((lt, i) => {
+              const style = leaveIconMap[i % leaveIconMap.length];
+              const total = lt.total || lt.days || lt.allocated || lt.count || 0;
+              const used = items.filter((l) => l.leave_type_id === lt.id && (l.status === 1)).length;
+              const remaining = Math.max(0, total - used);
+              const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+              return {
+                label: lt.name,
+                value: String(used),
+                total: String(total),
+                icon: style.icon,
+                iconClass: style.iconClass,
+                badge: remaining > 0 ? "Active" : "Used",
+                badgeClass: style.iconClass,
+                progress: `${pct}%`,
+                progressClass: progressColors[i % progressColors.length],
+                helper: `${remaining} days remaining`,
+              };
+            }));
+          }
+
+          if (items.length > 0) {
+
+            setLeaveRequests(items.map((l, i) => {
+              const lt = types.find((t) => t.id === l.leave_type_id);
+              const iconStyle = leaveIconMap[(types.indexOf(lt) >= 0 ? types.indexOf(lt) : i) % leaveIconMap.length];
+              const st = statusStyleMap[l.status] || statusStyleMap[0];
+              const start = new Date(l.start_date);
+              const end = new Date(l.end_date);
+              const days = Math.max(1, Math.ceil((end - start) / 86400000) + 1);
+              return {
+                type: lt?.name || "Leave",
+                icon: iconStyle.icon,
+                iconClass: iconStyle.iconClass,
+                dateRange: `${start.toLocaleDateString("en-US", { month: "short", day: "2-digit" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })}`,
+                days: String(days),
+                reason: l.reason || "---",
+                ...st,
+              };
+            }));
+          }
+        } catch (e) { console.warn("Leaves error", e); }
+      } catch (e) { console.error("Leave page error", e); }
+    };
+    fetchData();
+  }, []);
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
       <div>
@@ -132,8 +225,8 @@ export default function StaffLeavePage() {
         <section className="staff-glass-card overflow-hidden rounded-2xl">
           <div className="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between xl:p-8">
             <div className="flex gap-8 border-b border-white/10 md:w-auto">
-              <button className="border-b-2 border-cyan-300 pb-4 font-headline font-bold text-cyan-300 transition">Active Requests</button>
-              <button className="pb-4 font-headline font-medium text-slate-400 transition hover:text-cyan-300">Leave History</button>
+              <button onClick={() => setActiveTab("active")} className={`pb-4 font-headline font-bold transition ${activeTab === "active" ? "border-b-2 border-cyan-300 text-cyan-300" : "text-slate-400 hover:text-cyan-300"}`}>Active Requests</button>
+              <button onClick={() => setActiveTab("history")} className={`pb-4 font-headline font-bold transition ${activeTab === "history" ? "border-b-2 border-cyan-300 text-cyan-300" : "text-slate-400 hover:text-cyan-300"}`}>Leave History</button>
             </div>
             <Link
               href="/staff/leave/apply"
@@ -145,7 +238,7 @@ export default function StaffLeavePage() {
           </div>
 
           <div className="space-y-4 px-4 pb-4 lg:hidden">
-            {leaveRequests.map((request) => (
+            {leaveRequests.filter((r) => activeTab === "history" ? r.status === "Approved" : true).map((request) => (
               <div key={`${request.type}-${request.dateRange}`} className="rounded-[1.25rem] border border-white/5 bg-slate-900/20 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -191,7 +284,7 @@ export default function StaffLeavePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {leaveRequests.map((request) => (
+                {leaveRequests.filter((r) => activeTab === "history" ? r.status === "Approved" : true).map((request) => (
                   <tr key={`${request.type}-${request.dateRange}-desktop`} className="transition hover:bg-slate-900/20">
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-3">
@@ -223,63 +316,10 @@ export default function StaffLeavePage() {
           </div>
 
           <div className="flex flex-col gap-4 border-t border-white/10 px-4 py-5 sm:px-8 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-slate-500">Showing 1 to 3 of 12 requests</p>
-            <div className="flex items-center gap-2">
-              <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-slate-500 transition hover:text-cyan-300">
-                <span className="material-symbols-outlined text-sm">chevron_left</span>
-              </button>
-              <div className="flex items-center gap-1">
-                <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-400/20 text-xs font-bold text-cyan-300">1</button>
-                <button className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium text-slate-500 transition hover:bg-slate-800">2</button>
-                <button className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium text-slate-500 transition hover:bg-slate-800">3</button>
-              </div>
-              <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 text-slate-500 transition hover:text-cyan-300">
-                <span className="material-symbols-outlined text-sm">chevron_right</span>
-              </button>
-            </div>
+            <p className="text-xs text-slate-500">Showing {leaveRequests.filter((r) => activeTab === "history" ? r.status === "Approved" : true).length} of {leaveRequests.length} requests</p>
           </div>
         </section>
 
-        <section className="mt-10 grid gap-6 lg:grid-cols-3">
-          <div className="staff-glass-card flex items-center gap-6 rounded-xl p-6 lg:col-span-2">
-            <div className="h-20 w-20 shrink-0">
-              <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
-                <path
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="rgba(129,236,255,0.1)"
-                  strokeWidth="3"
-                ></path>
-                <path
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="#81ecff"
-                  strokeDasharray="75, 100"
-                  strokeLinecap="round"
-                  strokeWidth="3"
-                ></path>
-              </svg>
-            </div>
-            <div>
-              <h4 className="font-headline text-lg font-bold text-slate-100">Leave Utilization Score</h4>
-              <p className="mt-1 text-sm text-slate-500">
-                You have utilized <span className="font-bold text-cyan-300">75%</span> of your allocated annual leave. Remember to schedule your remaining 5 days before Q1 ends.
-              </p>
-            </div>
-          </div>
-
-          <div className="staff-glass-card rounded-xl border-l-4 border-purple-300/40 p-6">
-            <div className="mb-2 flex items-center gap-3">
-              <span className="material-symbols-outlined text-purple-300" style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
-                auto_awesome
-              </span>
-              <span className="font-headline text-sm font-bold tracking-wide text-purple-300">SMART TIP</span>
-            </div>
-            <p className="text-sm text-slate-500">
-              Booking your next leave on <span className="font-semibold text-slate-100">April 24-26</span> would yield a 5-day break using only 3 days of leave.
-            </p>
-          </div>
-        </section>
       </div>
     </div>
   );

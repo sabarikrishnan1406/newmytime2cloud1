@@ -1,4 +1,10 @@
-const weeklyPlanner = [
+"use client";
+
+import { useEffect, useState } from "react";
+import { api, buildQueryParams } from "@/lib/api-client";
+import { getStaffUser } from "@/lib/staff-user";
+
+const defaultWeeklyPlanner = [
   {
     day: "Mon",
     date: "23",
@@ -150,6 +156,58 @@ function getShiftTheme(theme) {
 }
 
 export default function StaffSchedulePage() {
+  const [weeklyPlanner, setWeeklyPlanner] = useState(defaultWeeklyPlanner);
+  const [shiftInfo, setShiftInfo] = useState({ name: "---", time: "---" });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const u = await getStaffUser();
+        const params = await buildQueryParams({});
+
+        // Fetch schedule
+        const { data } = await api.get("/employees_with_schedule_count", { params: { ...params, per_page: 50 } });
+        const myEmp = (data?.data || []).find((e) => e.id === u.employee_id);
+        const shift = myEmp?.schedule_active?.shift;
+
+        if (shift) {
+          setShiftInfo({ name: shift.name || "---", time: `${shift.on_duty_time || "---"} - ${shift.off_duty_time || "---"}` });
+
+          const shiftDays = shift.days || [];
+          const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+          const now = new Date();
+          const todayIdx = now.getDay();
+          const mondayOffset = todayIdx === 0 ? -6 : 1 - todayIdx;
+          const monday = new Date(now);
+          monday.setDate(now.getDate() + mondayOffset);
+
+          const week = [];
+          for (let i = 0; i < 7; i++) {
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + i);
+            const dayName = dayNames[d.getDay()];
+            const isToday = d.toDateString() === now.toDateString();
+            const isWorkingDay = shiftDays.includes(dayName);
+
+            week.push({
+              day: dayName,
+              date: String(d.getDate()),
+              active: isToday,
+              shifts: [{
+                title: isWorkingDay ? shift.name : "Day Off",
+                time: isWorkingDay ? `${shift.on_duty_time} - ${shift.off_duty_time}` : "-",
+                location: myEmp?.branch?.branch_name || "",
+                theme: isToday ? "highlight" : isWorkingDay ? "primary" : "neutral",
+              }],
+            });
+          }
+          setWeeklyPlanner(week);
+        }
+      } catch (e) { console.warn("Schedule error", e); }
+    };
+    fetchData();
+  }, []);
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
       <div>

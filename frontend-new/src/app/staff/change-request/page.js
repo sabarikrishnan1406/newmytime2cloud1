@@ -1,6 +1,11 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { api, buildQueryParams } from "@/lib/api-client";
+import { getStaffUser } from "@/lib/staff-user";
 import Link from "next/link";
 
-const summaryCards = [
+const defaultSummaryCards = [
   {
     label: "Total Requests",
     value: "128",
@@ -36,7 +41,7 @@ const summaryCards = [
   },
 ];
 
-const requests = [
+const defaultRequests = [
   {
     id: "REQ-4821",
     type: "Missing Punch",
@@ -108,6 +113,59 @@ function StatusBadge({ status, statusClass }) {
 }
 
 export default function StaffChangeRequestPage() {
+  const [summaryCards, setSummaryCards] = useState(defaultSummaryCards);
+  const [requests, setRequests] = useState(defaultRequests);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const u = await getStaffUser();
+        const params = await buildQueryParams({});
+
+        const { data } = await api.get("/change_request", {
+          params: { ...params, employee_id: u.employee_id, per_page: 50 },
+        });
+        const items = data?.data || [];
+
+        if (items.length > 0) {
+          const total = items.length;
+          const pending = items.filter((r) => r.status === 0 || r.status === "pending").length;
+          const approved = items.filter((r) => r.status === 1 || r.status === "approved").length;
+          const rejected = items.filter((r) => r.status === 2 || r.status === "rejected").length;
+
+          setSummaryCards([
+            { ...defaultSummaryCards[0], value: String(total) },
+            { ...defaultSummaryCards[1], value: String(pending) },
+            { ...defaultSummaryCards[2], value: String(approved) },
+            { ...defaultSummaryCards[3], value: String(rejected) },
+          ]);
+
+          setRequests(items.map((r, i) => {
+            const st = r.status === 1 || r.status === "approved"
+              ? { status: "Approved", statusClass: "bg-emerald-400/10 text-emerald-300 border-emerald-400/20" }
+              : r.status === 2 || r.status === "rejected"
+              ? { status: "Rejected", statusClass: "bg-red-400/10 text-red-300 border-red-400/20" }
+              : { status: "Pending", statusClass: "bg-cyan-400/10 text-cyan-300 border-cyan-400/20" };
+
+            return {
+              id: `REQ-${r.id}`,
+              type: r.type || r.request_type || "Change Request",
+              typeIcon: "schedule",
+              typeClass: "text-cyan-300",
+              date: r.date || r.created_at ? new Date(r.date || r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "---",
+              previousValue: r.previous_value || r.old_time || "---",
+              updatedValue: r.updated_value || r.new_time || "---",
+              updatedClass: "text-emerald-300",
+              reason: r.reason || r.note || "---",
+              canEdit: st.status === "Pending",
+              ...st,
+            };
+          }));
+        }
+      } catch (e) { console.warn("Change request error", e); }
+    };
+    fetchData();
+  }, []);
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
@@ -143,16 +201,6 @@ export default function StaffChangeRequestPage() {
           <section className="staff-glass-card flex flex-1 flex-col overflow-hidden rounded-[1.75rem] p-5 sm:p-6 xl:p-8">
             <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <h2 className="font-headline text-xl font-bold text-slate-100">Recent Submissions</h2>
-              <div className="flex flex-wrap gap-3">
-                <button className="inline-flex items-center gap-2 rounded-xl bg-slate-800/70 px-4 py-2 text-sm text-slate-100 transition hover:bg-slate-700/70">
-                  <span className="material-symbols-outlined text-lg">filter_list</span>
-                  Filters
-                </button>
-                <button className="inline-flex items-center gap-2 rounded-xl bg-slate-800/70 px-4 py-2 text-sm text-slate-100 transition hover:bg-slate-700/70">
-                  <span className="material-symbols-outlined text-lg">download</span>
-                  Export CSV
-                </button>
-              </div>
             </div>
 
             <div className="space-y-4 xl:hidden">

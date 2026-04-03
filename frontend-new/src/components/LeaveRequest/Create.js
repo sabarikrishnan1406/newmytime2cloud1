@@ -25,6 +25,7 @@ export default function LeaveRequestCreate({
     setOpen = () => { },
     onSuccess = () => { },
     editData = null,
+    staffEmployeeId = null,
 }) {
     const [loading, setLoading] = useState(false);
     const [form, setForm] = useState(initialPayload);
@@ -66,6 +67,13 @@ export default function LeaveRequestCreate({
     useEffect(() => {
         fetchDepartmentEmployees();
     }, []);
+
+    // Auto-select logged-in employee for staff
+    useEffect(() => {
+        if (staffEmployeeId && departmentEmployees.length > 0 && !form.employee_id) {
+            handleChange("employee_id", staffEmployeeId);
+        }
+    }, [staffEmployeeId, departmentEmployees]);
 
     const [leaveTypes, setLeaveTypes] = useState([]);
 
@@ -202,7 +210,7 @@ export default function LeaveRequestCreate({
                 company_id: user?.company_id || 0,
                 employee_id: form.employee_id,
                 reporting_manager_id: selectedEmployee?.reporting_manager_id || 0,
-                leave_type_id: form.leave_type_id,
+                leave_type_id: form.leave_type_id || null,
                 start_date: form.start_date,
                 end_date: form.end_date,
                 reason: form.reason,
@@ -334,25 +342,27 @@ export default function LeaveRequestCreate({
 
 
                                 <div className="grid grid-cols-6 gap-4">
-                                    <div className="col-span-3 space-y-1.5">
-                                        <label className="block text-sm font-medium text-slate-400">
-                                            Employee <span className="text-red-400">*</span>
-                                        </label>
-                                        <DropDown
-                                            width="w-full"
-                                            items={departmentEmployees}
-                                            value={form.employee_id || 0}
-                                            onChange={(v) => handleChange("employee_id", v)}
-                                        />
-                                    </div>
+                                    {!staffEmployeeId && (
+                                        <div className="col-span-3 space-y-1.5">
+                                            <label className="block text-sm font-medium text-slate-400">
+                                                Employee <span className="text-red-400">*</span>
+                                            </label>
+                                            <DropDown
+                                                width="w-full"
+                                                items={departmentEmployees}
+                                                value={form.employee_id || 0}
+                                                onChange={(v) => handleChange("employee_id", v)}
+                                            />
+                                        </div>
+                                    )}
 
-                                    <div className="col-span-3 space-y-1.5">
+                                    <div className={`${staffEmployeeId ? "col-span-6" : "col-span-3"} space-y-1.5`}>
                                         <label className="block text-sm font-medium text-slate-400">
                                             Alternate Employee <span className="text-red-400">*</span>
                                         </label>
                                         <DropDown
                                             width="w-full"
-                                            items={departmentEmployees}
+                                            items={departmentEmployees.filter((e) => e.id !== (staffEmployeeId || form.employee_id))}
                                             value={form.alternate_employee_id || ""}
                                             onChange={(title) => handleAlternateEmployeeChange(title)}
                                         />

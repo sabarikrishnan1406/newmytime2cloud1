@@ -119,6 +119,7 @@ class EmployeeLeavesController extends Controller
             // Validate request
             $data = $request->validated();
             $data["order"] = -1;
+            $data["leave_type_id"] = $data["leave_type_id"] ?? 0;
 
             // Create leave record
             $record = EmployeeLeaves::create($data);

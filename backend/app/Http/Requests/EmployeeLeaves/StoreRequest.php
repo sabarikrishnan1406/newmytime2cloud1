@@ -28,7 +28,7 @@ class StoreRequest extends FormRequest
         return [
             'company_id' => 'required',
             'employee_id' => 'required',
-            'leave_type_id' => 'required',
+            'leave_type_id' => 'nullable',
             'start_date' => 'required',
             'end_date' => 'required',
             'reason' => 'required',
