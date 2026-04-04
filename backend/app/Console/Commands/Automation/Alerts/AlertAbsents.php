@@ -36,7 +36,6 @@ class AlertAbsents extends Command
 
     public function handle()
     {
-        return;
         $todayDate = date("D, F j, Y");
 
         // (new WhatsappController)->sendMessage("hi", "971554501483");

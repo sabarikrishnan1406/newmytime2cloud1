@@ -4,6 +4,7 @@ import Settings from './Settings';
 import Login from './Login';
 import RFID from './RFID';
 import LeaveAndReporting from './LeaveAndReporting';
+import GeoFencing from './GeoFencing';
 
 export default function SETTINGRFIDLOGIN({ id, mobile_punch, user_id, email, web_login_access, mobile_app_login_access, tracking_status, rfid_card_number, rfid_card_password, leave_group_id, reporting_manager_id, status }) {
     return (
@@ -40,6 +41,8 @@ export default function SETTINGRFIDLOGIN({ id, mobile_punch, user_id, email, web
                     tracking_status={tracking_status}
                     mobile_punch={mobile_punch}
                 />
+
+                <GeoFencing employee_id={id} />
 
                 <RFID
                     id={id}

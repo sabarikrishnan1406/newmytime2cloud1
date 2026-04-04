@@ -72,7 +72,7 @@ def face_to_bbox(face) -> list:
 def compare_embedding(
     embedding: np.ndarray,
     stored_embeddings: dict,
-    threshold: float = 0.4,
+    threshold: float = 0.30,
 ) -> dict | None:
     """Compare a face embedding against all stored employee embeddings.
 

@@ -28,6 +28,7 @@ const Input = ({
         {/* Input Field */}
         <input
           {...props}
+          value={props.value ?? ""}
           className={`
             ${width} flex items-center px-4 py-2.5 text-sm font-medium transition-all duration-200 
             glass-card rounded-xl border outline-none

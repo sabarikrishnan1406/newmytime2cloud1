@@ -120,9 +120,21 @@ class SingleShiftController extends Controller
                 return $beginning_in && $beginning_out && $record["time"] >= $beginning_in && $record["time"] <= $beginning_out;
             });
 
-            $lastLog = collect($logs)->last(function ($record) {
-                return in_array($record["log_type"], ["Out", "out", "Auto", "auto", null], true);
-            });
+            // Last log: strictly from OUT window if defined
+            $sampleShift = collect($logs)->first()["schedule"]["shift"] ?? [];
+            $outStart = $sampleShift["ending_in"] ?? "---";
+            $outEnd = $sampleShift["ending_out"] ?? "---";
+            $hasOutWin = ($outStart !== "---" && $outEnd !== "---" && $outStart && $outEnd);
+
+            if ($hasOutWin) {
+                $lastLog = collect($logs)->last(function ($record) use ($outStart, $outEnd) {
+                    return $record["time"] >= $outStart && $record["time"] <= $outEnd;
+                });
+            } else {
+                $lastLog = collect($logs)->last(function ($record) {
+                    return in_array($record["log_type"], ["Out", "out", "Auto", "auto", null], true);
+                });
+            }
 
             $schedules = ScheduleEmployee::where("company_id", $params["company_id"])->where("employee_id", $key)->get()->toArray();
 
@@ -242,6 +254,11 @@ class SingleShiftController extends Controller
                 }
             }
 
+            // Final check: IN exists but no OUT = Missing
+            if ($item["in"] !== "---" && $item["out"] === "---" && !in_array($item["status"], ["O", "H", "L", "A"])) {
+                $item["status"] = "M";
+            }
+
             $items[] = $item;
         }
 
@@ -331,9 +348,26 @@ class SingleShiftController extends Controller
                 return $beginning_in && $beginning_out && $record["time"] >= $beginning_in && $record["time"] <= $beginning_out;
             });
 
-            $lastLog = collect($logs)->last(function ($record) {
-                return in_array($record["log_type"], ["Out", "out", "Auto", "auto", null], true);
-            });
+            // Last log: strictly from OUT window if defined, otherwise fallback to log_type
+            $hasOutWindow = false;
+            $lastLog = null;
+            // Check if shift has OUT window defined
+            $sampleSchedule = collect($logs)->first()["schedule"]["shift"] ?? [];
+            $outWindowStart = $sampleSchedule["ending_in"] ?? "---";
+            $outWindowEnd = $sampleSchedule["ending_out"] ?? "---";
+            $hasOutWindow = ($outWindowStart !== "---" && $outWindowEnd !== "---" && $outWindowStart && $outWindowEnd);
+
+            if ($hasOutWindow) {
+                // Strict: only take log within OUT window
+                $lastLog = collect($logs)->last(function ($record) use ($outWindowStart, $outWindowEnd) {
+                    return $record["time"] >= $outWindowStart && $record["time"] <= $outWindowEnd;
+                });
+            } else {
+                // No OUT window: take last log with Out/Auto type
+                $lastLog = collect($logs)->last(function ($record) {
+                    return in_array($record["log_type"], ["Out", "out", "Auto", "auto", null], true);
+                });
+            }
 
             // 2. Resolve Schedule and Shift (even if no logs exist)
             $schedule = $firstLog["schedule"] ?? ScheduleEmployee::where("company_id", $id)
@@ -373,20 +407,23 @@ class SingleShiftController extends Controller
             ];
 
 
-            // --- 1. LATE COMING RULES (Check these before processing OUT logs) ---
+            // --- 1. LATE COMING CALCULATION ---
 
-            // Normal Late Coming
-            if (($shift["attendanc_rule_late_coming"] ?? 'No Action') !== 'No Action') {
-                $lcMins = calculateTimeDiff($item["in"], $shift["on_duty_time"], 'late', $shift["late_time"]);
+            // Always calculate late time for display
+            if ($item["in"] !== "---" && isset($shift["on_duty_time"])) {
+                $lcMins = calculateTimeDiff($item["in"], $shift["on_duty_time"], 'late', $shift["late_time"] ?? "00:00");
                 if ($lcMins) {
                     $item["late_coming"] = formatMinutes($lcMins);
-                    $item["status"] = "LC";
+                    // Only change status if rule is active
+                    if (($shift["attendanc_rule_late_coming"] ?? 'No Action') !== 'No Action') {
+                        $item["status"] = "LC";
+                    }
                 }
             }
 
             // Significant Late Coming (Overwrites Status to HD or A)
             $sigLateRule = $shift["significant_attendanc_rule_late_coming"] ?? 'No Action';
-            if ($sigLateRule !== 'No Action') {
+            if ($sigLateRule !== 'No Action' && $item["in"] !== "---") {
                 $sigLcMins = calculateTimeDiff($item["in"], $shift["on_duty_time"], 'late', $shift["absent_min_in"]);
                 if ($sigLcMins) {
                     $item["late_coming"] = formatMinutes($sigLcMins);
@@ -467,16 +504,18 @@ class SingleShiftController extends Controller
                     }
                 }
 
-                // --- 3. EARLY GOING RULES ---
+                // --- 3. EARLY GOING CALCULATION ---
 
-                // Normal Early Going
-                if (($shift["attendanc_rule_early_going"] ?? 'No Action') !== 'No Action') {
-                    $egMins = calculateTimeDiff($item["out"], $shift["off_duty_time"], 'early', $shift["early_time"]);
+                // Always calculate early going time for display
+                if ($item["out"] !== "---" && isset($shift["off_duty_time"])) {
+                    $egMins = calculateTimeDiff($item["out"], $shift["off_duty_time"], 'early', $shift["early_time"] ?? "00:00");
                     if ($egMins) {
                         $item["early_going"] = formatMinutes($egMins);
-                        // Only update status to EG if it hasn't been escalated to HD/A by late coming
-                        if (!in_array($item["status"], ["HD", "A"])) {
-                            $item["status"] = "EG";
+                        // Only change status if rule is active
+                        if (($shift["attendanc_rule_early_going"] ?? 'No Action') !== 'No Action') {
+                            if (!in_array($item["status"], ["HD", "A"])) {
+                                $item["status"] = "EG";
+                            }
                         }
                     }
                 }
@@ -489,6 +528,32 @@ class SingleShiftController extends Controller
                         $item["early_going"] = formatMinutes($sigEgMins);
                         $item["status"] = ($sigEarlyRule === "Half Day") ? "HD" : "A";
                     }
+                }
+            }
+
+            // Missing/Absent status based on logs
+            if (!in_array($item["status"], ["HD", "O", "H", "L"])) {
+                if ($item["in"] !== "---" && $item["out"] === "---") {
+                    // Has IN but no OUT — Missing
+                    $item["status"] = "M";
+                } elseif ($item["in"] === "---" && count($logs) > 0) {
+                    // Has logs but none in IN window — take first log as IN, mark Missing
+                    $fallbackLog = collect($logs)->first();
+                    if ($fallbackLog) {
+                        $item["in"] = $fallbackLog["time"];
+                        $item["device_id_in"] = $fallbackLog["DeviceID"] ?? "---";
+                        // If more than 1 log, take last as OUT
+                        if (count($logs) > 1) {
+                            $lastFallback = collect($logs)->last();
+                            $item["out"] = $lastFallback["time"];
+                            $item["device_id_out"] = $lastFallback["DeviceID"] ?? "---";
+                            $item["total_hrs"] = $this->getTotalHrsMins($item["in"], $item["out"]);
+                        }
+                        $item["status"] = "M";
+                    }
+                } elseif ($item["in"] === "---" && count($logs) === 0) {
+                    // No logs at all — Absent
+                    $item["status"] = $status ?? "A";
                 }
             }
 

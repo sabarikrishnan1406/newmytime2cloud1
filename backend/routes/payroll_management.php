@@ -45,6 +45,21 @@ Route::post('payroll-management/mark-paid/{id}', [PayrollManagementController::c
 // Payslip
 Route::get('payroll-management/payslip/{recordId}', [PayrollManagementController::class, 'downloadPayslip']);
 
+// Employee Geo-Fencing
+Route::get('employee-geofence/{employeeId}', function (\Illuminate\Http\Request $request, $employeeId) {
+    return \App\Models\EmployeeGeofence::where('company_id', $request->company_id)->where('employee_id', $employeeId)->first();
+});
+Route::post('employee-geofence/{employeeId}', function (\Illuminate\Http\Request $request, $employeeId) {
+    $data = $request->only(['geo_fencing_enabled', 'latitude', 'longitude', 'radius']);
+    $data['company_id'] = $request->company_id;
+    $data['employee_id'] = $employeeId;
+    $geofence = \App\Models\EmployeeGeofence::updateOrCreate(
+        ['company_id' => $request->company_id, 'employee_id' => $employeeId],
+        $data
+    );
+    return response()->json(['status' => true, 'data' => $geofence]);
+});
+
 // Settings
 Route::get('payroll-management/settings', [PayrollManagementController::class, 'getSettings']);
 Route::post('payroll-management/settings', [PayrollManagementController::class, 'saveSettings']);
