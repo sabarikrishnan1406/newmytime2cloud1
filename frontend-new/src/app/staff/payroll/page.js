@@ -43,6 +43,7 @@ export default function StaffPayrollPage() {
   const [payslips, setPayslips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,11 +52,27 @@ export default function StaffPayrollPage() {
         const params = await buildQueryParams({});
         const empId = u.system_user_id || u.employee_id;
 
-        const { data } = await api.get("/get-payslip-by-employee-year", {
-          params: { ...params, employee_id: empId, year: selectedYear },
-        });
+        // Try new payroll system
+        let payslipData = [];
+        try {
+          const dbEmployeeId = u.employee_id || empId;
+          const { data } = await api.get("/payroll-management/staff-payslips", {
+            params: { ...params, employee_id: dbEmployeeId, year: selectedYear },
+          });
+          payslipData = Array.isArray(data) ? data : [];
+        } catch (e) {}
 
-        setPayslips(Array.isArray(data) ? data : []);
+        // Fallback to old system
+        if (payslipData.length === 0) {
+          try {
+            const { data } = await api.get("/get-payslip-by-employee-year", {
+              params: { ...params, employee_id: empId, year: selectedYear },
+            });
+            payslipData = Array.isArray(data) ? data : [];
+          } catch (e) {}
+        }
+
+        setPayslips(payslipData);
       } catch (e) {
         console.warn("Payroll error", e);
       } finally {
@@ -65,8 +82,9 @@ export default function StaffPayrollPage() {
     fetchData();
   }, [selectedYear]);
 
-  const latestPayslip = payslips.length > 0 ? payslips[0] : null;
-  const totalYTD = payslips.reduce((sum, p) => sum + (parseFloat(p.final_salary) || 0), 0);
+  const filteredPayslips = selectedMonth !== "" ? payslips.filter(p => String(p.month) === String(selectedMonth)) : payslips;
+  const latestPayslip = filteredPayslips.length > 0 ? filteredPayslips[0] : null;
+  const totalYTD = filteredPayslips.reduce((sum, p) => sum + (parseFloat(p.final_salary) || 0), 0);
   const netPercent = latestPayslip && latestPayslip.basic_salary > 0 ? Math.round((latestPayslip.net_salary / latestPayslip.basic_salary) * 100) : 0;
   const netOffset = 100 - netPercent;
 
@@ -108,7 +126,7 @@ export default function StaffPayrollPage() {
       icon: "trending_up",
       iconTint: "bg-cyan-400/10 text-cyan-300",
       iconGhost: "text-cyan-300/10",
-      meta: `${payslips.length} payslips`,
+      meta: `${filteredPayslips.length} payslips`,
       metaIcon: "info",
       metaClass: "text-slate-500",
     },
@@ -130,6 +148,16 @@ export default function StaffPayrollPage() {
             <p className="mt-1 text-sm text-slate-500">Your compensation and payslip details.</p>
           </div>
           <div className="flex gap-3">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="rounded-xl border border-white/10 bg-slate-800/80 px-4 py-2.5 text-sm text-slate-100"
+            >
+              <option value="">All Months</option>
+              {monthNames.map((m, i) => (
+                <option key={i} value={i}>{m}</option>
+              ))}
+            </select>
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
@@ -207,7 +235,7 @@ export default function StaffPayrollPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {payslips.map((p, i) => (
+                  {filteredPayslips.map((p, i) => (
                     <tr key={i} className="transition hover:bg-slate-900/20">
                       <td className="px-5 py-3 text-sm font-medium text-slate-100">{monthNames[p.month] || "---"} {p.year}</td>
                       <td className="px-5 py-3 text-sm text-slate-300">{parseFloat(p.basic_salary || 0).toLocaleString()}</td>
@@ -217,8 +245,9 @@ export default function StaffPayrollPage() {
                       <td className="px-5 py-3 text-right">
                         <button
                           onClick={() => {
-                            const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://192.168.1.115:8000";
-                            window.open(`${baseUrl}/api/donwload-payslip-pdf?payslip_id=${p.id}`, "_blank");
+                            const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://192.168.1.115:8000/api";
+                            const u = getUser();
+                            window.open(`${baseUrl}/payroll-management/payslip/${p.id}?company_id=${u?.company_id || 0}`, "_blank");
                           }}
                           className="inline-flex items-center gap-1 rounded-lg p-2 text-cyan-300 transition hover:bg-cyan-400/10"
                         >
@@ -228,7 +257,7 @@ export default function StaffPayrollPage() {
                       </td>
                     </tr>
                   ))}
-                  {payslips.length === 0 && (
+                  {filteredPayslips.length === 0 && (
                     <tr><td colSpan="6" className="px-8 py-10 text-center text-slate-500">No payslips found for {selectedYear}</td></tr>
                   )}
                 </tbody>

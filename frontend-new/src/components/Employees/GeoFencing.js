@@ -102,46 +102,44 @@ const GeoFencing = ({ employee_id }) => {
 
                 {form.geo_fencing_enabled && (
                     <>
-                        <div className="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-500/20 rounded-lg">
-                            <p className="text-xs text-blue-700 dark:text-blue-400">
-                                Click on the map to set location, or enter coordinates manually. The circle shows the allowed punch-in area.
-                            </p>
-                        </div>
-
-                        {/* Map */}
-                        <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700" style={{ height: "350px" }}>
-                            <MapComponent
-                                latitude={parseFloat(form.latitude) || 25.276987}
-                                longitude={parseFloat(form.longitude) || 55.296249}
-                                radius={parseInt(form.radius) || 200}
-                                onMapClick={handleMapClick}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Latitude</label>
-                                <Input type="number" step="0.000001" value={form.latitude} placeholder="e.g. 25.276987"
-                                    onChange={(e) => setForm(prev => ({ ...prev, latitude: e.target.value }))} />
+                        {/* Map + Controls */}
+                        <div className="grid grid-cols-12 gap-4">
+                            <div className="col-span-8 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 relative" style={{ height: "200px" }}>
+                                <MapComponent
+                                    latitude={parseFloat(form.latitude) || 25.276987}
+                                    longitude={parseFloat(form.longitude) || 55.296249}
+                                    radius={parseInt(form.radius) || 200}
+                                    onMapClick={handleMapClick}
+                                />
+                                <button onClick={getCurrentLocation}
+                                    className="absolute bottom-3 left-3 z-[1000] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-[10px] font-medium text-gray-700 dark:text-gray-300 shadow-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                                    <span className="material-icons text-xs">my_location</span>
+                                    Current Location
+                                </button>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Longitude</label>
-                                <Input type="number" step="0.000001" value={form.longitude} placeholder="e.g. 55.296249"
-                                    onChange={(e) => setForm(prev => ({ ...prev, longitude: e.target.value }))} />
+                            <div className="col-span-4 flex flex-col justify-between pl-3 max-w-[220px]" style={{ height: "200px" }}>
+                                <div className="flex flex-col gap-2">
+                                    <p className="text-[10px] text-gray-400 dark:text-slate-500">Click map or enter coordinates</p>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Latitude</label>
+                                        <input type="number" step="0.000001" value={form.latitude} placeholder="25.276987"
+                                            onChange={(e) => setForm(prev => ({ ...prev, latitude: e.target.value }))}
+                                            className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800/80 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Longitude</label>
+                                        <input type="number" step="0.000001" value={form.longitude} placeholder="55.296249"
+                                            onChange={(e) => setForm(prev => ({ ...prev, longitude: e.target.value }))}
+                                            className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800/80 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">Radius (m)</label>
+                                    <input type="number" value={form.radius} placeholder="200"
+                                        onChange={(e) => setForm(prev => ({ ...prev, radius: e.target.value }))}
+                                        className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800/80 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300" />
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Radius (meters)</label>
-                                <Input type="number" value={form.radius} placeholder="200"
-                                    onChange={(e) => setForm(prev => ({ ...prev, radius: e.target.value }))} />
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3">
-                            <button onClick={getCurrentLocation}
-                                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                <span className="material-icons text-sm">my_location</span>
-                                Use Current Location
-                            </button>
                         </div>
                     </>
                 )}

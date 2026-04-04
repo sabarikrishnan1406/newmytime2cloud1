@@ -75,6 +75,36 @@ export default function StaffProfilePage() {
             shiftTime: emp?.schedule_active?.shift ? `${emp.schedule_active.shift.on_duty_time || "---"} - ${emp.schedule_active.shift.off_duty_time || "---"}` : "---",
             manager: emp?.reporting_manager ? `${emp.reporting_manager.first_name || ""} ${emp.reporting_manager.last_name || ""}`.trim() : "---",
             managerDesignation: emp?.reporting_manager?.designation?.name || "---",
+            permanentAddress: (() => {
+              const addr = emp?.permanent_address || emp?.home_address;
+              if (!addr) return "---";
+              if (typeof addr === "string") return addr;
+              return [addr.building, addr.street_address, addr.landmark, addr.city, addr.state, addr.country, addr.zip_code].filter(Boolean).join(", ") || "---";
+            })(),
+            presentAddress: (() => {
+              const addr = emp?.present_address || emp?.current_address || emp?.address;
+              if (!addr) return "---";
+              if (typeof addr === "string") return addr;
+              return [addr.building, addr.street_address, addr.landmark, addr.city, addr.state, addr.country, addr.zip_code].filter(Boolean).join(", ") || "---";
+            })(),
+            emergencyName: (() => {
+              const pc = emp?.primary_contact;
+              if (!pc) return "---";
+              if (typeof pc === "string") { try { return JSON.parse(pc)?.full_name || "---"; } catch { return "---"; } }
+              return pc?.full_name || "---";
+            })(),
+            emergencyRelation: (() => {
+              const pc = emp?.primary_contact;
+              if (!pc) return "---";
+              if (typeof pc === "string") { try { return JSON.parse(pc)?.relation || "---"; } catch { return "---"; } }
+              return pc?.relation || "---";
+            })(),
+            emergencyPhone: (() => {
+              const pc = emp?.primary_contact;
+              if (!pc) return "---";
+              if (typeof pc === "string") { try { return JSON.parse(pc)?.primary_phone || "---"; } catch { return "---"; } }
+              return pc?.primary_phone || "---";
+            })(),
           });
         } catch (e) { console.warn("Profile error", e); }
 
@@ -224,6 +254,37 @@ export default function StaffProfilePage() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <ContactCard label="Work Email" value={p.email} icon="work" iconClass="bg-cyan-300/10 text-cyan-300" />
                 <ContactCard label="Phone Number" value={p.phone} icon="call" iconClass="bg-emerald-300/10 text-emerald-300" />
+              </div>
+            </section>
+
+            {/* Address Information */}
+            <section className="staff-glass-card rounded-2xl p-4">
+              <h2 className="mb-3 font-headline text-sm font-bold text-slate-100">Address Information</h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="rounded-2xl bg-slate-900/40 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-base text-cyan-300">home</span>
+                    <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Permanent Address</p>
+                  </div>
+                  <p className="text-sm text-slate-100">{p.permanentAddress || "---"}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-900/40 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-base text-purple-300">location_on</span>
+                    <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">Present Address</p>
+                  </div>
+                  <p className="text-sm text-slate-100">{p.presentAddress || "---"}</p>
+                </div>
+              </div>
+            </section>
+
+            {/* Emergency Contact */}
+            <section className="staff-glass-card rounded-2xl p-4">
+              <h2 className="mb-3 font-headline text-sm font-bold text-slate-100">Emergency Contact</h2>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <ContactCard label="Contact Name" value={p.emergencyName} icon="person" iconClass="bg-red-300/10 text-red-300" />
+                <ContactCard label="Relationship" value={p.emergencyRelation} icon="group" iconClass="bg-amber-300/10 text-amber-300" />
+                <ContactCard label="Phone Number" value={p.emergencyPhone} icon="phone_in_talk" iconClass="bg-red-300/10 text-red-300" />
               </div>
             </section>
 

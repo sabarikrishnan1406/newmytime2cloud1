@@ -42,6 +42,36 @@ Route::post('payroll-management/generate', [PayrollManagementController::class, 
 Route::post('payroll-management/approve/{id}', [PayrollManagementController::class, 'approveBatch']);
 Route::post('payroll-management/mark-paid/{id}', [PayrollManagementController::class, 'markPaid']);
 
+// Staff Payslips (for employee self-service)
+Route::get('payroll-management/staff-payslips', function (\Illuminate\Http\Request $request) {
+    $employeeId = $request->employee_id;
+    $year = $request->year ?? date('Y');
+
+    $records = \App\Models\PayrollRecord::where('company_id', $request->company_id)
+        ->where('employee_id', $employeeId)
+        ->where('month', 'like', $year . '%')
+        ->orderBy('month', 'desc')
+        ->get();
+
+    return $records->map(function ($r) {
+        $monthNum = (int) substr($r->month, 5, 2) - 1;
+        return [
+            'id' => $r->id,
+            'month' => $monthNum,
+            'year' => (int) substr($r->month, 0, 4),
+            'basic_salary' => $r->basic_salary,
+            'net_salary' => $r->net_salary,
+            'final_salary' => $r->net_salary,
+            'total_allowances' => $r->total_allowances,
+            'ot_amount' => $r->ot_amount,
+            'gross_earned' => $r->gross_earned,
+            'total_deduction' => $r->total_deduction,
+            'status' => $r->status,
+            'batch_month' => $r->month,
+        ];
+    });
+});
+
 // Payslip
 Route::get('payroll-management/payslip/{recordId}', [PayrollManagementController::class, 'downloadPayslip']);
 

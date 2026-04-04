@@ -88,17 +88,16 @@ const defaultRequests = [
 
 function SummaryCard({ label, value, helper, icon, iconClass, badgeClass, valueClass }) {
   return (
-    <div className="staff-glass-card relative overflow-hidden rounded-2xl p-6">
-      <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-white/[0.03] blur-2xl"></div>
-      <div className="mb-5 flex items-start justify-between gap-3">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconClass}`}>
-          <span className="material-symbols-outlined">{icon}</span>
+    <div className="staff-glass-card relative overflow-hidden rounded-2xl p-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${iconClass}`}>
+          <span className="material-symbols-outlined text-lg">{icon}</span>
         </div>
-        <span className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-tight ${badgeClass}`}>{helper}</span>
+        <span className={`rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-tight ${badgeClass}`}>{helper}</span>
       </div>
       <div className="flex flex-col">
-        <span className={`font-headline text-3xl font-bold text-slate-100 ${valueClass || ""}`}>{value}</span>
-        <span className="mt-1 text-xs font-medium uppercase tracking-widest text-slate-500">{label}</span>
+        <span className={`text-xl font-bold text-slate-100 ${valueClass || ""}`}>{value}</span>
+        <span className="mt-0.5 text-[10px] font-medium uppercase tracking-widest text-slate-500">{label}</span>
       </div>
     </div>
   );
@@ -113,8 +112,12 @@ function StatusBadge({ status, statusClass }) {
 }
 
 export default function StaffChangeRequestPage() {
-  const [summaryCards, setSummaryCards] = useState(defaultSummaryCards);
-  const [requests, setRequests] = useState(defaultRequests);
+  const [summaryCards, setSummaryCards] = useState(defaultSummaryCards.map(c => ({ ...c, value: "0" })));
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -123,9 +126,11 @@ export default function StaffChangeRequestPage() {
         const params = await buildQueryParams({});
 
         const { data } = await api.get("/change_request", {
-          params: { ...params, employee_id: u.employee_id, per_page: 50 },
+          params: { ...params, employee_id: u.employee_id, per_page: 5, page: currentPage },
         });
         const items = data?.data || [];
+        setTotalPages(data?.last_page || 1);
+        setTotal(data?.total || items.length);
 
         if (items.length > 0) {
           const total = items.length;
@@ -163,9 +168,10 @@ export default function StaffChangeRequestPage() {
           }));
         }
       } catch (e) { console.warn("Change request error", e); }
+      finally { setLoading(false); }
     };
     fetchData();
-  }, []);
+  }, [currentPage]);
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
@@ -174,21 +180,18 @@ export default function StaffChangeRequestPage() {
       </div>
 
       <div className="flex flex-col">
-        <header className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-col gap-2">
-            <h1 className="font-headline text-2xl font-bold text-slate-100">Change Request</h1>
-            <p className="text-sm text-slate-500">Track and manage attendance change requests awaiting review.</p>
+        <header className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-slate-100">Change Request</h1>
+            <p className="text-xs text-slate-500 mt-0.5">Track and manage attendance change requests.</p>
           </div>
-
-          <div className="flex flex-wrap items-center gap-4">
-            <Link
-              href="/staff/change-request/new"
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-300 to-cyan-400 px-5 py-3 font-headline font-bold text-[#004d57] shadow-[0_0_15px_rgba(0,227,253,0.3)] transition hover:brightness-110 active:scale-95"
-            >
-              <span className="material-symbols-outlined text-xl">add_circle</span>
-              New Change Request
-            </Link>
-          </div>
+          <Link
+            href="/staff/change-request/new"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-cyan-300 to-cyan-400 px-4 py-2 text-xs font-bold text-[#004d57] shadow-[0_0_10px_rgba(0,227,253,0.2)] transition hover:brightness-110 active:scale-95"
+          >
+            <span className="material-symbols-outlined text-sm">add_circle</span>
+            New Request
+          </Link>
         </header>
 
         <main className="flex flex-1 flex-col gap-8">
@@ -198,9 +201,9 @@ export default function StaffChangeRequestPage() {
             ))}
           </section>
 
-          <section className="staff-glass-card flex flex-1 flex-col overflow-hidden rounded-[1.75rem] p-5 sm:p-6 xl:p-8">
-            <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <h2 className="font-headline text-xl font-bold text-slate-100">Recent Submissions</h2>
+          <section className="staff-glass-card flex flex-1 flex-col overflow-hidden rounded-2xl p-4 sm:p-5">
+            <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <h2 className="text-sm font-bold text-slate-100">Recent Submissions</h2>
             </div>
 
             <div className="space-y-4 xl:hidden">
@@ -224,7 +227,7 @@ export default function StaffChangeRequestPage() {
                       <p className="text-[10px] uppercase tracking-widest text-slate-500">Correction</p>
                       <div className="mt-2 flex flex-col gap-1">
                         <span className="text-xs text-slate-500 line-through">{request.previousValue}</span>
-                        <span className={`font-headline text-lg font-bold ${request.updatedClass}`}>{request.updatedValue}</span>
+                        <span className={`text-sm font-bold ${request.updatedClass}`}>{request.updatedValue}</span>
                       </div>
                     </div>
                     <div className="rounded-xl bg-slate-800/40 p-3">
@@ -248,9 +251,9 @@ export default function StaffChangeRequestPage() {
             </div>
 
             <div className="hidden overflow-x-auto xl:block">
-              <table className="w-full border-separate border-spacing-y-4 text-left">
+              <table className="w-full border-separate border-spacing-y-2 text-left">
                 <thead>
-                  <tr className="text-[11px] font-bold uppercase tracking-[0.1em] text-slate-500">
+                  <tr className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
                     <th className="px-4 pb-2">Request ID</th>
                     <th className="px-4 pb-2">Type</th>
                     <th className="px-4 pb-2">Date</th>
@@ -260,30 +263,30 @@ export default function StaffChangeRequestPage() {
                     <th className="px-4 pb-2 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="text-sm">
+                <tbody className="text-xs">
                   {requests.map((request) => (
                     <tr key={`${request.id}-desktop`} className="group transition-all duration-300 hover:bg-slate-900/20">
-                      <td className="rounded-l-2xl bg-slate-900/30 px-4 py-5 font-headline font-bold text-cyan-300 group-hover:bg-transparent">
+                      <td className="rounded-l-2xl bg-slate-900/30 px-4 py-3 font-headline font-bold text-cyan-300 group-hover:bg-transparent">
                         {request.id}
                       </td>
-                      <td className="bg-slate-900/30 px-4 py-5 group-hover:bg-transparent">
+                      <td className="bg-slate-900/30 px-4 py-3 group-hover:bg-transparent">
                         <div className="flex items-center gap-2">
                           <span className={`material-symbols-outlined text-xs ${request.typeClass}`}>{request.typeIcon}</span>
                           {request.type}
                         </div>
                       </td>
-                      <td className="bg-slate-900/30 px-4 py-5 font-medium text-slate-100 group-hover:bg-transparent">{request.date}</td>
-                      <td className="bg-slate-900/30 px-4 py-5 group-hover:bg-transparent">
+                      <td className="bg-slate-900/30 px-4 py-3 font-medium text-slate-100 group-hover:bg-transparent">{request.date}</td>
+                      <td className="bg-slate-900/30 px-4 py-3 group-hover:bg-transparent">
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs text-slate-500 line-through">{request.previousValue}</span>
                           <span className={`font-bold ${request.updatedClass}`}>{request.updatedValue}</span>
                         </div>
                       </td>
-                      <td className="bg-slate-900/30 px-4 py-5 group-hover:bg-transparent">
+                      <td className="bg-slate-900/30 px-4 py-3 group-hover:bg-transparent">
                         <StatusBadge status={request.status} statusClass={request.statusClass} />
                       </td>
-                      <td className="max-w-[220px] truncate bg-slate-900/30 px-4 py-5 text-slate-500 group-hover:bg-transparent">{request.reason}</td>
-                      <td className="rounded-r-2xl bg-slate-900/30 px-4 py-5 text-right group-hover:bg-transparent">
+                      <td className="max-w-[220px] truncate bg-slate-900/30 px-4 py-3 text-slate-500 group-hover:bg-transparent">{request.reason}</td>
+                      <td className="rounded-r-2xl bg-slate-900/30 px-4 py-3 text-right group-hover:bg-transparent">
                         <div className="flex justify-end gap-3">
                           <button className="rounded-lg p-2 text-cyan-300 transition hover:bg-cyan-300/10">
                             <span className="material-symbols-outlined text-lg">visibility</span>
@@ -301,25 +304,26 @@ export default function StaffChangeRequestPage() {
               </table>
             </div>
 
-            <div className="mt-8 flex flex-col gap-4 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs font-medium text-slate-500">
-                Showing <span className="text-slate-100">1 - 10</span> of <span className="text-slate-100">128</span> entries
+            <div className="mt-6 flex flex-col gap-4 border-t border-white/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-[10px] font-medium text-slate-500">
+                Page <span className="text-slate-100">{currentPage}</span> of <span className="text-slate-100">{totalPages}</span> &middot; {total} entries
               </p>
-              <div className="flex gap-2">
-                <button className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800/70 text-slate-500 transition hover:bg-slate-700/70">
-                  <span className="material-symbols-outlined text-xl">chevron_left</span>
+              <div className="flex gap-1.5">
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800/70 text-slate-500 transition hover:bg-slate-700/70 disabled:opacity-30">
+                  <span className="material-symbols-outlined text-lg">chevron_left</span>
                 </button>
-                <button className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400 text-sm font-bold text-[#004d57] shadow-[0_0_10px_rgba(0,227,253,0.3)]">
-                  1
-                </button>
-                <button className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800/70 text-sm font-medium text-slate-500 transition hover:bg-slate-700/70">
-                  2
-                </button>
-                <button className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800/70 text-sm font-medium text-slate-500 transition hover:bg-slate-700/70">
-                  3
-                </button>
-                <button className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800/70 text-slate-500 transition hover:bg-slate-700/70">
-                  <span className="material-symbols-outlined text-xl">chevron_right</span>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).slice(0, 5).map(p => (
+                  <button key={p} onClick={() => setCurrentPage(p)}
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition ${currentPage === p
+                      ? "bg-cyan-400 text-[#004d57] shadow-[0_0_8px_rgba(0,227,253,0.3)]"
+                      : "bg-slate-800/70 text-slate-500 hover:bg-slate-700/70"}`}>
+                    {p}
+                  </button>
+                ))}
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800/70 text-slate-500 transition hover:bg-slate-700/70 disabled:opacity-30">
+                  <span className="material-symbols-outlined text-lg">chevron_right</span>
                 </button>
               </div>
             </div>
