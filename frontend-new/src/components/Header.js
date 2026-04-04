@@ -132,13 +132,12 @@ export default function Header() {
     { name: 'EMPLOYEES', href: '/employees' },
     { name: 'ATTENDANCE', href: '/shift' },
     { name: 'PAYROLL', href: '/payslips' },
-    // { name: 'ACCESS CONTROL', href: '/access_control_logs' },
-    // { name: 'VISITORS', href: '/visitor' },
+    { name: 'VISITORS', href: '/visitor' },
     { name: 'REPORTS', href: '/report' },
     { name: 'SETTINGS', href: '/setup' },
   ];
 
-  const restrictedNames = ['SETTINGS', 'PAYROLL', 'ACCESS CONTROL', 'VISITORS'];
+  const restrictedNames = ['SETTINGS', 'PAYROLL', 'ACCESS CONTROL'];
 
   // const filteredLinks =
   //   user && Array.isArray(user.departments) && user.departments.length > 0

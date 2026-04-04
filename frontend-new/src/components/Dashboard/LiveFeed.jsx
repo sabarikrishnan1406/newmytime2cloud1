@@ -96,7 +96,7 @@ function LiveFeed({ branch_ids, department_ids }) {
       const today = new Date().toISOString().split("T")[0];
       const params = {
         page: 1,
-        per_page: 50,
+        per_page: 200,
         from_date: today,
         to_date: today,
       };
@@ -309,14 +309,9 @@ function LiveFeed({ branch_ids, department_ids }) {
             <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300">
               {item.deviceType === "all" ? "All" : item.deviceType === "Attendance" ? "Attendance" : item.deviceType === "Access Control" ? "Access Control" : item.deviceType || "—"}
             </div>
-            {/* Function */}
+            {/* Function - show device function as-is */}
             <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300">
-              {item.deviceFunction
-                ? (item.deviceFunction.toLowerCase() === "auto" ? "Auto" :
-                  item.deviceFunction.toLowerCase() === "in" ? "In" :
-                    item.deviceFunction.toLowerCase() === "out" ? "Out" :
-                      item.deviceFunction)
-                : "—"}
+              {item.deviceFunction || "—"}
             </div>
             {/* Time */}
             <div className="col-span-1 text-xs text-slate-600 dark:text-slate-300">

@@ -1,13 +1,11 @@
 "use client";
 
-import Vistor from "@/components/Visitor/Page";
+import VisitorDashboard from "@/components/Visitor/VisitorDashboard";
 
-const VistorPage = () => {
+export default function VisitorPage() {
   return (
-    <div className="p-5 overflow-y-auto h-full max-h-[90vh]">
-      <Vistor />
+    <div className="p-5 overflow-y-auto max-h-[calc(100vh-64px)]">
+      <VisitorDashboard />
     </div>
   );
-};
-
-export default VistorPage;
+}

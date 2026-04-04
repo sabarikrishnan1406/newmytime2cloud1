@@ -19,6 +19,10 @@ export default function SalaryStructures() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
+  const [branches, setBranches] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [selectedBranch, setSelectedBranch] = useState("");
+  const [selectedDept, setSelectedDept] = useState("");
 
   const fetchStructures = async () => {
     try {
@@ -44,15 +48,31 @@ export default function SalaryStructures() {
 
   useEffect(() => {
     fetchStructures();
-    const fetchEmployees = async () => {
+    const fetchAll = async () => {
       try {
         const params = await buildQueryParams({});
         const { data } = await api.get("/payroll-management/employees", { params });
         setEmployees(data || []);
+        // Extract unique branches and departments
+        const branchMap = {};
+        const deptMap = {};
+        (data || []).forEach(emp => {
+          if (emp.branch) branchMap[emp.branch.id] = emp.branch.branch_name;
+          if (emp.department) deptMap[emp.department.id] = { name: emp.department.name, branchId: emp.branch_id };
+        });
+        setBranches(Object.entries(branchMap).map(([id, name]) => ({ id, name })));
+        setDepartments(Object.entries(deptMap).map(([id, val]) => ({ id, name: val.name, branchId: val.branchId })));
       } catch (e) {}
     };
-    fetchEmployees();
+    fetchAll();
   }, []);
+
+  const filteredDepts = selectedBranch ? departments.filter(d => String(d.branchId) === String(selectedBranch)) : departments;
+  const filteredEmployees = employees.filter(emp => {
+    if (selectedBranch && String(emp.branch_id) !== String(selectedBranch)) return false;
+    if (selectedDept && String(emp.department_id) !== String(selectedDept)) return false;
+    return true;
+  });
 
   const filtered = structures.filter(s =>
     s.employeeName.toLowerCase().includes(search.toLowerCase()) || s.employeeId.toLowerCase().includes(search.toLowerCase())
@@ -156,32 +176,44 @@ export default function SalaryStructures() {
               <button onClick={() => setDialogOpen(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400"><X className="h-4 w-4" /></button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-500">Branch</label>
+                <select value={selectedBranch} onChange={e => { setSelectedBranch(e.target.value); setSelectedDept(""); setForm({ ...form, employee_id: "" }); }}
+                  className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
+                  <option value="">All Branches</option>
+                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-500">Department</label>
+                <select value={selectedDept} onChange={e => { setSelectedDept(e.target.value); setForm({ ...form, employee_id: "" }); }}
+                  className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
+                  <option value="">All Departments</option>
+                  {filteredDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-gray-500">Employee</label>
                 <select value={form.employee_id} onChange={e => setForm({ ...form, employee_id: e.target.value })}
                   className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
                   <option value="">Select employee</option>
-                  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name || ""} — {emp.branch?.branch_name || ""} / {emp.department?.name || ""}</option>)}
+                  {filteredEmployees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name || ""}</option>)}
                 </select>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-gray-500">Effective From</label>
-                <input type="date" value={form.effective_from} onChange={e => setForm({ ...form, effective_from: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300" />
-              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-gray-500">Salary Mode</label>
                 <select value={form.salary_mode} onChange={e => setForm({ ...form, salary_mode: e.target.value })}
                   className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
                   <option value="gross_based">Gross Based</option>
                   <option value="basic_based">Basic Based</option>
-                  <option value="net_based">Net Based</option>
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-gray-500">Effective To</label>
-                <input type="date" value={form.effective_to} onChange={e => setForm({ ...form, effective_to: e.target.value })}
+                <label className="text-xs font-medium text-gray-500">Effective From</label>
+                <input type="date" value={form.effective_from} onChange={e => setForm({ ...form, effective_from: e.target.value })}
                   className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300" />
               </div>
               {[

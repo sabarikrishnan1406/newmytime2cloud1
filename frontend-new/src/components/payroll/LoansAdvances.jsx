@@ -17,6 +17,10 @@ export default function LoansAdvances() {
   const [loanForm, setLoanForm] = useState(emptyLoanForm);
   const [advForm, setAdvForm] = useState(emptyAdvForm);
   const [saving, setSaving] = useState(false);
+  const [branches, setBranches] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [selBranch, setSelBranch] = useState("");
+  const [selDept, setSelDept] = useState("");
 
   const fetchLoans = async () => {
     try {
@@ -59,10 +63,53 @@ export default function LoansAdvances() {
         const params = await buildQueryParams({});
         const { data } = await api.get("/payroll-management/employees", { params });
         setEmployees(data || []);
+        const bMap = {}, dMap = {};
+        (data || []).forEach(e => {
+          if (e.branch) bMap[e.branch.id] = e.branch.branch_name;
+          if (e.department) dMap[e.department.id] = { name: e.department.name, branchId: e.branch_id };
+        });
+        setBranches(Object.entries(bMap).map(([id, name]) => ({ id, name })));
+        setDepartments(Object.entries(dMap).map(([id, v]) => ({ id, name: v.name, branchId: v.branchId })));
       } catch (e) {}
     };
     fetchEmployees();
   }, []);
+
+  const filtDepts = selBranch ? departments.filter(d => String(d.branchId) === String(selBranch)) : departments;
+  const filtEmps = employees.filter(e => {
+    if (selBranch && String(e.branch_id) !== String(selBranch)) return false;
+    if (selDept && String(e.department_id) !== String(selDept)) return false;
+    return true;
+  });
+
+  const BranchDeptEmpFilter = ({ formValue, onEmpChange }) => (
+    <div className="grid grid-cols-3 gap-3">
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-gray-500">Branch</label>
+        <select value={selBranch} onChange={e => { setSelBranch(e.target.value); setSelDept(""); onEmpChange(""); }}
+          className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
+          <option value="">All Branches</option>
+          {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+        </select>
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-gray-500">Department</label>
+        <select value={selDept} onChange={e => { setSelDept(e.target.value); onEmpChange(""); }}
+          className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
+          <option value="">All Depts</option>
+          {filtDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-gray-500">Employee</label>
+        <select value={formValue} onChange={e => onEmpChange(e.target.value)}
+          className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
+          <option value="">Select employee</option>
+          {filtEmps.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name || ""}</option>)}
+        </select>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-5">
@@ -172,14 +219,7 @@ export default function LoansAdvances() {
               <button onClick={() => setLoanDialog(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400"><X className="h-4 w-4" /></button>
             </div>
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-gray-500">Employee</label>
-                <select value={loanForm.employee_id} onChange={e => setLoanForm({ ...loanForm, employee_id: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
-                  <option value="">Select employee</option>
-                  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name || ""} — {emp.branch?.branch_name || ""} / {emp.department?.name || ""}</option>)}
-                </select>
-              </div>
+              <BranchDeptEmpFilter formValue={loanForm.employee_id} onEmpChange={v => setLoanForm({ ...loanForm, employee_id: v })} />
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-gray-500">Loan Amount</label>
@@ -243,14 +283,7 @@ export default function LoansAdvances() {
               <button onClick={() => setAdvDialog(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-gray-400"><X className="h-4 w-4" /></button>
             </div>
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-gray-500">Employee</label>
-                <select value={advForm.employee_id} onChange={e => setAdvForm({ ...advForm, employee_id: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
-                  <option value="">Select employee</option>
-                  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name || ""} — {emp.branch?.branch_name || ""} / {emp.department?.name || ""}</option>)}
-                </select>
-              </div>
+              <BranchDeptEmpFilter formValue={advForm.employee_id} onEmpChange={v => setAdvForm({ ...advForm, employee_id: v })} />
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-gray-500">Advance Amount</label>

@@ -83,6 +83,7 @@ const payrollMenu = [
   { href: "/payslips/loans", icon: DollarSign, label: "Loans & Advances" },
   { href: "/payslips/reports", icon: FileText, label: "Reports" },
   { href: "/payslips/employees", icon: Users, label: "Employees" },
+  { href: "/payslips/settings", icon: Settings, label: "Settings" },
 ];
 
 const employeesMenu = [
@@ -93,7 +94,14 @@ const employeesMenu = [
 ];
 
 const visitorMenu = [
-  { href: "/visitor", icon: Users, label: "Visitor" },
+  { href: "/visitor", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/visitor/check-in", icon: LogInIcon, label: "Check-In" },
+  { href: "/visitor/logs", icon: History, label: "Visitor Logs" },
+  { href: "/visitor/directory", icon: Users, label: "Directory" },
+  { href: "/visitor/pre-register", icon: Calendar, label: "Pre-Register" },
+  { href: "/visitor/blacklist", icon: Shield, label: "Blacklist" },
+  { href: "/visitor/zones", icon: Map, label: "Zone Access" },
+  { href: "/visitor/reports", icon: FileText, label: "Reports" },
 ];
 
 const dashboardMenu = [
@@ -108,6 +116,13 @@ export const leftNavLinks = {
 
 
   "/visitor": visitorMenu,
+  "/visitor/check-in": visitorMenu,
+  "/visitor/logs": visitorMenu,
+  "/visitor/directory": visitorMenu,
+  "/visitor/pre-register": visitorMenu,
+  "/visitor/blacklist": visitorMenu,
+  "/visitor/zones": visitorMenu,
+  "/visitor/reports": visitorMenu,
   "/employees": employeesMenu,
   "/employee_photo_upload": employeesMenu,
   "/leaves": leaveMenu,
@@ -141,6 +156,7 @@ export const leftNavLinks = {
   "/payslips/loans": payrollMenu,
   "/payslips/reports": payrollMenu,
   "/payslips/employees": payrollMenu,
+  "/payslips/settings": payrollMenu,
   "/geo-fencing": companyMenu,
   "/live-tracker": companyMenu,
   "/settings/leave": companyMenu,

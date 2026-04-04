@@ -45,5 +45,9 @@ Route::post('payroll-management/mark-paid/{id}', [PayrollManagementController::c
 // Payslip
 Route::get('payroll-management/payslip/{recordId}', [PayrollManagementController::class, 'downloadPayslip']);
 
+// Settings
+Route::get('payroll-management/settings', [PayrollManagementController::class, 'getSettings']);
+Route::post('payroll-management/settings', [PayrollManagementController::class, 'saveSettings']);
+
 // Reports Export
 Route::get('payroll-management/export-report', [PayrollManagementController::class, 'exportReport']);

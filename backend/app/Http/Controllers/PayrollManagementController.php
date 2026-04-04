@@ -9,6 +9,7 @@ use App\Models\EmployeeLoan;
 use App\Models\PayrollAdjustment;
 use App\Models\PayrollBatch;
 use App\Models\PayrollRecord;
+use App\Models\PayrollConfig;
 use App\Models\SalaryStructure;
 use App\Models\ScheduleEmployee;
 use Carbon\Carbon;
@@ -52,9 +53,22 @@ class PayrollManagementController extends Controller
         $data['employee_id'] = $employeeId;
         $data['branch_id'] = $request->branch_id ?? Employee::find($employeeId)?->branch_id;
         $data['status'] = 'active';
-        $data['gross_salary'] = ($data['basic_salary'] ?? 0) + ($data['house_allowance'] ?? 0) +
-            ($data['transport_allowance'] ?? 0) + ($data['food_allowance'] ?? 0) +
-            ($data['medical_allowance'] ?? 0) + ($data['other_allowance'] ?? 0);
+
+        $totalAllowances = ($data['house_allowance'] ?? 0) + ($data['transport_allowance'] ?? 0) +
+            ($data['food_allowance'] ?? 0) + ($data['medical_allowance'] ?? 0) + ($data['other_allowance'] ?? 0);
+
+        $mode = $data['salary_mode'] ?? 'basic_based';
+        if ($mode === 'gross_based') {
+            // User entered gross as basic_salary field, calculate actual basic
+            $data['gross_salary'] = $data['basic_salary'] ?? 0;
+            $data['basic_salary'] = max(0, ($data['basic_salary'] ?? 0) - $totalAllowances);
+        } elseif ($mode === 'net_based') {
+            // User entered net as basic_salary field, store as-is for now
+            $data['gross_salary'] = ($data['basic_salary'] ?? 0) + $totalAllowances;
+        } else {
+            // basic_based: user entered basic, calculate gross
+            $data['gross_salary'] = ($data['basic_salary'] ?? 0) + $totalAllowances;
+        }
 
         $structure = SalaryStructure::updateOrCreate(
             ['company_id' => $request->company_id, 'employee_id' => $employeeId],
@@ -90,10 +104,18 @@ class PayrollManagementController extends Controller
             'overtime_eligible', 'loan_deduction', 'advance_deduction',
             'salary_mode', 'effective_from', 'effective_to', 'status',
         ]);
-        $data['gross_salary'] = ($data['basic_salary'] ?? 0) + ($data['house_allowance'] ?? 0) +
-            ($data['transport_allowance'] ?? 0) + ($data['food_allowance'] ?? 0) +
-            ($data['medical_allowance'] ?? 0) + ($data['other_allowance'] ?? 0);
         $data['branch_id'] = $request->branch_id ?? Employee::find($data['employee_id'])?->branch_id;
+
+        $totalAllowances = ($data['house_allowance'] ?? 0) + ($data['transport_allowance'] ?? 0) +
+            ($data['food_allowance'] ?? 0) + ($data['medical_allowance'] ?? 0) + ($data['other_allowance'] ?? 0);
+
+        $mode = $data['salary_mode'] ?? 'basic_based';
+        if ($mode === 'gross_based') {
+            $data['gross_salary'] = $data['basic_salary'] ?? 0;
+            $data['basic_salary'] = max(0, ($data['basic_salary'] ?? 0) - $totalAllowances);
+        } else {
+            $data['gross_salary'] = ($data['basic_salary'] ?? 0) + $totalAllowances;
+        }
 
         $structure = SalaryStructure::create($data);
         return response()->json(['status' => true, 'data' => $structure]);
@@ -108,12 +130,19 @@ class PayrollManagementController extends Controller
             'overtime_eligible', 'loan_deduction', 'advance_deduction',
             'salary_mode', 'effective_from', 'effective_to', 'status',
         ]);
-        $data['gross_salary'] = ($data['basic_salary'] ?? $structure->basic_salary) +
-            ($data['house_allowance'] ?? $structure->house_allowance) +
+        $totalAllowances = ($data['house_allowance'] ?? $structure->house_allowance) +
             ($data['transport_allowance'] ?? $structure->transport_allowance) +
             ($data['food_allowance'] ?? $structure->food_allowance) +
             ($data['medical_allowance'] ?? $structure->medical_allowance) +
             ($data['other_allowance'] ?? $structure->other_allowance);
+
+        $mode = $data['salary_mode'] ?? $structure->salary_mode ?? 'basic_based';
+        if ($mode === 'gross_based') {
+            $data['gross_salary'] = $data['basic_salary'] ?? $structure->basic_salary;
+            $data['basic_salary'] = max(0, ($data['basic_salary'] ?? $structure->basic_salary) - $totalAllowances);
+        } else {
+            $data['gross_salary'] = ($data['basic_salary'] ?? $structure->basic_salary) + $totalAllowances;
+        }
         $structure->update($data);
         return response()->json(['status' => true, 'data' => $structure]);
     }
@@ -267,7 +296,17 @@ class PayrollManagementController extends Controller
         $month = $request->month ?? date('Y-m');
         $branchId = $request->branch_id;
 
-        // Check existing batch
+        // Load company payroll settings
+        $config = PayrollConfig::where('company_id', $companyId)->first();
+        $daysMode = $config->days_mode ?? 'fixed_30';
+        $workingHrsPerDay = $config->working_hours_per_day ?? 8;
+        $normalOtMultiplier = $config->normal_ot_multiplier ?? 1.25;
+        $weekendOtMultiplier = $config->weekend_ot_multiplier ?? 1.50;
+        $holidayOtMultiplier = $config->holiday_ot_multiplier ?? 2.00;
+        $lateDeductionMode = $config->late_deduction_mode ?? 'slab_based';
+        $lateSlabs = $config->late_slabs ?? [];
+        $roundingRule = $config->rounding_rule ?? 'none';
+
         // Find existing draft batch to reuse, or create new one
         $existing = PayrollBatch::where('company_id', $companyId)->where('month', $month)
             ->where('status', 'draft')
@@ -276,7 +315,6 @@ class PayrollManagementController extends Controller
 
         DB::beginTransaction();
         try {
-            // Get all employees with active salary structures
             $structures = SalaryStructure::where('company_id', $companyId)
                 ->where('status', 'active')
                 ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
@@ -286,7 +324,6 @@ class PayrollManagementController extends Controller
                 return response()->json(['status' => false, 'message' => 'No salary structures found'], 400);
             }
 
-            // Create or reuse batch
             $batch = $existing ?? PayrollBatch::create([
                 'company_id' => $companyId,
                 'branch_id' => $branchId,
@@ -294,20 +331,24 @@ class PayrollManagementController extends Controller
                 'status' => 'draft',
             ]);
 
-            // Delete old records if reprocessing
             PayrollRecord::where('batch_id', $batch->id)->delete();
 
             $totalGross = 0;
             $totalDed = 0;
             $totalNet = 0;
 
+            $monthStart = $month . '-01';
+            $monthEnd = Carbon::parse($monthStart)->endOfMonth()->format('Y-m-d');
+            $totalDaysInMonth = Carbon::parse($monthStart)->daysInMonth;
+
+            // Days divisor based on settings
+            $daysDivisor = $daysMode === 'fixed_30' ? 30 : $totalDaysInMonth;
+
             foreach ($structures as $ss) {
                 $emp = Employee::find($ss->employee_id);
                 if (!$emp) continue;
 
-                // Get attendance data
-                $monthStart = $month . '-01';
-                $monthEnd = Carbon::parse($monthStart)->endOfMonth()->format('Y-m-d');
+                // Get attendance logs
                 $logs = AttendanceLog::where('UserID', $emp->system_user_id)
                     ->where('company_id', $companyId)
                     ->where('LogTime', '>=', $monthStart)
@@ -321,35 +362,106 @@ class PayrollManagementController extends Controller
                 }
 
                 $presentDays = count($byDate);
-                $totalDaysInMonth = Carbon::parse($monthStart)->daysInMonth;
-                $absentDays = max(0, $totalDaysInMonth - $presentDays);
+                $absentDays = max(0, $daysDivisor - $presentDays);
 
-                // Get shift for OT calculation
+                // Get shift for OT/late calculation
                 $schedule = ScheduleEmployee::where('employee_id', $emp->system_user_id)->whereHas('shift')->latest('updated_at')->first();
                 $shift = $schedule?->shift;
-                $workingHours = $this->timeToMinutes($shift?->working_hours ?? '08:00') / 60;
+                $shiftWorkingHours = $this->timeToMinutes($shift?->working_hours ?? '08:00') / 60;
+                $shiftStartTime = $shift?->on_duty_time; // e.g. "09:00"
 
-                // Calculate OT hours
-                $otHours = 0;
-                if ($ss->overtime_eligible) {
-                    foreach ($byDate as $dayLogs) {
-                        usort($dayLogs, fn($a, $b) => strtotime($a->LogTime) - strtotime($b->LogTime));
-                        if (count($dayLogs) >= 2) {
-                            $first = Carbon::parse($dayLogs[0]->LogTime);
-                            $last = Carbon::parse(end($dayLogs)->LogTime);
-                            $workedHours = $first->diffInMinutes($last) / 60;
-                            if ($workedHours > $workingHours) {
-                                $otHours += ($workedHours - $workingHours);
-                            }
+                // Get holidays for this month
+                // Get all holiday dates for this month
+                $holidayRecords = \App\Models\Holidays::where('company_id', $companyId)
+                    ->where(function ($q) use ($monthStart, $monthEnd) {
+                        $q->whereBetween('start_date', [$monthStart, $monthEnd])
+                          ->orWhereBetween('end_date', [$monthStart, $monthEnd]);
+                    })->get();
+                $holidays = [];
+                foreach ($holidayRecords as $h) {
+                    $s = Carbon::parse($h->start_date);
+                    $e = Carbon::parse($h->end_date);
+                    while ($s->lte($e)) {
+                        $holidays[] = $s->format('Y-m-d');
+                        $s->addDay();
+                    }
+                }
+
+                // Calculate OT hours and late minutes
+                $normalOtHours = 0;
+                $weekendOtHours = 0;
+                $holidayOtHours = 0;
+                $totalLateMinutes = 0;
+                $lateDays = 0;
+
+                foreach ($byDate as $date => $dayLogs) {
+                    usort($dayLogs, fn($a, $b) => strtotime($a->LogTime) - strtotime($b->LogTime));
+                    if (count($dayLogs) < 1) continue;
+
+                    $firstIn = Carbon::parse($dayLogs[0]->LogTime);
+                    $dayOfWeek = Carbon::parse($date)->dayOfWeek; // 0=Sun, 6=Sat
+                    $isWeekend = in_array($dayOfWeek, [5, 6]); // Fri-Sat weekend (UAE)
+                    $isHoliday = in_array($date, $holidays);
+
+                    // Late calculation
+                    if ($shiftStartTime && !$isWeekend && !$isHoliday) {
+                        $expectedIn = Carbon::parse($date . ' ' . $shiftStartTime);
+                        $lateMinutes = max(0, $firstIn->diffInMinutes($expectedIn, false));
+                        if ($lateMinutes > 0) {
+                            $totalLateMinutes += $lateMinutes;
+                            $lateDays++;
+                        }
+                    }
+
+                    // OT calculation with different multipliers
+                    if ($ss->overtime_eligible && count($dayLogs) >= 2) {
+                        $last = Carbon::parse(end($dayLogs)->LogTime);
+                        $workedHours = $firstIn->diffInMinutes($last) / 60;
+                        if ($workedHours > $shiftWorkingHours) {
+                            $extraHours = $workedHours - $shiftWorkingHours;
+                            if ($isHoliday) $holidayOtHours += $extraHours;
+                            elseif ($isWeekend) $weekendOtHours += $extraHours;
+                            else $normalOtHours += $extraHours;
                         }
                     }
                 }
 
-                // OT rate (basic/30days/8hours * 1.25)
-                $otRate = ($ss->basic_salary / 30 / 8) * 1.25;
-                $otAmount = round($otHours * $otRate, 2);
+                // OT amount with separate multipliers from settings
+                $baseOtRate = $ss->basic_salary / $daysDivisor / $workingHrsPerDay;
+                $otAmount = round(
+                    ($normalOtHours * $baseOtRate * $normalOtMultiplier) +
+                    ($weekendOtHours * $baseOtRate * $weekendOtMultiplier) +
+                    ($holidayOtHours * $baseOtRate * $holidayOtMultiplier),
+                    2
+                );
+                $otHours = round($normalOtHours + $weekendOtHours + $holidayOtHours, 2);
 
-                // Adjustments for this month
+                // Late deduction based on settings
+                $lateDeduction = 0;
+                if ($lateDeductionMode === 'slab_based' && !empty($lateSlabs)) {
+                    $dailyRate = $ss->basic_salary / $daysDivisor;
+                    foreach ($lateSlabs as $slab) {
+                        $from = $slab['fromMinutes'] ?? 0;
+                        $to = $slab['toMinutes'] ?? 999999;
+                        if ($totalLateMinutes >= $from && $totalLateMinutes <= $to) {
+                            $type = $slab['deductionType'] ?? 'no_deduction';
+                            if ($type === 'half_day') $lateDeduction = round($dailyRate * 0.5, 2);
+                            elseif ($type === 'full_day') $lateDeduction = round($dailyRate, 2);
+                            elseif ($type === 'two_days') $lateDeduction = round($dailyRate * 2, 2);
+                            elseif ($type === 'percentage') $lateDeduction = round($ss->basic_salary * ($slab['value'] ?? 0) / 100, 2);
+                            elseif ($type === 'fixed_amount') $lateDeduction = round($slab['value'] ?? 0, 2);
+                            break;
+                        }
+                    }
+                } elseif ($lateDeductionMode === 'per_minute') {
+                    $perMinuteRate = $ss->basic_salary / $daysDivisor / $workingHrsPerDay / 60;
+                    $lateDeduction = round($totalLateMinutes * $perMinuteRate, 2);
+                } elseif ($lateDeductionMode === 'per_hour') {
+                    $perHourRate = $ss->basic_salary / $daysDivisor / $workingHrsPerDay;
+                    $lateDeduction = round(($totalLateMinutes / 60) * $perHourRate, 2);
+                }
+
+                // Adjustments
                 $adjustments = PayrollAdjustment::where('company_id', $companyId)
                     ->where('employee_id', $ss->employee_id)
                     ->where('payroll_month', $month)
@@ -362,8 +474,8 @@ class PayrollManagementController extends Controller
                 $fineAmount = $adjustments->where('type', 'fine')->sum('amount');
                 $otherDed = $adjustments->where('type', 'other_deduction')->sum('amount');
 
-                // Absence deduction (basic/30 per absent day)
-                $absenceDeduction = round(($ss->basic_salary / 30) * $absentDays, 2);
+                // Absence deduction
+                $absenceDeduction = round(($ss->basic_salary / $daysDivisor) * $absentDays, 2);
 
                 // Loan deduction
                 $loanDed = 0;
@@ -393,8 +505,13 @@ class PayrollManagementController extends Controller
 
                 $totalAllowances = $ss->house_allowance + $ss->transport_allowance + $ss->food_allowance + $ss->medical_allowance + $ss->other_allowance;
                 $grossEarned = $ss->basic_salary + $totalAllowances + $otAmount + $bonus + $incentive + $arrears + $reimbursement;
-                $totalDeduction = $absenceDeduction + $loanDed + $advanceDed + $fineAmount + $otherDed;
+                $totalDeduction = $absenceDeduction + $lateDeduction + $loanDed + $advanceDed + $fineAmount + $otherDed;
                 $netSalary = $grossEarned - $totalDeduction;
+
+                // Apply rounding rule from settings
+                if ($roundingRule === 'round') $netSalary = round($netSalary);
+                elseif ($roundingRule === 'floor') $netSalary = floor($netSalary);
+                elseif ($roundingRule === 'ceil') $netSalary = ceil($netSalary);
 
                 PayrollRecord::create([
                     'batch_id' => $batch->id,
@@ -404,7 +521,8 @@ class PayrollManagementController extends Controller
                     'month' => $month,
                     'present_days' => $presentDays,
                     'absent_days' => $absentDays,
-                    'late_days' => 0,
+                    'late_days' => $lateDays,
+                    'late_minutes' => $totalLateMinutes,
                     'ot_hours' => round($otHours, 2),
                     'basic_salary' => $ss->basic_salary,
                     'house_allowance' => $ss->house_allowance,
@@ -420,7 +538,7 @@ class PayrollManagementController extends Controller
                     'reimbursement' => $reimbursement,
                     'gross_earned' => $grossEarned,
                     'absence_deduction' => $absenceDeduction,
-                    'late_deduction' => 0,
+                    'late_deduction' => $lateDeduction,
                     'loan_deduction' => $loanDed,
                     'advance_deduction' => $advanceDed,
                     'fine_amount' => $fineAmount,
@@ -478,7 +596,7 @@ class PayrollManagementController extends Controller
     public function downloadPayslip(Request $request, $recordId)
     {
         $record = PayrollRecord::where('company_id', $request->company_id)
-            ->with('employee', 'employee.branch', 'employee.department', 'employee.designation')
+            ->with('employee', 'employee.branch', 'employee.department', 'employee.designation', 'employee.bank')
             ->findOrFail($recordId);
 
         // Generate simple HTML payslip
@@ -596,6 +714,48 @@ class PayrollManagementController extends Controller
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
+    }
+
+    // ── Payroll Settings ──
+    public function getSettings(Request $request)
+    {
+        $config = PayrollConfig::where('company_id', $request->company_id)->first();
+        if (!$config) {
+            // Return defaults
+            return response()->json([
+                'days_mode' => 'fixed_30',
+                'working_hours_per_day' => 8,
+                'salary_mode' => 'gross_based',
+                'currency' => 'AED',
+                'normal_ot_multiplier' => 1.25,
+                'weekend_ot_multiplier' => 1.50,
+                'holiday_ot_multiplier' => 2.00,
+                'late_deduction_mode' => 'slab_based',
+                'leave_deduction_enabled' => true,
+                'rounding_rule' => 'none',
+                'late_slabs' => [],
+                'approval_levels' => 1,
+                'lock_after_approval' => true,
+            ]);
+        }
+        return response()->json($config);
+    }
+
+    public function saveSettings(Request $request)
+    {
+        $data = $request->only([
+            'days_mode', 'working_hours_per_day', 'salary_mode', 'currency',
+            'normal_ot_multiplier', 'weekend_ot_multiplier', 'holiday_ot_multiplier',
+            'late_deduction_mode', 'leave_deduction_enabled', 'rounding_rule', 'late_slabs',
+            'approval_levels', 'lock_after_approval',
+        ]);
+
+        $config = PayrollConfig::updateOrCreate(
+            ['company_id' => $request->company_id],
+            $data
+        );
+
+        return response()->json(['status' => true, 'data' => $config]);
     }
 
     private function timeToMinutes($time): int
