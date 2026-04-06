@@ -1,218 +1,368 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { Download, FileText, Filter } from "lucide-react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Download, FileText, Filter, FileDown } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import {
-  leaveTypes, employees, leaveRequests, getEmployee, getLeaveType,
-} from "@/lib/leave-store";
+import { differenceInDays, parseISO, format } from "date-fns";
+import { getLeavesRequest } from "@/lib/endpoint/leaves";
+import { getBranches, getDepartments } from "@/lib/api";
+import { api, API_BASE } from "@/lib/api-client";
+import { getUser } from "@/config";
+import MultiDropDown from "@/components/ui/MultiDropDown";
+import DropDown from "@/components/ui/DropDown";
+import ProfilePicture from "@/components/ProfilePicture";
 
-const reportTypes = [
-  { value: "usage", label: "Usage Summary" },
-  { value: "department", label: "Department Breakdown" },
-  { value: "monthly", label: "Monthly Trends" },
-];
-
-const statusColors = {
-  pending: { text: "text-yellow-400" },
-  approved: { text: "text-emerald-400" },
-  rejected: { text: "text-red-400" },
+const statusConfig = {
+  0: { label: "Pending", text: "text-yellow-400" },
+  1: { label: "Approved", text: "text-emerald-400" },
+  2: { label: "Rejected", text: "text-red-400" },
 };
 
-const allDepartments = [...new Set(employees.map((e) => e.department))];
+// Calculate days from leave record
+const calcDays = (lr) => {
+  if (lr.total_days && lr.total_days > 0) return lr.total_days;
+  if (lr.days && lr.days > 0) return lr.days;
+  try {
+    return differenceInDays(parseISO(lr.end_date), parseISO(lr.start_date)) + 1;
+  } catch {
+    return 1;
+  }
+};
+
+// Get leave type name from record
+const getLeaveTypeName = (lr) => {
+  return lr.leave_type?.name || lr.leave_group_type?.leave_type?.name || "General Leave";
+};
 
 export default function LeaveReportsPage() {
-  const [reportType, setReportType] = useState("usage");
-  const [selectedDepartment, setSelectedDepartment] = useState("all");
-  const [selectedLeaveType, setSelectedLeaveType] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [leaveData, setLeaveData] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [departments, setDepartments] = useState([]);
 
-  // Filtered leave requests
-  const filteredRequests = useMemo(() => {
-    return leaveRequests.filter((req) => {
-      const emp = getEmployee(req.employeeId);
-      if (!emp) return false;
-      if (selectedDepartment !== "all" && emp.department !== selectedDepartment) return false;
-      if (selectedLeaveType !== "all" && req.leaveTypeId !== selectedLeaveType) return false;
-      return true;
-    });
-  }, [selectedDepartment, selectedLeaveType]);
+  const [selectedBranchIds, setSelectedBranchIds] = useState([]);
+  const [selectedDepartmentIds, setSelectedDepartmentIds] = useState([]);
+  const [selectedLeaveType, setSelectedLeaveType] = useState(null);
+  const [selectedStatus, setSelectedStatus] = useState(null);
 
-  // Chart data: leave usage by department
+  useEffect(() => {
+    getBranches().then(setBranches).catch(console.error);
+    getDepartments().then(setDepartments).catch(console.error);
+    fetchLeaveTypes();
+  }, []);
+
+  useEffect(() => {
+    fetchLeaves();
+  }, [selectedBranchIds, selectedDepartmentIds, selectedLeaveType, selectedStatus]);
+
+  const fetchLeaveTypes = async () => {
+    try {
+      const user = await getUser();
+      const { data } = await api.get(`${API_BASE}/leave_type`, {
+        params: { company_id: user?.company_id || 0, per_page: 100 },
+      });
+      setLeaveTypes(Array.isArray(data?.data) ? data.data : []);
+    } catch (e) {
+      console.error("Failed to fetch leave types:", e);
+    }
+  };
+
+  const fetchLeaves = async () => {
+    setLoading(true);
+    try {
+      const year = new Date().getFullYear();
+      const params = {
+        per_page: 2000,
+        start_date: `${year}-01-01`,
+        end_date: `${year}-12-31`,
+        branch_ids: selectedBranchIds.length > 0 ? selectedBranchIds : undefined,
+        department_ids: selectedDepartmentIds.length > 0 ? selectedDepartmentIds : undefined,
+        leave_type_id: selectedLeaveType || undefined,
+        status_ids: selectedStatus !== null ? [String(selectedStatus)] : undefined,
+      };
+      const result = await getLeavesRequest(params);
+      setLeaveData(Array.isArray(result?.data) ? result.data : []);
+    } catch (e) {
+      console.error("Failed to fetch leaves:", e);
+      setLeaveData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Chart data
   const chartData = useMemo(() => {
     const deptMap = {};
-    allDepartments.forEach((dept) => {
-      deptMap[dept] = { department: dept, totalDays: 0, approvedDays: 0 };
+    leaveData.forEach((lr) => {
+      const dept = lr.employee?.department?.name || "Unknown";
+      if (!deptMap[dept]) deptMap[dept] = { department: dept, totalDays: 0, approvedDays: 0 };
+      const days = calcDays(lr);
+      deptMap[dept].totalDays += days;
+      if (lr.status === 1) deptMap[dept].approvedDays += days;
     });
+    return Object.values(deptMap).filter((d) => d.totalDays > 0).sort((a, b) => b.totalDays - a.totalDays);
+  }, [leaveData]);
 
-    leaveRequests.forEach((req) => {
-      const emp = getEmployee(req.employeeId);
-      if (!emp) return;
-      if (selectedLeaveType !== "all" && req.leaveTypeId !== selectedLeaveType) return;
-      if (deptMap[emp.department]) {
-        deptMap[emp.department].totalDays += req.days;
-        if (req.status === "approved") {
-          deptMap[emp.department].approvedDays += req.days;
-        }
-      }
-    });
-
-    return Object.values(deptMap).filter((d) => d.totalDays > 0);
-  }, [selectedLeaveType]);
+  const monthlyData = useMemo(() => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return months.map((month, idx) => {
+      const monthLeaves = leaveData.filter((l) => new Date(l.start_date).getMonth() === idx);
+      return {
+        month,
+        total: monthLeaves.reduce((s, l) => s + calcDays(l), 0),
+        approved: monthLeaves.filter((l) => l.status === 1).reduce((s, l) => s + calcDays(l), 0),
+      };
+    }).filter((m) => m.total > 0);
+  }, [leaveData]);
 
   // Table rows
   const tableRows = useMemo(() => {
-    return filteredRequests.map((req) => {
-      const emp = getEmployee(req.employeeId);
-      const lt = getLeaveType(req.leaveTypeId);
-      return {
-        id: req.id,
-        employee: emp?.name || "Unknown",
-        department: emp?.department || "Unknown",
-        leaveType: lt?.name || "Unknown",
-        days: req.days,
-        status: req.status,
-      };
-    });
-  }, [filteredRequests]);
+    return leaveData.map((lr) => ({
+      id: lr.id,
+      employee: lr.employee?.first_name || "Unknown",
+      profile_picture: lr.employee?.profile_picture,
+      department: lr.employee?.department?.name || "Unknown",
+      leaveType: getLeaveTypeName(lr),
+      days: calcDays(lr),
+      status: lr.status,
+      startDate: lr.start_date,
+      endDate: lr.end_date,
+    }));
+  }, [leaveData]);
+
+  // Stats
+  const totalDays = tableRows.reduce((s, r) => s + r.days, 0);
+  const approvedDays = tableRows.filter((r) => r.status === 1).reduce((s, r) => s + r.days, 0);
+  const pendingCount = tableRows.filter((r) => r.status === 0).length;
 
   // Export CSV
   const handleExportCSV = () => {
-    const headers = ["Employee", "Department", "Leave Type", "Days", "Status"];
+    const headers = ["Employee", "Department", "Leave Type", "Start Date", "End Date", "Days", "Status"];
     const csvRows = [
       headers.join(","),
       ...tableRows.map((row) =>
-        [row.employee, row.department, row.leaveType, row.days, row.status].join(",")
+        [row.employee, row.department, row.leaveType, row.startDate, row.endDate, row.days, statusConfig[row.status]?.label || "Unknown"].join(",")
       ),
     ];
-    const csvContent = csvRows.join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "leave_report.csv";
+    link.download = `leave_report_${new Date().getFullYear()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
+  // Export PDF
+  const handleExportPDF = () => {
+    const today = format(new Date(), "dd MMM yyyy");
+    const year = new Date().getFullYear();
+
+    const html = `
+      <!DOCTYPE html>
+      <html><head>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; color: #333; padding: 30px; }
+          .header { background: linear-gradient(135deg, #4f46e5, #6366f1); color: #fff; padding: 25px 30px; border-radius: 12px; margin-bottom: 25px; }
+          .header h1 { font-size: 22px; font-weight: 800; }
+          .header p { font-size: 12px; opacity: 0.85; margin-top: 4px; }
+          .stats { display: flex; gap: 15px; margin-bottom: 25px; }
+          .stat-card { flex: 1; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 10px; padding: 15px; text-align: center; }
+          .stat-card .label { font-size: 10px; text-transform: uppercase; color: #6b7280; font-weight: 700; letter-spacing: 0.5px; }
+          .stat-card .value { font-size: 28px; font-weight: 800; color: #1f2937; margin-top: 4px; }
+          .stat-card.approved .value { color: #059669; }
+          .stat-card.pending .value { color: #d97706; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          thead { background: #f1f5f9; }
+          th { text-align: left; padding: 10px 12px; font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; border-bottom: 2px solid #e2e8f0; }
+          td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+          tr:nth-child(even) { background: #fafafa; }
+          .status-approved { color: #059669; font-weight: 700; }
+          .status-pending { color: #d97706; font-weight: 700; }
+          .status-rejected { color: #dc2626; font-weight: 700; }
+          .footer { text-align: center; margin-top: 30px; font-size: 10px; color: #9ca3af; padding-top: 15px; border-top: 1px solid #e5e7eb; }
+        </style>
+      </head><body>
+        <div class="header">
+          <h1>MyTime2Cloud - Leave Report</h1>
+          <p>Generated on ${today} | Year: ${year}</p>
+        </div>
+        <div class="stats">
+          <div class="stat-card"><div class="label">Total Requests</div><div class="value">${tableRows.length}</div></div>
+          <div class="stat-card"><div class="label">Total Days</div><div class="value">${totalDays}</div></div>
+          <div class="stat-card approved"><div class="label">Approved Days</div><div class="value">${approvedDays}</div></div>
+          <div class="stat-card pending"><div class="label">Pending</div><div class="value">${pendingCount}</div></div>
+        </div>
+        <table>
+          <thead><tr>
+            <th>#</th><th>Employee</th><th>Department</th><th>Leave Type</th><th>Start Date</th><th>End Date</th><th>Days</th><th>Status</th>
+          </tr></thead>
+          <tbody>
+            ${tableRows.map((row, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td><strong>${row.employee}</strong></td>
+                <td>${row.department}</td>
+                <td>${row.leaveType}</td>
+                <td>${row.startDate}</td>
+                <td>${row.endDate}</td>
+                <td><strong>${row.days}</strong></td>
+                <td class="status-${(statusConfig[row.status]?.label || "").toLowerCase()}">${statusConfig[row.status]?.label || "Unknown"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+        <div class="footer">MyTime2Cloud - Leave Management Report | ${today}</div>
+      </body></html>
+    `;
+
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.print();
+    };
+  };
+
+  const leaveTypeItems = useMemo(() => {
+    return [
+      { id: -1, name: "All Leave Types" },
+      ...leaveTypes.map((lt) => ({ id: lt.id, name: lt.name })),
+    ];
+  }, [leaveTypes]);
+
   return (
     <div className="p-4 md:p-6 space-y-6 overflow-y-auto max-h-[calc(100vh-80px)]">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-600 dark:text-white">Leave Reports</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Generate and analyze leave usage reports</p>
+          <p className="text-sm text-slate-500 mt-0.5">Analyze leave usage across your organization</p>
         </div>
-        <button
-          onClick={handleExportCSV}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors text-sm font-medium"
-        >
-          <Download className="w-4 h-4" />
-          Export CSV
-        </button>
-      </div>
-
-      {/* Filters Card */}
-      <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-4 h-4 text-slate-400" />
-          <h3 className="text-sm font-semibold text-white">Filters</h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Report Type */}
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
-              Report Type
-            </label>
-            <select
-              value={reportType}
-              onChange={(e) => setReportType(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer"
-            >
-              {reportTypes.map((rt) => (
-                <option key={rt.value} value={rt.value} className="bg-slate-800 text-white">
-                  {rt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Department */}
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
-              Department
-            </label>
-            <select
-              value={selectedDepartment}
-              onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer"
-            >
-              <option value="all" className="bg-slate-800 text-white">All Departments</option>
-              {allDepartments.map((dept) => (
-                <option key={dept} value={dept} className="bg-slate-800 text-white">
-                  {dept}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Leave Type */}
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
-              Leave Type
-            </label>
-            <select
-              value={selectedLeaveType}
-              onChange={(e) => setSelectedLeaveType(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer"
-            >
-              <option value="all" className="bg-slate-800 text-white">All Leave Types</option>
-              {leaveTypes.map((lt) => (
-                <option key={lt.id} value={lt.id} className="bg-slate-800 text-white">
-                  {lt.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportPDF}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors text-sm font-medium"
+          >
+            <FileDown className="w-4 h-4" />
+            Export PDF
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors text-sm font-medium"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </button>
         </div>
       </div>
 
-      {/* Bar Chart */}
-      <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <FileText className="w-4 h-4 text-slate-400" />
-          <h3 className="text-sm font-semibold text-white">Leave Usage by Department</h3>
+      {/* Filters */}
+      <div className="grid grid-cols-4 gap-3">
+        <MultiDropDown
+          placeholder="Select Branch"
+          items={branches}
+          value={selectedBranchIds}
+          onChange={setSelectedBranchIds}
+          badgesCount={1}
+          portalled={false}
+        />
+        <MultiDropDown
+          placeholder="Select Department"
+          items={departments}
+          value={selectedDepartmentIds}
+          onChange={setSelectedDepartmentIds}
+          badgesCount={1}
+          portalled={false}
+        />
+        <DropDown
+          placeholder="All Leave Types"
+          items={leaveTypeItems}
+          value={selectedLeaveType}
+          onChange={(val) => setSelectedLeaveType(val === -1 ? null : val)}
+          portalled={false}
+        />
+        <DropDown
+          placeholder="All Status"
+          items={[
+            { id: -1, name: "All Status" },
+            { id: 0, name: "Pending" },
+            { id: 1, name: "Approved" },
+            { id: 2, name: "Rejected" },
+          ]}
+          value={selectedStatus}
+          onChange={(val) => setSelectedStatus(val === -1 ? null : val)}
+          portalled={false}
+        />
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase">Total Requests</p>
+          <p className="text-2xl font-bold text-white mt-1">{tableRows.length}</p>
         </div>
-        {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis
-                dataKey="department"
-                tick={{ fontSize: 12, fill: "#94a3b8" }}
-                stroke="rgba(255,255,255,0.05)"
-              />
-              <YAxis
-                tick={{ fontSize: 12, fill: "#94a3b8" }}
-                stroke="rgba(255,255,255,0.05)"
-              />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "8px",
-                  background: "#1e293b",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  color: "#fff",
-                  fontSize: 13,
-                }}
-              />
-              <Bar dataKey="totalDays" name="Total Days" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="approvedDays" name="Approved" fill="#22c55e" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <p className="text-sm text-slate-500 text-center py-16">No data available for the selected filters</p>
-        )}
+        <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase">Total Days</p>
+          <p className="text-2xl font-bold text-white mt-1">{totalDays}</p>
+        </div>
+        <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase">Approved Days</p>
+          <p className="text-2xl font-bold text-emerald-400 mt-1">{approvedDays}</p>
+        </div>
+        <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-4">
+          <p className="text-xs font-semibold text-slate-400 uppercase">Pending</p>
+          <p className="text-2xl font-bold text-yellow-400 mt-1">{pendingCount}</p>
+        </div>
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <FileText className="w-4 h-4 text-slate-400" />
+            <h3 className="text-sm font-semibold text-white">Leave Usage by Department</h3>
+          </div>
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={chartData} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="department" tick={{ fontSize: 11, fill: "#94a3b8" }} stroke="rgba(255,255,255,0.05)" />
+                <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} stroke="rgba(255,255,255,0.05)" />
+                <Tooltip contentStyle={{ borderRadius: "8px", background: "#1e293b", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", fontSize: 13 }} />
+                <Bar dataKey="totalDays" name="Total Days" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="approvedDays" name="Approved" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-slate-500 text-center py-16">{loading ? "Loading..." : "No data available"}</p>
+          )}
+        </div>
+
+        <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <FileText className="w-4 h-4 text-slate-400" />
+            <h3 className="text-sm font-semibold text-white">Monthly Trends</h3>
+          </div>
+          {monthlyData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={monthlyData} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#94a3b8" }} stroke="rgba(255,255,255,0.05)" />
+                <YAxis tick={{ fontSize: 12, fill: "#94a3b8" }} stroke="rgba(255,255,255,0.05)" />
+                <Tooltip contentStyle={{ borderRadius: "8px", background: "#1e293b", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", fontSize: 13 }} />
+                <Bar dataKey="total" name="Total Days" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="approved" name="Approved" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-slate-500 text-center py-16">{loading ? "Loading..." : "No data available"}</p>
+          )}
+        </div>
       </div>
 
       {/* Data Table */}
@@ -227,47 +377,35 @@ export default function LeaveReportsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10">
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">
-                  Employee
-                </th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">
-                  Department
-                </th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">
-                  Leave Type
-                </th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">
-                  Days
-                </th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">
-                  Status
-                </th>
+                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Employee</th>
+                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Department</th>
+                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Leave Type</th>
+                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Duration</th>
+                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Days</th>
+                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <tbody>
-              {tableRows.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-10 text-slate-500">
-                    No leave records found
-                  </td>
-                </tr>
+              {loading ? (
+                <tr><td colSpan={6} className="text-center py-10 text-slate-500">Loading...</td></tr>
+              ) : tableRows.length === 0 ? (
+                <tr><td colSpan={6} className="text-center py-10 text-slate-500">No leave records found</td></tr>
               ) : (
                 tableRows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors"
-                  >
-                    <td className="px-5 py-3 font-medium text-white">{row.employee}</td>
+                  <tr key={row.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <ProfilePicture src={row.profile_picture} className="w-7 h-7" />
+                        <span className="font-medium text-white">{row.employee}</span>
+                      </div>
+                    </td>
                     <td className="px-5 py-3 text-slate-400">{row.department}</td>
                     <td className="px-5 py-3 text-slate-300">{row.leaveType}</td>
+                    <td className="px-5 py-3 text-slate-400 text-xs">{row.startDate} → {row.endDate}</td>
                     <td className="px-5 py-3 font-medium text-white">{row.days}</td>
                     <td className="px-5 py-3">
-                      <span
-                        className={`font-semibold capitalize ${
-                          statusColors[row.status]?.text || "text-slate-400"
-                        }`}
-                      >
-                        {row.status}
+                      <span className={`font-semibold ${statusConfig[row.status]?.text || "text-slate-400"}`}>
+                        {statusConfig[row.status]?.label || "Unknown"}
                       </span>
                     </td>
                   </tr>

@@ -1,64 +1,179 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { Search, X, ArrowUpRight, ArrowDownRight, ChevronRight } from "lucide-react";
-import {
-  employees,
-  leaveTypes,
-  getLeaveType,
-  getEmployeeBalances,
-  getEmployeeLedger,
-} from "@/lib/leave-store";
+import React, { useState, useMemo, useEffect } from "react";
+import { Search, X, ChevronRight } from "lucide-react";
+import { differenceInDays, parseISO } from "date-fns";
+import { getLeavesRequest } from "@/lib/endpoint/leaves";
+import { getEmployees, getBranches, getDepartments } from "@/lib/api";
+import { api, API_BASE, buildQueryParams } from "@/lib/api-client";
+import { getUser } from "@/config";
+import MultiDropDown from "@/components/ui/MultiDropDown";
+import ProfilePicture from "@/components/ProfilePicture";
 
-/* ------------------------------------------------------------------ */
-/*  Unique departments derived from employee data                     */
-/* ------------------------------------------------------------------ */
-const allDepartments = [...new Set(employees.map((e) => e.department))].sort();
-
-/* ------------------------------------------------------------------ */
-/*  Main Page                                                         */
-/* ------------------------------------------------------------------ */
 export default function LeaveBalancesPage() {
   const [search, setSearch] = useState("");
-  const [department, setDepartment] = useState("");
+  const [selectedBranchIds, setSelectedBranchIds] = useState([]);
+  const [selectedDepartmentIds, setSelectedDepartmentIds] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  /* ---------- filtered employees ---------- */
-  const filtered = useMemo(() => {
-    return employees.filter((emp) => {
-      const matchesSearch =
-        !search ||
-        emp.name.toLowerCase().includes(search.toLowerCase()) ||
-        emp.email.toLowerCase().includes(search.toLowerCase());
-      const matchesDept = !department || emp.department === department;
-      return matchesSearch && matchesDept;
+  const [employees, setEmployees] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [leaveGroups, setLeaveGroups] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    getBranches().then(setBranches).catch(console.error);
+    getDepartments().then(setDepartments).catch(console.error);
+    fetchLeaveTypesAndGroups();
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [selectedBranchIds, selectedDepartmentIds]);
+
+  const fetchLeaveTypesAndGroups = async () => {
+    try {
+      const user = await getUser();
+      const cid = user?.company_id || 0;
+
+      const [typesRes, groupsRes] = await Promise.all([
+        api.get(`${API_BASE}/leave_type`, { params: { company_id: cid, per_page: 100 } }),
+        api.get(`${API_BASE}/leave_groups`, { params: { company_id: cid, per_page: 100 } }),
+      ]);
+
+      setLeaveTypes(Array.isArray(typesRes.data?.data) ? typesRes.data.data : []);
+      setLeaveGroups(Array.isArray(groupsRes.data?.data) ? groupsRes.data.data : []);
+    } catch (e) {
+      console.error("Failed to fetch leave types/groups:", e);
+    }
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const empParams = {
+        per_page: 500,
+        branch_ids: selectedBranchIds.length > 0 ? selectedBranchIds : undefined,
+        department_ids: selectedDepartmentIds.length > 0 ? selectedDepartmentIds : undefined,
+      };
+      const empResult = await getEmployees(empParams);
+      setEmployees(Array.isArray(empResult?.data) ? empResult.data : []);
+
+      const year = new Date().getFullYear();
+      const leaveParams = {
+        per_page: 2000,
+        start_date: `${year}-01-01`,
+        end_date: `${year}-12-31`,
+        branch_ids: selectedBranchIds.length > 0 ? selectedBranchIds : undefined,
+        department_ids: selectedDepartmentIds.length > 0 ? selectedDepartmentIds : undefined,
+      };
+      const leaveResult = await getLeavesRequest(leaveParams);
+      setLeaveRequests(Array.isArray(leaveResult?.data) ? leaveResult.data : []);
+    } catch (e) {
+      console.error("Failed to fetch data:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate days from start_date and end_date
+  const calcDays = (lr) => {
+    if (lr.total_days) return lr.total_days;
+    if (lr.days) return lr.days;
+    try {
+      return differenceInDays(parseISO(lr.end_date), parseISO(lr.start_date)) + 1;
+    } catch {
+      return 1;
+    }
+  };
+
+  // Build a map: groupId → { leaveTypeId → entitled }
+  const groupEntitlements = useMemo(() => {
+    const map = {};
+    leaveGroups.forEach((g) => {
+      map[g.id] = {};
+      (g.leave_count || []).forEach((lc) => {
+        map[g.id][lc.leave_type_id] = lc.leave_type_count || 0;
+      });
     });
-  }, [search, department]);
+    return map;
+  }, [leaveGroups]);
 
-  /* ---------- drawer data ---------- */
+  // Get leave group name
+  const getGroupName = (groupId) => {
+    return leaveGroups.find((g) => g.id === groupId)?.group_name || "";
+  };
+
+  // Compute balances per employee
+  const getEmployeeBalances = (employeeId, leaveGroupId) => {
+    const empLeaves = leaveRequests.filter((lr) => lr.employee_id === employeeId);
+    const entitlements = groupEntitlements[leaveGroupId] || {};
+
+    return leaveTypes.map((lt) => {
+      const typeLeaves = empLeaves.filter(
+        (lr) => lr.leave_type_id === lt.id || lr.leave_group_type?.leave_type?.id === lt.id
+      );
+      const used = typeLeaves
+        .filter((lr) => lr.status === 1)
+        .reduce((sum, lr) => sum + calcDays(lr), 0);
+      const pending = typeLeaves
+        .filter((lr) => lr.status === 0)
+        .reduce((sum, lr) => sum + calcDays(lr), 0);
+
+      const entitled = entitlements[lt.id] || 0;
+      const remaining = Math.max(0, entitled - used);
+
+      return {
+        leaveTypeId: lt.id,
+        leaveTypeName: lt.name,
+        entitled,
+        used,
+        pending,
+        remaining,
+      };
+    });
+  };
+
+  // Filtered employees
+  const filtered = useMemo(() => {
+    if (!search) return employees;
+    const s = search.toLowerCase();
+    return employees.filter(
+      (emp) =>
+        (emp.first_name || "").toLowerCase().includes(s) ||
+        (emp.last_name || "").toLowerCase().includes(s) ||
+        (emp.employee_id || "").toLowerCase().includes(s) ||
+        (emp.system_user_id || "").toLowerCase().includes(s)
+    );
+  }, [search, employees]);
+
+  // Drawer data
   const drawerBalances = selectedEmployee
-    ? getEmployeeBalances(selectedEmployee.id)
+    ? getEmployeeBalances(selectedEmployee.id, selectedEmployee.leave_group_id)
     : [];
-  const drawerLedger = selectedEmployee
-    ? getEmployeeLedger(selectedEmployee.id)
+  const drawerLeaves = selectedEmployee
+    ? leaveRequests
+        .filter((lr) => lr.employee_id === selectedEmployee.id)
+        .sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
     : [];
+
+  const statusLabel = { 0: "Pending", 1: "Approved", 2: "Rejected" };
+  const statusColor = { 0: "text-yellow-400", 1: "text-emerald-400", 2: "text-red-400" };
 
   return (
     <div className="p-4 md:p-6 space-y-6 overflow-y-auto max-h-[calc(100vh-80px)]">
-      {/* ---- Header ---- */}
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-extrabold text-gray-600 dark:text-white">
-          Leave Balances
-        </h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          View and manage employee leave balances across the organization
-        </p>
+        <h1 className="text-2xl font-extrabold text-gray-600 dark:text-white">Leave Balances</h1>
+        <p className="text-sm text-slate-500 mt-0.5">View employee leave balances based on their assigned leave group</p>
       </div>
 
-      {/* ---- Filters ---- */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        {/* Search */}
-        <div className="relative w-full sm:w-72">
+      {/* Filters */}
+      <div className="grid grid-cols-4 gap-3">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
             type="text"
@@ -68,61 +183,58 @@ export default function LeaveBalancesPage() {
             className="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-white/5 dark:bg-slate-800/50 border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-primary/50"
           />
         </div>
-
-        {/* Department filter */}
-        <select
-          value={department}
-          onChange={(e) => setDepartment(e.target.value)}
-          className="w-full sm:w-48 py-2 px-3 text-sm rounded-lg bg-white/5 dark:bg-slate-800/50 border border-white/10 text-white focus:outline-none focus:ring-1 focus:ring-primary/50 appearance-none cursor-pointer"
-        >
-          <option value="" className="bg-slate-800 text-white">
-            All Departments
-          </option>
-          {allDepartments.map((d) => (
-            <option key={d} value={d} className="bg-slate-800 text-white">
-              {d}
-            </option>
-          ))}
-        </select>
+        <MultiDropDown
+          placeholder="Select Branch"
+          items={branches}
+          value={selectedBranchIds}
+          onChange={setSelectedBranchIds}
+          badgesCount={1}
+          portalled={false}
+        />
+        <MultiDropDown
+          placeholder="Select Department"
+          items={departments}
+          value={selectedDepartmentIds}
+          onChange={setSelectedDepartmentIds}
+          badgesCount={1}
+          portalled={false}
+        />
+        <div className="flex items-center text-xs text-slate-500">
+          {loading ? "Loading..." : `${filtered.length} employees`}
+        </div>
       </div>
 
-      {/* ---- Table ---- */}
+      {/* Table */}
       <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10">
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">
-                  Employee
-                </th>
+                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Employee</th>
+                <th className="text-left font-medium text-slate-400 px-4 py-3 text-xs uppercase tracking-wider">Leave Group</th>
                 {leaveTypes.map((lt) => (
-                  <th
-                    key={lt.id}
-                    className="text-center font-medium text-slate-400 px-4 py-3 text-xs uppercase tracking-wider whitespace-nowrap"
-                  >
+                  <th key={lt.id} className="text-center font-medium text-slate-400 px-4 py-3 text-xs uppercase tracking-wider whitespace-nowrap">
                     {lt.name}
                   </th>
                 ))}
-                <th className="text-center font-medium text-slate-400 px-4 py-3 text-xs uppercase tracking-wider">
-                  Total Used
-                </th>
+                <th className="text-center font-medium text-slate-400 px-4 py-3 text-xs uppercase tracking-wider">Total Used</th>
                 <th className="px-2 py-3" />
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td
-                    colSpan={leaveTypes.length + 3}
-                    className="text-center py-10 text-slate-500"
-                  >
-                    No employees found
-                  </td>
+                  <td colSpan={leaveTypes.length + 4} className="text-center py-10 text-slate-500">Loading...</td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={leaveTypes.length + 4} className="text-center py-10 text-slate-500">No employees found</td>
                 </tr>
               ) : (
                 filtered.map((emp) => {
-                  const balances = getEmployeeBalances(emp.id);
+                  const balances = getEmployeeBalances(emp.id, emp.leave_group_id);
                   const totalUsed = balances.reduce((s, b) => s + b.used, 0);
+                  const groupName = getGroupName(emp.leave_group_id);
 
                   return (
                     <tr
@@ -130,39 +242,40 @@ export default function LeaveBalancesPage() {
                       onClick={() => setSelectedEmployee(emp)}
                       className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors cursor-pointer"
                     >
-                      {/* Employee cell */}
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                            {emp.avatar}
-                          </div>
+                          <ProfilePicture src={emp.profile_picture} className="w-8 h-8" />
                           <div>
                             <p className="font-medium text-white whitespace-nowrap">
-                              {emp.name}
+                              {emp.first_name} {emp.last_name || ""}
                             </p>
                             <p className="text-xs text-slate-500">
-                              {emp.department}
+                              {emp.department?.name || ""} {emp.employee_id ? `· ${emp.employee_id}` : ""}
                             </p>
                           </div>
                         </div>
                       </td>
 
-                      {/* Leave type columns */}
+                      <td className="px-4 py-3">
+                        {groupName ? (
+                          <span className="px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-semibold whitespace-nowrap">
+                            {groupName}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-600">Unassigned</span>
+                        )}
+                      </td>
+
                       {leaveTypes.map((lt) => {
-                        const bal = balances.find(
-                          (b) => b.leaveTypeId === lt.id
-                        );
+                        const bal = balances.find((b) => b.leaveTypeId === lt.id);
                         return (
-                          <td
-                            key={lt.id}
-                            className="px-4 py-3 text-center whitespace-nowrap"
-                          >
-                            {bal ? (
+                          <td key={lt.id} className="px-4 py-3 text-center whitespace-nowrap">
+                            {bal && (bal.used > 0 || bal.entitled > 0) ? (
                               <span className="text-white font-medium">
-                                {bal.remaining}
-                                <span className="text-slate-500 font-normal">
-                                  /{bal.entitled}
-                                </span>
+                                {bal.used}
+                                {bal.entitled > 0 && (
+                                  <span className="text-slate-500 font-normal">/{bal.entitled}</span>
+                                )}
                               </span>
                             ) : (
                               <span className="text-slate-600">-</span>
@@ -171,14 +284,10 @@ export default function LeaveBalancesPage() {
                         );
                       })}
 
-                      {/* Total used */}
                       <td className="px-4 py-3 text-center">
-                        <span className="font-semibold text-white">
-                          {totalUsed}
-                        </span>
+                        <span className="font-semibold text-white">{totalUsed || "-"}</span>
                       </td>
 
-                      {/* Chevron */}
                       <td className="px-2 py-3">
                         <ChevronRight className="w-4 h-4 text-slate-600" />
                       </td>
@@ -191,167 +300,108 @@ export default function LeaveBalancesPage() {
         </div>
       </div>
 
-      {/* ---- Drawer Backdrop + Panel ---- */}
+      {/* Drawer */}
       {selectedEmployee && (
         <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setSelectedEmployee(null)}
-          />
-
-          {/* Drawer */}
+          <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setSelectedEmployee(null)} />
           <div className="fixed top-0 right-0 h-full w-full max-w-lg z-50 bg-slate-900 border-l border-white/10 shadow-2xl overflow-y-auto">
-            {/* Drawer header */}
             <div className="sticky top-0 bg-slate-900/95 backdrop-blur border-b border-white/10 px-6 py-4 flex items-center justify-between z-10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-sm font-bold text-primary">
-                  {selectedEmployee.avatar}
-                </div>
+                <ProfilePicture src={selectedEmployee.profile_picture} className="w-10 h-10" />
                 <div>
                   <h2 className="text-lg font-bold text-white">
-                    {selectedEmployee.name}
+                    {selectedEmployee.first_name} {selectedEmployee.last_name || ""}
                   </h2>
                   <p className="text-xs text-slate-400">
-                    {selectedEmployee.department} &middot;{" "}
-                    {selectedEmployee.category}
+                    {selectedEmployee.department?.name || ""}
+                    {selectedEmployee.employee_id ? ` · ${selectedEmployee.employee_id}` : ""}
                   </p>
+                  {getGroupName(selectedEmployee.leave_group_id) && (
+                    <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-semibold">
+                      {getGroupName(selectedEmployee.leave_group_id)}
+                    </span>
+                  )}
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedEmployee(null)}
-                className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-              >
+              <button onClick={() => setSelectedEmployee(null)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
                 <X className="w-5 h-5 text-slate-400" />
               </button>
             </div>
 
             <div className="px-6 py-5 space-y-6">
-              {/* ---- Balance Cards ---- */}
+              {/* Balance Cards */}
               <div>
-                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                  Leave Balances
-                </h3>
-                {drawerBalances.length === 0 ? (
+                <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Leave Balances</h3>
+                {drawerBalances.filter((b) => b.entitled > 0 || b.used > 0 || b.pending > 0).length === 0 ? (
                   <p className="text-sm text-slate-500">
-                    No balances assigned to this employee.
+                    {selectedEmployee.leave_group_id ? "No leave entitlements in this group." : "No leave group assigned to this employee."}
                   </p>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
-                    {drawerBalances.map((bal) => {
-                      const lt = getLeaveType(bal.leaveTypeId);
-                      return (
-                        <div
-                          key={bal.leaveTypeId}
-                          className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-4"
-                        >
-                          <div className="flex items-center gap-2 mb-3">
-                            <div
-                              className="w-2.5 h-2.5 rounded-full shrink-0"
-                              style={{ background: lt?.color || "#888" }}
-                            />
-                            <p className="text-sm font-semibold text-white truncate">
-                              {lt?.name || bal.leaveTypeId}
-                            </p>
-                          </div>
+                    {drawerBalances
+                      .filter((b) => b.entitled > 0 || b.used > 0 || b.pending > 0)
+                      .map((bal) => (
+                        <div key={bal.leaveTypeId} className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-4">
+                          <p className="text-sm font-semibold text-white truncate mb-3">{bal.leaveTypeName}</p>
                           <div className="grid grid-cols-2 gap-y-2 text-xs">
                             <div>
                               <p className="text-slate-500">Remaining</p>
-                              <p className="text-lg font-bold text-white">
-                                {bal.remaining}
-                              </p>
+                              <p className="text-lg font-bold text-emerald-400">{bal.entitled > 0 ? bal.remaining : "—"}</p>
                             </div>
                             <div>
                               <p className="text-slate-500">Entitled</p>
-                              <p className="text-lg font-bold text-white">
-                                {bal.entitled}
-                              </p>
+                              <p className="text-lg font-bold text-white">{bal.entitled || "—"}</p>
                             </div>
                             <div>
                               <p className="text-slate-500">Used</p>
-                              <p className="text-sm font-semibold text-red-400">
-                                {bal.used}
-                              </p>
+                              <p className="text-sm font-semibold text-red-400">{bal.used}</p>
                             </div>
                             <div>
                               <p className="text-slate-500">Pending</p>
-                              <p className="text-sm font-semibold text-yellow-400">
-                                {bal.pending}
-                              </p>
+                              <p className="text-sm font-semibold text-yellow-400">{bal.pending}</p>
                             </div>
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
                   </div>
                 )}
               </div>
 
-              {/* ---- Leave Ledger ---- */}
+              {/* Leave History */}
               <div>
                 <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                  Leave Ledger
+                  Leave History ({drawerLeaves.length})
                 </h3>
-                {drawerLedger.length === 0 ? (
-                  <p className="text-sm text-slate-500">
-                    No ledger entries found.
-                  </p>
+                {drawerLeaves.length === 0 ? (
+                  <p className="text-sm text-slate-500">No leave records found.</p>
                 ) : (
                   <div className="space-y-2">
-                    {drawerLedger.map((entry) => {
-                      const lt = getLeaveType(entry.leaveTypeId);
-                      const isCredit = entry.type === "credit";
-
-                      return (
-                        <div
-                          key={entry.id}
-                          className="flex items-start gap-3 bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-lg px-4 py-3"
-                        >
-                          {/* Arrow icon */}
-                          <div
-                            className={`mt-0.5 p-1 rounded-full shrink-0 ${
-                              isCredit
-                                ? "bg-emerald-500/20 text-emerald-400"
-                                : "bg-red-500/20 text-red-400"
-                            }`}
-                          >
-                            {isCredit ? (
-                              <ArrowUpRight className="w-4 h-4" />
-                            ) : (
-                              <ArrowDownRight className="w-4 h-4" />
-                            )}
+                    {drawerLeaves.map((lr) => (
+                      <div key={lr.id} className="flex items-start gap-3 bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-lg px-4 py-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium text-white truncate">
+                              {lr.leave_type?.name || lr.leave_group_type?.leave_type?.name || "Leave"}
+                            </p>
+                            <span className={`text-xs font-bold shrink-0 ${statusColor[lr.status] || "text-slate-400"}`}>
+                              {statusLabel[lr.status] || "Unknown"}
+                            </span>
                           </div>
-
-                          {/* Details */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-medium text-white truncate">
-                                {entry.description}
-                              </p>
-                              <span
-                                className={`text-sm font-bold shrink-0 ${
-                                  isCredit ? "text-emerald-400" : "text-red-400"
-                                }`}
-                              >
-                                {isCredit ? "+" : "-"}
-                                {entry.amount}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs text-slate-500">
-                                {entry.date}
-                              </span>
-                              <span className="text-xs text-slate-600">
-                                &middot;
-                              </span>
-                              <span className="text-xs text-slate-400">
-                                {lt?.name || entry.leaveTypeId}
-                              </span>
-                            </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-slate-500">
+                              {lr.start_date} → {lr.end_date}
+                            </span>
+                            <span className="text-xs text-slate-600">&middot;</span>
+                            <span className="text-xs text-slate-400">
+                              {calcDays(lr)} day(s)
+                            </span>
                           </div>
+                          {lr.reason && (
+                            <p className="text-xs text-slate-500 mt-1 italic">{lr.reason}</p>
+                          )}
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

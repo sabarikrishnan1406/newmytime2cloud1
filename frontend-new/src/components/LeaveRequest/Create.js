@@ -91,8 +91,8 @@ export default function LeaveRequestCreate({
                 const data = await getLeaveTypesByGroupId(selected.leave_group_id, { per_page: 1000, employee_id: selected.id });
 
                 setLeaveTypes(data.map(e => ({
-                    id: e.id,
-                    name: e.leave_type.name,
+                    id: e.leave_type_id,
+                    name: e.leave_type?.name || e.leave_type?.short_name || "Leave Type",
                     leave_type_count: e.leave_type_count,
                     employee_used: e.employee_used,
                 })));
@@ -105,7 +105,7 @@ export default function LeaveRequestCreate({
 
         fetchLeaveTypes();
 
-    }, [form.employee_id]);
+    }, [form.employee_id, departmentEmployees]);
 
 
     const fetchDepartmentEmployees = async () => {
@@ -268,63 +268,32 @@ export default function LeaveRequestCreate({
     };
 
     return (
-        <>
-            {open && (
-                <div
-                    aria-modal="true"
-                    role="dialog"
-                    className="fixed inset-0 z-50 flex items-center justify-center px-4"
-                >
-                    {/* Backdrop/Overlay */}
-                    <div className="absolute inset-0 bg-black/70 frosted-glass transition-opacity animate-in fade-in duration-300"></div>
-
-                    {/* Modal Card */}
-                    <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-white/10 w-full max-w-3xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
-                        {/* Header */}
-                        <div className="px-6 py-5 border-b border-gray-200 dark:border-white/10 flex justify-between items-center">
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-600 dark:text-gray-300">
-                                    {isEdit ? "Edit Leave" : "Apply Leave"}
-                                </h3>
-                                <p className="text-xs text-slate-400 mt-0.5">
-                                    {isEdit
-                                        ? "Update your leave application"
-                                        : "Submit a new leave request"}
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => setOpen(false)}
-                                className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors rounded-full p-1"
-                            >
-                                <span className="material-symbols-outlined">close</span>
-                            </button>
-                        </div>
-
-                        {/* Form Content */}
-                        <form onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
-                            <div className="p-6 space-y-5 bg-white/50 dark:bg-gray-900 overflow-y-auto flex-1">
+                        <form onSubmit={onSubmit} className="flex flex-col">
+                            <div className="space-y-5 overflow-y-auto flex-1">
                                 {/* Date Pickers & Day Count */}
                                 <div className="grid grid-cols-5 gap-4">
                                     <div className="col-span-2 space-y-1.5">
                                         <label className="block text-sm font-medium text-slate-400">
                                             From Date <span className="text-red-400">*</span>
                                         </label>
-                                        <DatePicker
+                                        <input
+                                            type="date"
                                             value={form.start_date}
-                                            onChange={(e) => handleChange("start_date", e)}
+                                            onChange={(e) => handleChange("start_date", e.target.value)}
+                                            className="h-11 w-full px-4 text-sm rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary [color-scheme:dark]"
                                         />
-
-
                                     </div>
 
                                     <div className="col-span-2 space-y-1.5">
                                         <label className="block text-sm font-medium text-slate-400">
                                             To Date <span className="text-red-400">*</span>
                                         </label>
-                                        <DatePicker
+                                        <input
+                                            type="date"
                                             value={form.end_date}
                                             min={form.start_date}
-                                            onChange={(e) => handleChange("end_date", e)}
+                                            onChange={(e) => handleChange("end_date", e.target.value)}
+                                            className="h-11 w-full px-4 text-sm rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary [color-scheme:dark]"
                                         />
                                     </div>
 
@@ -619,9 +588,5 @@ export default function LeaveRequestCreate({
                                 )}
                             </div>
                         </form>
-                    </div>
-                </div>
-            )}
-        </>
     );
 }

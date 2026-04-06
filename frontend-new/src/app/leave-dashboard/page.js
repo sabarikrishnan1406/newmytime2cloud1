@@ -144,12 +144,12 @@ export default function LeaveDashboard() {
   return (
     <div className="p-4 md:p-6 space-y-6 overflow-y-auto max-h-[calc(100vh-80px)]">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="space-y-4">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-600 dark:text-white">Leave Dashboard</h1>
           <p className="text-sm text-slate-500 mt-0.5">Overview of leave management across your organization</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <MultiDropDown
             placeholder="Select Branch"
             items={branches}
@@ -169,12 +169,13 @@ export default function LeaveDashboard() {
           <DropDown
             placeholder="All Status"
             items={[
+              { id: -1, name: "All Status" },
               { id: 0, name: "Pending" },
               { id: 1, name: "Approved" },
               { id: 2, name: "Rejected" },
             ]}
             value={selectedStatus}
-            onChange={setSelectedStatus}
+            onChange={(val) => setSelectedStatus(val === -1 ? null : val)}
             portalled={false}
           />
         </div>

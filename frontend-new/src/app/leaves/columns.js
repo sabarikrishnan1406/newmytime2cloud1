@@ -68,7 +68,7 @@ export default (editItem) => [
     header: "Leave Type",
     render: (employee) => (
       <div className="text-sm text-slate-600 dark:text-slate-300 hidden xl:table-cell">
-        {employee.leave_type?.short_name || "-"}
+        {employee.leave_type?.name || employee.leave_type?.short_name || "-"}
       </div>
     ),
   },

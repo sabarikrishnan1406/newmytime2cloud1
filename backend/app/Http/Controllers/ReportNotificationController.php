@@ -159,6 +159,7 @@ class ReportNotificationController extends Controller
     public function update(UpdateRequest $request, ReportNotification $ReportNotification)
     {
         try {
+            \Log::info('ReportNotification update', ['id' => $ReportNotification->id, 'data' => $request->all()]);
 
             if (!$request->validated())
                 return false;

@@ -1,146 +1,136 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { api, buildQueryParams } from "@/lib/api-client";
+import { getStaffUser } from "@/lib/staff-user";
 
-const balanceCards = [
-  {
-    label: "Annual Leave",
-    value: "15.5",
-    suffix: "Days Left",
-    tag: "Active",
-    icon: "beach_access",
-    iconClass: "bg-cyan-300/10 text-cyan-300",
-    tagClass: "bg-cyan-300/20 text-cyan-300",
-    progress: "70%",
-    barClass: "bg-cyan-300",
-  },
-  {
-    label: "Sick Leave",
-    value: "8.0",
-    suffix: "Days Left",
-    tag: "Health",
-    icon: "medical_services",
-    iconClass: "bg-purple-300/10 text-purple-300",
-    tagClass: "bg-purple-300/20 text-purple-300",
-    progress: "80%",
-    barClass: "bg-purple-300",
-  },
-  {
-    label: "Casual Leave",
-    value: "2.0",
-    suffix: "Days Left",
-    tag: "Casual",
-    icon: "coffee",
-    iconClass: "bg-emerald-300/10 text-emerald-300",
-    tagClass: "bg-emerald-300/20 text-emerald-300",
-    progress: "40%",
-    barClass: "bg-emerald-300",
-  },
-  {
-    label: "Unpaid Leave",
-    value: "0.0",
-    suffix: "Days Used",
-    tag: "Unpaid",
-    icon: "credit_card_off",
-    iconClass: "bg-red-300/10 text-red-300",
-    tagClass: "bg-red-300/20 text-red-300",
-    progress: "0%",
-    barClass: "bg-red-300",
-  },
+const leaveColors = [
+  { icon: "beach_access", iconClass: "bg-cyan-300/10 text-cyan-300", tagClass: "bg-cyan-300/20 text-cyan-300", barClass: "bg-cyan-300", changeClass: "text-cyan-300" },
+  { icon: "medical_services", iconClass: "bg-purple-300/10 text-purple-300", tagClass: "bg-purple-300/20 text-purple-300", barClass: "bg-purple-300", changeClass: "text-purple-300" },
+  { icon: "coffee", iconClass: "bg-emerald-300/10 text-emerald-300", tagClass: "bg-emerald-300/20 text-emerald-300", barClass: "bg-emerald-300", changeClass: "text-emerald-300" },
+  { icon: "credit_card_off", iconClass: "bg-red-300/10 text-red-300", tagClass: "bg-red-300/20 text-red-300", barClass: "bg-red-300", changeClass: "text-red-300" },
+  { icon: "event", iconClass: "bg-amber-300/10 text-amber-300", tagClass: "bg-amber-300/20 text-amber-300", barClass: "bg-amber-300", changeClass: "text-amber-300" },
+  { icon: "child_care", iconClass: "bg-pink-300/10 text-pink-300", tagClass: "bg-pink-300/20 text-pink-300", barClass: "bg-pink-300", changeClass: "text-pink-300" },
 ];
 
-const trendMonths = [
-  { month: "APR", accrued: "h-full", taken: "h-1/4" },
-  { month: "MAY", accrued: "h-[90%]", taken: "h-1/2" },
-  { month: "JUN", accrued: "h-full", taken: "h-[10%]" },
-  { month: "JUL", accrued: "h-full", taken: "h-1/3" },
-  { month: "AUG", accrued: "h-[95%]", taken: "h-full" },
-  { month: "SEP", accrued: "h-full", taken: "h-1/5" },
-];
-
-const recentActivity = [
-  {
-    title: "Annual Leave Deduction",
-    subtitle: "Approved by HR Core - Sept 12, 2023",
-    change: "-3.0 Days",
-    status: "Processed",
-    icon: "logout",
-    iconClass: "bg-red-300/10 text-red-300",
-    changeClass: "text-red-300",
-  },
-  {
-    title: "Monthly Accrual Credited",
-    subtitle: "System Automated - Sept 01, 2023",
-    change: "+1.83 Days",
-    status: "Credited",
-    icon: "add_task",
-    iconClass: "bg-emerald-300/10 text-emerald-300",
-    changeClass: "text-emerald-300",
-  },
-  {
-    title: "Sick Leave Deduction",
-    subtitle: "Medical Certificate Verified - Aug 24, 2023",
-    change: "-1.0 Day",
-    status: "Verified",
-    icon: "health_and_safety",
-    iconClass: "bg-purple-300/10 text-purple-300",
-    changeClass: "text-red-300",
-  },
-];
-
-const annualDistribution = [
-  { label: "Available", value: "15.5 Days", dotClass: "bg-cyan-300" },
-  { label: "Consumed", value: "10.0 Days", dotClass: "bg-slate-700" },
-];
-
-const upcomingHolidays = [
-  { month: "SEP", day: "04", title: "Labor Day", subtitle: "Public Holiday" },
-  { month: "NOV", day: "11", title: "Veterans Day", subtitle: "Regional Observance" },
-];
-
-function BalanceMetricCard({ label, value, suffix, tag, icon, iconClass, tagClass, progress, barClass }) {
-  return (
-    <article className="staff-glass-card flex flex-col justify-between rounded-xl p-6">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${iconClass}`}>
-          <span className="material-symbols-outlined">{icon}</span>
-        </div>
-        <span className={`rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${tagClass}`}>{tag}</span>
-      </div>
-
-      <div>
-        <h3 className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-500">{label}</h3>
-        <div className="mb-4 flex items-baseline gap-2">
-          <span className="font-headline text-3xl font-bold text-slate-100">{value}</span>
-          <span className="text-xs text-slate-500 uppercase">{suffix}</span>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-          <div className={`h-full rounded-full ${barClass}`} style={{ width: progress }}></div>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function ActivityItem({ title, subtitle, change, status, icon, iconClass, changeClass }) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-8 py-4 transition hover:bg-slate-800/30">
-      <div className="flex items-center gap-4">
-        <div className={`flex h-10 w-10 items-center justify-center rounded-full ${iconClass}`}>
-          <span className="material-symbols-outlined">{icon}</span>
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-slate-100">{title}</p>
-          <p className="text-xs text-slate-500">{subtitle}</p>
-        </div>
-      </div>
-      <div className="text-right">
-        <p className={`text-sm font-bold ${changeClass}`}>{change}</p>
-        <p className="text-[10px] uppercase text-slate-500">{status}</p>
-      </div>
-    </div>
-  );
-}
+const statusLabel = { 0: "Pending", 1: "Approved", 2: "Rejected" };
 
 export default function StaffLeaveBalancePage() {
+  const [loading, setLoading] = useState(true);
+  const [balanceCards, setBalanceCards] = useState([]);
+  const [leaveHistory, setLeaveHistory] = useState([]);
+  const [totalEntitled, setTotalEntitled] = useState(0);
+  const [totalUsed, setTotalUsed] = useState(0);
+  const [totalRemaining, setTotalRemaining] = useState(0);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const u = await getStaffUser();
+      const params = await buildQueryParams();
+
+      // Fetch leave types
+      const ltRes = await api.get("/leave", { params: { ...params, per_page: 100 } });
+      const types = Array.isArray(ltRes.data?.data) ? ltRes.data.data : [];
+
+      // Fetch employee's leave requests this year
+      const year = new Date().getFullYear();
+      const { data: leavesData } = await api.get("/employee_leaves", {
+        params: { ...params, employee_id: u.employee_id, per_page: 500, start_date: `${year}-01-01`, end_date: `${year}-12-31` },
+      });
+      const leaves = Array.isArray(leavesData?.data) ? leavesData.data : [];
+
+      // Fetch leave group entitlements if employee has a group
+      let entitlements = {};
+      if (u.employee_id) {
+        try {
+          const empRes = await api.get(`/employeev1`, { params: { ...params, per_page: 1, employee_id: u.employee_id } });
+          const emp = empRes.data?.data?.[0];
+          if (emp?.leave_group_id) {
+            const groupRes = await api.get(`/leave_groups`, { params: { ...params, per_page: 100 } });
+            const groups = Array.isArray(groupRes.data?.data) ? groupRes.data.data : [];
+            const group = groups.find((g) => g.id === emp.leave_group_id);
+            if (group?.leave_count) {
+              group.leave_count.forEach((lc) => {
+                entitlements[lc.leave_type_id] = lc.leave_type_count || 0;
+              });
+            }
+          }
+        } catch (e) {
+          console.error("Failed to fetch entitlements:", e);
+        }
+      }
+
+      // Build balance cards
+      let tEntitled = 0, tUsed = 0, tRemaining = 0;
+      const cards = types.map((lt, i) => {
+        const style = leaveColors[i % leaveColors.length];
+        const typeLeaves = leaves.filter((l) => l.leave_type_id === lt.id);
+        const used = typeLeaves.filter((l) => l.status === 1).reduce((s, l) => s + (l.total_days || l.days || 0), 0);
+        const pending = typeLeaves.filter((l) => l.status === 0).reduce((s, l) => s + (l.total_days || l.days || 0), 0);
+        const entitled = entitlements[lt.id] || 0;
+        const remaining = Math.max(0, entitled - used);
+        const progress = entitled > 0 ? Math.round(((entitled - used) / entitled) * 100) : 0;
+
+        tEntitled += entitled;
+        tUsed += used;
+        tRemaining += remaining;
+
+        return {
+          label: lt.name,
+          entitled,
+          used,
+          pending,
+          remaining,
+          progress: `${progress}%`,
+          ...style,
+        };
+      });
+
+      setBalanceCards(cards);
+      setTotalEntitled(tEntitled);
+      setTotalUsed(tUsed);
+      setTotalRemaining(tRemaining);
+
+      // Build leave history
+      setLeaveHistory(
+        leaves.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10).map((l) => {
+          const lt = types.find((t) => t.id === l.leave_type_id);
+          return {
+            id: l.id,
+            title: lt?.name || "Leave",
+            date: l.start_date,
+            endDate: l.end_date,
+            days: l.total_days || l.days || 0,
+            status: l.status,
+            reason: l.reason,
+          };
+        })
+      );
+    } catch (e) {
+      console.error("Failed to fetch balance data:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <span className="text-slate-500 animate-pulse">Loading balance data...</span>
+      </div>
+    );
+  }
+
+  const totalDays = totalEntitled || 1;
+  const usedPct = Math.round((totalUsed / totalDays) * 100);
+  const circumference = 2 * Math.PI * 40;
+  const dashOffset = circumference - (((totalDays - totalUsed) / totalDays) * circumference);
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen relative">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
@@ -149,163 +139,141 @@ export default function StaffLeaveBalancePage() {
       </div>
 
       <div>
+        {/* Header */}
         <section className="mb-8 rounded-2xl border border-cyan-300/10 bg-slate-950/60 px-6 py-5 backdrop-blur-xl">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500">
-                <Link href="/staff/leave" className="transition hover:text-cyan-300">
-                  Leave Management
-                </Link>
+                <Link href="/staff/leave" className="transition hover:text-cyan-300">Leave Management</Link>
                 <span className="material-symbols-outlined text-sm">chevron_right</span>
                 <span className="text-cyan-300">Leave Balance</span>
               </div>
               <h1 className="font-headline text-4xl font-bold tracking-tight text-slate-100">
                 Leave <span className="text-cyan-300 drop-shadow-[0_0_10px_rgba(0,227,253,0.35)]">Balance</span>
               </h1>
-              <p className="mt-2 font-medium text-slate-500">Nexus Core Operating System - HR Management Unit</p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="relative min-w-0 sm:w-64">
-                <input
-                  className="w-full rounded-full border border-white/10 bg-slate-800/70 px-6 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-300/40 focus:ring-1 focus:ring-cyan-300/40"
-                  placeholder="Search systems..."
-                  type="text"
-                />
-                <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">search</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <button className="rounded-full p-2 text-slate-500 transition hover:bg-cyan-300/10 hover:text-cyan-300">
-                  <span className="material-symbols-outlined">notifications</span>
-                </button>
-                <button className="rounded-full p-2 text-slate-500 transition hover:bg-cyan-300/10 hover:text-cyan-300">
-                  <span className="material-symbols-outlined">history_edu</span>
-                </button>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-cyan-300/30 bg-slate-800 text-sm font-bold text-cyan-300">
-                  AP
-                </div>
-              </div>
+              <p className="mt-2 font-medium text-slate-500">Your leave entitlements and usage for {new Date().getFullYear()}</p>
             </div>
           </div>
         </section>
 
+        {/* Balance Cards */}
         <section className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {balanceCards.map((card) => (
-            <BalanceMetricCard key={card.label} {...card} />
-          ))}
+          {balanceCards.filter((c) => c.entitled > 0 || c.used > 0).length === 0 ? (
+            <div className="col-span-4 text-center py-10 text-slate-500">
+              No leave entitlements found. Please contact HR if this is incorrect.
+            </div>
+          ) : (
+            balanceCards.filter((c) => c.entitled > 0 || c.used > 0).map((card) => (
+              <article key={card.label} className="staff-glass-card flex flex-col justify-between rounded-xl p-6">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${card.iconClass}`}>
+                    <span className="material-symbols-outlined">{card.icon}</span>
+                  </div>
+                  {card.pending > 0 && (
+                    <span className="rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-yellow-300/20 text-yellow-300">
+                      {card.pending} Pending
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-500">{card.label}</h3>
+                  <div className="mb-2 flex items-baseline gap-2">
+                    <span className="font-headline text-3xl font-bold text-slate-100">{card.remaining}</span>
+                    <span className="text-xs text-slate-500 uppercase">/ {card.entitled} Days</span>
+                  </div>
+                  <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                    <span>Used: {card.used}</span>
+                    <span>Remaining: {card.remaining}</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                    <div className={`h-full rounded-full ${card.barClass}`} style={{ width: card.progress }}></div>
+                  </div>
+                </div>
+              </article>
+            ))
+          )}
         </section>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-          <div className="space-y-8 lg:col-span-8">
-            <section className="staff-glass-card relative overflow-hidden rounded-2xl p-8">
-              <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="mb-1 font-headline text-xl font-bold text-slate-100">Leave Utilization &amp; Accrual Trend</h2>
-                  <p className="text-xs uppercase tracking-wider text-slate-500">Metrics: Apr - Sep 2023</p>
-                </div>
-                <div className="flex gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-cyan-300"></span>
-                    <span className="text-xs text-slate-500">Accrued</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-purple-300"></span>
-                    <span className="text-xs text-slate-500">Taken</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative flex h-64 items-end justify-between gap-2">
-                <div className="absolute inset-0 flex flex-col justify-between opacity-5">
-                  <div className="h-px w-full border-b border-slate-100"></div>
-                  <div className="h-px w-full border-b border-slate-100"></div>
-                  <div className="h-px w-full border-b border-slate-100"></div>
-                  <div className="h-px w-full border-b border-slate-100"></div>
-                </div>
-
-                {trendMonths.map((item) => (
-                  <div key={item.month} className="group flex flex-1 cursor-pointer flex-col items-center gap-2">
-                    <div className="flex h-40 w-full justify-center gap-1">
-                      <div className={`w-3 self-end rounded-t-sm bg-cyan-300/20 transition-all group-hover:bg-cyan-300/40 ${item.accrued}`}></div>
-                      <div className={`w-3 self-end rounded-t-sm bg-purple-300/20 transition-all group-hover:bg-purple-300/40 ${item.taken}`}></div>
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-500">{item.month}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
+          {/* Leave History */}
+          <div className="lg:col-span-8">
             <section className="staff-glass-card overflow-hidden rounded-2xl">
               <div className="flex items-center justify-between border-b border-cyan-300/10 px-8 py-6">
-                <h2 className="font-headline text-xl font-bold text-slate-100">Recent Activity</h2>
-                <button className="text-xs font-bold uppercase tracking-widest text-cyan-300 transition hover:text-cyan-200">View All</button>
+                <h2 className="font-headline text-xl font-bold text-slate-100">Leave History</h2>
+                <span className="text-xs text-slate-500">{leaveHistory.length} records</span>
               </div>
               <div className="divide-y divide-cyan-300/5">
-                {recentActivity.map((item) => (
-                  <ActivityItem key={item.title} {...item} />
-                ))}
+                {leaveHistory.length === 0 ? (
+                  <div className="px-8 py-10 text-center text-sm text-slate-500">No leave records found</div>
+                ) : (
+                  leaveHistory.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between gap-4 px-8 py-4 transition hover:bg-slate-800/30">
+                      <div className="flex items-center gap-4">
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-full ${item.status === 1 ? "bg-emerald-300/10 text-emerald-300" : item.status === 0 ? "bg-yellow-300/10 text-yellow-300" : "bg-red-300/10 text-red-300"}`}>
+                          <span className="material-symbols-outlined">
+                            {item.status === 1 ? "check_circle" : item.status === 0 ? "schedule" : "cancel"}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-100">{item.title}</p>
+                          <p className="text-xs text-slate-500">{item.date} → {item.endDate}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-slate-300">{item.days} day(s)</p>
+                        <p className={`text-[10px] uppercase font-bold ${item.status === 1 ? "text-emerald-300" : item.status === 0 ? "text-yellow-300" : "text-red-300"}`}>
+                          {statusLabel[item.status]}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </section>
           </div>
 
-          <div className="space-y-8 lg:col-span-4">
+          {/* Annual Distribution */}
+          <div className="lg:col-span-4 space-y-8">
             <section className="staff-glass-card flex flex-col items-center rounded-2xl p-8">
-              <h2 className="mb-8 self-start text-xs font-bold uppercase tracking-widest text-slate-500">Annual Distribution</h2>
+              <h2 className="mb-8 self-start text-xs font-bold uppercase tracking-widest text-slate-500">Annual Summary</h2>
               <div className="relative mb-8 h-48 w-48">
                 <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 100 100">
-                  <circle className="text-slate-800" cx="50" cy="50" fill="transparent" r="40" stroke="currentColor" strokeWidth="8"></circle>
+                  <circle className="text-slate-800" cx="50" cy="50" fill="transparent" r="40" stroke="currentColor" strokeWidth="8" />
                   <circle
                     className="text-cyan-300 drop-shadow-[0_0_8px_rgba(0,227,253,0.4)]"
-                    cx="50"
-                    cy="50"
-                    fill="transparent"
-                    r="40"
-                    stroke="currentColor"
-                    strokeDasharray="251.2"
-                    strokeDashoffset="100.48"
+                    cx="50" cy="50" fill="transparent" r="40" stroke="currentColor"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={dashOffset}
                     strokeWidth="8"
-                  ></circle>
+                  />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="font-headline text-3xl font-bold text-slate-100">25.5</span>
+                  <span className="font-headline text-3xl font-bold text-slate-100">{totalEntitled}</span>
                   <span className="text-[10px] font-bold uppercase text-slate-500">Total Days</span>
                 </div>
               </div>
 
               <div className="w-full space-y-3">
-                {annualDistribution.map((item) => (
-                  <div key={item.label} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className={`h-2 w-2 rounded-full ${item.dotClass}`}></div>
-                      <span className="text-slate-500">{item.label}</span>
-                    </div>
-                    <span className="font-bold text-slate-100">{item.value}</span>
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-cyan-300" />
+                    <span className="text-slate-500">Remaining</span>
                   </div>
-                ))}
+                  <span className="font-bold text-slate-100">{totalRemaining} Days</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-slate-700" />
+                    <span className="text-slate-500">Used</span>
+                  </div>
+                  <span className="font-bold text-slate-100">{totalUsed} Days</span>
+                </div>
               </div>
             </section>
-
-            <section className="staff-glass-card rounded-2xl p-8">
-              <h2 className="mb-6 text-xs font-bold uppercase tracking-widest text-slate-500">Upcoming Holidays</h2>
-              <div className="space-y-6">
-                {upcomingHolidays.map((holiday) => (
-                  <div key={holiday.title} className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 flex-col items-center justify-center rounded-xl border border-cyan-300/10 bg-slate-800">
-                      <span className="text-[10px] font-bold uppercase text-cyan-300">{holiday.month}</span>
-                      <span className="font-headline text-lg font-bold text-slate-100">{holiday.day}</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-slate-100">{holiday.title}</p>
-                      <p className="text-xs text-slate-500">{holiday.subtitle}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
           </div>
         </div>
 
+        {/* FAB */}
         <Link
           href="/staff/leave/apply"
           aria-label="Create leave request"

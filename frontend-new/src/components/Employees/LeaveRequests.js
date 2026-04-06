@@ -23,7 +23,7 @@ export default function LeaveViewDialog({ isOpen, setIsOpen, editedItem, onSucce
   const [loading, setLoading] = useState(false);
   const [leaveDocuments, setLeaveDocuments] = useState([]);
 
-  const toggleModal = () => setIsOpen(!open);
+  const toggleModal = () => setIsOpen(!isOpen);
 
   // Computed: Day Difference logic from Vue
   const dayDifference = useMemo(() => {
@@ -55,7 +55,7 @@ export default function LeaveViewDialog({ isOpen, setIsOpen, editedItem, onSucce
         });
 
         let leaveStats = data1[0].leave_count.map((e) => ({
-          leave_group: e.leave_type.short_name,
+          leave_group: e.leave_type?.name || e.leave_type?.short_name || "—",
           used: e.employee_used,
           total: e.leave_type_count,
           available: e.leave_type_count - e.employee_used,
@@ -159,14 +159,7 @@ export default function LeaveViewDialog({ isOpen, setIsOpen, editedItem, onSucce
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-slate-700 text-slate-400 hover:text-white transition-colors text-sm font-medium"
-      >
-        <Eye size={15} /> View
-      </button>
-
-      {open && (
+      {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           {/* Backdrop */}
           <div

@@ -250,17 +250,36 @@ class Kernel extends ConsoleKernel
 
         //whatsapp and email notifications
         $models = ReportNotification::where("type", "attendance")
-            // ->orWhere("type", "automation")
             ->get();
 
         foreach ($models as $model) {
-
             $companyId = $model->company_id;
-
             $schedule
                 ->command("task:report_notification_crons $companyId")
                 ->dailyAt($model->time)
                 ->runInBackground();
+        }
+
+        // Absent alerts
+        $absentModels = ReportNotification::where("type", "alert")->get();
+        foreach ($absentModels as $model) {
+            if ($model->time) {
+                $schedule
+                    ->command("alert:absents {$model->id} {$model->company_id}")
+                    ->dailyAt($model->time)
+                    ->runInBackground();
+            }
+        }
+
+        // Device alerts (offline)
+        $deviceModels = ReportNotification::where("type", "device")->get();
+        foreach ($deviceModels as $model) {
+            if ($model->time) {
+                $schedule
+                    ->command("alert:offline_device {$model->company_id}")
+                    ->dailyAt($model->time)
+                    ->runInBackground();
+            }
         }
     }
 
