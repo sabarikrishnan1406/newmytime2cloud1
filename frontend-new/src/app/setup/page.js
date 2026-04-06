@@ -13,6 +13,7 @@ import Device from "@/components/Device/Page";
 import ShiftPage from "@/app/shift/page";
 import SchedulePage from "@/app/schedule/page";
 import EmployeesPage from "@/app/employees/page";
+import GeoFencingSetup from "@/components/Setup/GeoFencingSetup";
 
 export default function Index() {
     const [stepIndex, setStepIndex] = useState(0);
@@ -66,9 +67,17 @@ export default function Index() {
             id: 6,
             label: "Step 6",
             sidebarTitle: "Assign Schedule",
-            title: "Department Information",
-            subtitle: "Now, add your departments.",
+            title: "Schedule Assignment",
+            subtitle: "Assign shifts to employees.",
             content: <SchedulePage />,
+        },
+        {
+            id: 7,
+            label: "Step 7",
+            sidebarTitle: "Geo-Fencing",
+            title: "Employee Geo-Fencing",
+            subtitle: "Set custom locations for employees.",
+            content: <GeoFencingSetup />,
         },
     ];
 
@@ -128,15 +137,9 @@ export default function Index() {
                                     "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition-all",
                                     isActive
                                         ? "bg-white/20 dark:bg-indigo-400/20 text-white dark:text-indigo-300"
-                                        : isCompleted
-                                            ? "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                            : "bg-gray-200 dark:bg-white/5 text-gray-400 dark:text-slate-600 group-hover:bg-gray-300 dark:group-hover:bg-white/10",
+                                        : "bg-gray-200 dark:bg-white/5 text-gray-400 dark:text-slate-600 group-hover:bg-gray-300 dark:group-hover:bg-white/10",
                                 ].join(" ")}>
-                                    {isCompleted ? (
-                                        <span className="material-symbols-outlined text-[16px]">check</span>
-                                    ) : (
-                                        stepNum
-                                    )}
+                                    {stepNum}
                                 </div>
 
                                 {/* Step Info */}
@@ -185,28 +188,6 @@ export default function Index() {
                         </AnimatePresence>
                     </div>
 
-                    <div className="flex justify-between items-center px-8 py-5 border-t border-gray-200 dark:border-white/5 bg-white/50 dark:bg-[#0a1128]/50 backdrop-blur">
-                        <div className="text-xs text-gray-400 dark:text-slate-500">
-                            Step {stepIndex + 1} of {steps.length} — <span className="font-semibold text-gray-600 dark:text-slate-300">{currentStep.sidebarTitle}</span>
-                        </div>
-                        <div className="flex gap-3">
-                            {stepIndex > 0 && (
-                                <button onClick={handleBack}
-                                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 text-gray-600 dark:text-slate-300 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/10 transition-all">
-                                    <ArrowLeft className="h-4 w-4" />
-                                    Back
-                                </button>
-                            )}
-                            <button onClick={handleNext}
-                                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 dark:from-indigo-400 dark:to-indigo-600 text-white text-sm font-bold shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 active:scale-95 transition-all">
-                                {isLastStep ? (
-                                    <><Check className="h-4 w-4" /> Finish</>
-                                ) : (
-                                    <>Next <ArrowRight className="h-4 w-4" /></>
-                                )}
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </Card>

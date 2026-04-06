@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { updateGeneralSettings } from "@/lib/api";
 import { notify, parseApiError } from "@/lib/utils";
 
-const Settings = ({ id, user_id, status, web_login_access, mobile_app_login_access, tracking_status, mobile_punch }) => {
+const Settings = ({ id, user_id, status, web_login_access, mobile_app_login_access, tracking_status, mobile_punch, onMobileAccessChange }) => {
     // 1. Refs for Lifecycle Management
     const isInitialMount = useRef(true);
     const isUpdating = useRef(false);
@@ -30,10 +30,10 @@ const Settings = ({ id, user_id, status, web_login_access, mobile_app_login_acce
             const payload = {};
 
             if (employeeStatus !== status) payload.status = employeeStatus;
-            if (webAccess !== web_login_access) payload.web_login_access = webAccess;
-            if (mobileAccess !== mobile_app_login_access) payload.mobile_app_login_access = mobileAccess;
-            if (location !== tracking_status) payload.tracking_status = location;
-            payload.mobile_punch = mobilePunch;
+            payload.web_login_access = webAccess ? 1 : 0;
+            payload.mobile_app_login_access = mobileAccess ? 1 : 0;
+            payload.tracking_status = location ? 1 : 0;
+            payload.mobile_punch = mobilePunch ? 1 : 0;
             payload.id = id;
 
             // If no fields actually changed, don't ping the server
@@ -145,7 +145,7 @@ const Settings = ({ id, user_id, status, web_login_access, mobile_app_login_acce
                                     type="checkbox"
                                     id="toggle-mobile"
                                     checked={mobileAccess}
-                                    onChange={() => setMobileAccess(prev => !prev)}
+                                    onChange={() => { setMobileAccess(prev => { const next = !prev; onMobileAccessChange?.(next); return next; }); }}
                                     className={`${toggleKnobClass} ${mobileAccess ? 'translate-x-6 border-blue-600' : 'border-gray-300'}`}
                                 />
                                 <label

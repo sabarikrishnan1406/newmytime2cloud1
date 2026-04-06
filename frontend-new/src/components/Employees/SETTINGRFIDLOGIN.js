@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from 'react';
 import Settings from './Settings';
 import Login from './Login';
 import RFID from './RFID';
@@ -7,6 +8,7 @@ import LeaveAndReporting from './LeaveAndReporting';
 import GeoFencing from './GeoFencing';
 
 export default function SETTINGRFIDLOGIN({ id, mobile_punch, user_id, email, web_login_access, mobile_app_login_access, tracking_status, rfid_card_number, rfid_card_password, leave_group_id, reporting_manager_id, status }) {
+    const [mobileEnabled, setMobileEnabled] = useState(!!mobile_app_login_access);
     return (
         <>
             <div
@@ -40,9 +42,10 @@ export default function SETTINGRFIDLOGIN({ id, mobile_punch, user_id, email, web
                     mobile_app_login_access={mobile_app_login_access}
                     tracking_status={tracking_status}
                     mobile_punch={mobile_punch}
+                    onMobileAccessChange={(val) => setMobileEnabled(val)}
                 />
 
-                <GeoFencing employee_id={id} />
+                <GeoFencing employee_id={id} mobile_punch={mobileEnabled} />
 
                 <RFID
                     id={id}

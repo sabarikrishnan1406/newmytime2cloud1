@@ -75,12 +75,31 @@ Route::get('payroll-management/staff-payslips', function (\Illuminate\Http\Reque
 // Payslip
 Route::get('payroll-management/payslip/{recordId}', [PayrollManagementController::class, 'downloadPayslip']);
 
+// Geo-Fence Locations (Setup)
+Route::get('geofence-locations', function (\Illuminate\Http\Request $request) {
+    return \App\Models\GeofenceLocation::where('company_id', $request->company_id)->orderBy('name')->get();
+});
+Route::post('geofence-locations', function (\Illuminate\Http\Request $request) {
+    $data = $request->only(['name', 'latitude', 'longitude', 'radius']);
+    $data['company_id'] = $request->company_id;
+    return response()->json(\App\Models\GeofenceLocation::create($data));
+});
+Route::put('geofence-locations/{id}', function (\Illuminate\Http\Request $request, $id) {
+    $loc = \App\Models\GeofenceLocation::where('company_id', $request->company_id)->findOrFail($id);
+    $loc->update($request->only(['name', 'latitude', 'longitude', 'radius']));
+    return response()->json($loc);
+});
+Route::delete('geofence-locations/{id}', function (\Illuminate\Http\Request $request, $id) {
+    \App\Models\GeofenceLocation::where('company_id', $request->company_id)->findOrFail($id)->delete();
+    return response()->json(['status' => true]);
+});
+
 // Employee Geo-Fencing
 Route::get('employee-geofence/{employeeId}', function (\Illuminate\Http\Request $request, $employeeId) {
     return \App\Models\EmployeeGeofence::where('company_id', $request->company_id)->where('employee_id', $employeeId)->first();
 });
 Route::post('employee-geofence/{employeeId}', function (\Illuminate\Http\Request $request, $employeeId) {
-    $data = $request->only(['geo_fencing_enabled', 'latitude', 'longitude', 'radius']);
+    $data = $request->only(['name', 'geo_fencing_enabled', 'latitude', 'longitude', 'radius', 'geofence_location_id']);
     $data['company_id'] = $request->company_id;
     $data['employee_id'] = $employeeId;
     $geofence = \App\Models\EmployeeGeofence::updateOrCreate(

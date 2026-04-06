@@ -158,6 +158,7 @@ export const leftNavLinks = {
   "/payslips/employees": payrollMenu,
   "/payslips/settings": payrollMenu,
   "/geo-fencing": companyMenu,
+  "/setup/geofencing": companyMenu,
   "/live-tracker": companyMenu,
   "/settings/leave": companyMenu,
 };
