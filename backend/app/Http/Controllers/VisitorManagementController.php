@@ -14,6 +14,24 @@ use Illuminate\Support\Str;
 
 class VisitorManagementController extends Controller
 {
+    private function resolveVisitorHostName(Visitor $visitor): ?string
+    {
+        $employee = $visitor->host?->employee;
+        $employeeName = trim((string) ($employee?->display_name ?: trim(($employee?->first_name ?? '') . ' ' . ($employee?->last_name ?? ''))));
+
+        if ($employeeName !== '') {
+            return $employeeName;
+        }
+
+        foreach ([$visitor->host_name ?? null, $visitor->host_company_name ?? null] as $value) {
+            $label = trim((string) $value);
+            if ($label !== '') {
+                return $label;
+            }
+        }
+
+        return null;
+    }
     // ── Dashboard Stats ──
     public function dashboardStats(Request $request)
     {
@@ -21,13 +39,14 @@ class VisitorManagementController extends Controller
         $today = Carbon::today()->toDateString();
 
         $totalToday = Visitor::where('company_id', $companyId)->whereDate('date', $today)->count();
-        $checkedIn = Visitor::where('company_id', $companyId)->where('status_id', 6)->count();
-        $pending = Visitor::where('company_id', $companyId)->where('status_id', 1)->count();
+        $checkedIn = Visitor::where('company_id', $companyId)->whereDate('date', $today)->where('status_id', 6)->count();
+        $pending = Visitor::where('company_id', $companyId)->whereDate('date', $today)->where('status_id', 1)->count();
         $preRegistered = VisitorPreRegistration::where('company_id', $companyId)
             ->where('expected_date', '>=', $today)->where('status', 'pending')->count();
 
         // Overstayed visitors (checked in but past expected time_out)
         $overstayed = Visitor::where('company_id', $companyId)
+            ->whereDate('date', $today)
             ->where('status_id', 6)
             ->whereNotNull('time_out')
             ->whereRaw("CONCAT(date, ' ', time_out) < ?", [now()])
@@ -112,35 +131,41 @@ class VisitorManagementController extends Controller
         // Recent notifications (overstayed + recent check-ins)
         $notifications = [];
         $recentCheckins = Visitor::where('company_id', $companyId)
+            ->whereDate('date', $today->toDateString())
             ->where('status_id', 6)
+            ->with('host.employee:id,first_name,last_name,display_name')
             ->orderBy('updated_at', 'desc')
             ->limit(3)
-            ->get(['first_name', 'last_name', 'updated_at']);
+            ->get(['id', 'first_name', 'last_name', 'updated_at', 'host_company_id', 'host_name', 'host_company_name']);
 
         foreach ($recentCheckins as $v) {
+            $hostName = $this->resolveVisitorHostName($v);
             $notifications[] = [
-                'id' => $v->id ?? rand(1, 9999),
+                'id' => $v->id,
                 'visitor' => trim("{$v->first_name} {$v->last_name}"),
-                'host' => 'Reception',
+                'host' => $hostName,
                 'time' => Carbon::parse($v->updated_at)->format('g:i A'),
                 'type' => 'arrival',
-                'message' => 'has arrived at reception',
+                'message' => 'has arrived',
             ];
         }
 
         // Overstayed notifications
         $overstayed = Visitor::where('company_id', $companyId)
+            ->whereDate('date', $today->toDateString())
             ->where('status_id', 6)
             ->whereNotNull('time_out')
             ->whereRaw("CONCAT(date, ' ', time_out) < ?", [now()])
+            ->with('host.employee:id,first_name,last_name,display_name')
             ->limit(3)
-            ->get(['first_name', 'last_name', 'time_out']);
+            ->get(['id', 'first_name', 'last_name', 'time_out', 'host_company_id', 'host_name', 'host_company_name']);
 
         foreach ($overstayed as $v) {
+            $hostName = $this->resolveVisitorHostName($v);
             $notifications[] = [
-                'id' => rand(10000, 99999),
+                'id' => 'overstay-' . $v->id,
                 'visitor' => trim("{$v->first_name} {$v->last_name}"),
-                'host' => 'Security',
+                'host' => $hostName,
                 'time' => $v->time_out ?? '---',
                 'type' => 'overstay',
                 'message' => 'has exceeded expected visit duration',

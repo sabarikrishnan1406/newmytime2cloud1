@@ -12,47 +12,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, LineChart, Line, Legend,
 } from "recharts";
 
-const hourlyData = [
-  { hour: "6AM", visitors: 4, capacity: 20, expected: 6 }, { hour: "7AM", visitors: 12, capacity: 20, expected: 15 },
-  { hour: "8AM", visitors: 38, capacity: 50, expected: 42 }, { hour: "9AM", visitors: 65, capacity: 50, expected: 60 },
-  { hour: "10AM", visitors: 52, capacity: 50, expected: 55 }, { hour: "11AM", visitors: 41, capacity: 50, expected: 45 },
-  { hour: "12PM", visitors: 28, capacity: 40, expected: 30 }, { hour: "1PM", visitors: 35, capacity: 40, expected: 38 },
-  { hour: "2PM", visitors: 48, capacity: 50, expected: 50 }, { hour: "3PM", visitors: 42, capacity: 50, expected: 44 },
-  { hour: "4PM", visitors: 30, capacity: 40, expected: 32 }, { hour: "5PM", visitors: 18, capacity: 30, expected: 20 },
-  { hour: "6PM", visitors: 8, capacity: 20, expected: 10 },
-];
-
-const weeklyTrend = [
-  { day: "Mon", thisWeek: 67, lastWeek: 58 }, { day: "Tue", thisWeek: 70, lastWeek: 62 },
-  { day: "Wed", thisWeek: 88, lastWeek: 75 }, { day: "Thu", thisWeek: 73, lastWeek: 68 },
-  { day: "Fri", thisWeek: 53, lastWeek: 55 }, { day: "Sat", thisWeek: 13, lastWeek: 10 },
-  { day: "Sun", thisWeek: 5, lastWeek: 4 },
-];
-
-const typeData = [
-  { name: "Business", value: 42, color: "hsl(173, 58%, 39%)" },
-  { name: "Contractor", value: 25, color: "hsl(222, 60%, 30%)" },
-  { name: "Delivery", value: 18, color: "hsl(217, 91%, 60%)" },
-  { name: "Interview", value: 10, color: "hsl(38, 92%, 50%)" },
-  { name: "VIP", value: 5, color: "hsl(160, 60%, 45%)" },
-];
-
-const accessMethodData = [
-  { name: "Face ID", value: 38, color: "hsl(173, 58%, 39%)" },
-  { name: "QR Code", value: 32, color: "hsl(217, 91%, 60%)" },
-  { name: "RFID", value: 18, color: "hsl(222, 60%, 30%)" },
-  { name: "NFC", value: 8, color: "hsl(38, 92%, 50%)" },
-  { name: "Manual", value: 4, color: "hsl(215, 16%, 47%)" },
-];
-
-const recentVisitors = [
-  { name: "Sarah Johnson", company: "Acme Corp", host: "John Smith", status: "checked-in", time: "9:15 AM", type: "Business", method: "Face ID", zone: "Floor 3", email: "sarah.j@acme.com", phone: "+1 555-0101", badge: "VB-1042", dept: "Engineering" },
-  { name: "Mike Chen", company: "TechFlow Inc", host: "Lisa Wang", status: "pending", time: "9:30 AM", type: "Interview", method: "---", zone: "---", email: "mike.c@techflow.io", phone: "+1 555-0202", badge: "---", dept: "HR" },
-  { name: "Emma Davis", company: "BuildRight LLC", host: "Tom Brown", status: "checked-in", time: "9:45 AM", type: "Contractor", method: "RFID", zone: "Loading Bay", email: "emma.d@buildright.com", phone: "+1 555-0303", badge: "VB-1043", dept: "Facilities" },
-  { name: "James Wilson", company: "DataVault", host: "Amy Lee", status: "approved", time: "10:00 AM", type: "Business", method: "---", zone: "---", email: "james.w@datavault.io", phone: "+1 555-0404", badge: "---", dept: "Sales" },
-  { name: "Ana Garcia", company: "FreshDeli", host: "Reception", status: "checked-out", time: "10:10 AM", type: "Delivery", method: "QR Code", zone: "Lobby", email: "ana.g@freshdeli.com", phone: "+1 555-0505", badge: "VB-1041", dept: "Reception" },
-  { name: "David Park", company: "Samsung", host: "Jennifer Lee", status: "pre-registered", time: "10:30 AM", type: "VIP", method: "---", zone: "---", email: "david.p@samsung.com", phone: "+1 555-0606", badge: "---", dept: "Executive" },
-];
+const accessMethodData = [];
 
 const statusColors = {
   "checked-in": "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400",
@@ -90,12 +50,6 @@ function ProgressBar({ value, label, valueLabel }) {
   );
 }
 
-const mockNotifications = [
-  { id: 1, visitor: "Sarah Johnson", host: "John Smith", time: "9:15 AM", type: "arrival", message: "has arrived at reception" },
-  { id: 2, visitor: "Emma Davis", host: "Tom Brown", time: "9:45 AM", type: "overstay", message: "has exceeded expected visit duration by 30min" },
-  { id: 3, visitor: "Unknown Person", host: "Security", time: "10:20 AM", type: "alert", message: "unregistered visitor attempted entry at Gate B" },
-];
-
 const notifColors = {
   arrival: "border-l-emerald-500 bg-emerald-50 dark:bg-emerald-900/10",
   overstay: "border-l-amber-500 bg-amber-50 dark:bg-amber-900/10",
@@ -125,13 +79,14 @@ export default function VisitorDashboard() {
       } catch (e) { console.warn("Dashboard stats error", e); }
       try {
         const { data } = await api.get("/visitor-management/analytics", { params });
-        if (data.hourly_data?.length) setRealHourlyData(data.hourly_data);
-        if (data.weekly_trend?.length) setRealWeeklyTrend(data.weekly_trend);
-        if (data.type_data?.length) setRealTypeData(data.type_data);
-        if (data.notifications?.length) setNotifications(data.notifications);
+        setRealHourlyData(Array.isArray(data.hourly_data) ? data.hourly_data : []);
+        setRealWeeklyTrend(Array.isArray(data.weekly_trend) ? data.weekly_trend : []);
+        setRealTypeData(Array.isArray(data.type_data) ? data.type_data : []);
+        setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
       } catch (e) { console.warn("Analytics error", e); }
       try {
-        const { data } = await api.get("/visitor-management/logs", { params: { ...params, per_page: 10 } });
+        const today = new Date().toISOString().split("T")[0];
+        const { data } = await api.get("/visitor-management/logs", { params: { ...params, date: today, per_page: 10 } });
         const items = (data?.data || []).map(l => ({
           name: l.visitor ? `${l.visitor.first_name} ${l.visitor.last_name || ""}`.trim() : `Visitor ${l.visitor_id}`,
           company: l.visitor?.visitor_company_name || "---",
@@ -189,7 +144,10 @@ export default function VisitorDashboard() {
                 <div>
                   <span className="text-xs font-semibold text-gray-800 dark:text-gray-100">{n.visitor}</span>
                   <span className="text-xs text-gray-500 dark:text-gray-400"> {n.message}</span>
-                  <span className="text-[10px] text-gray-400 ml-2">{n.time} &middot; Host: {n.host}</span>
+                  <span className="text-[10px] text-gray-400 ml-2">
+                    {n.time}
+                    {n.host ? ` | Host: ${n.host}` : ""}
+                  </span>
                 </div>
               </div>
               <button onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
@@ -246,7 +204,7 @@ export default function VisitorDashboard() {
           </div>
           <ResponsiveContainer width="100%" height={220}>
             {trafficChartType === "bar" ? (
-              <BarChart data={realHourlyData.length ? realHourlyData : hourlyData}>
+              <BarChart data={realHourlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" />
                 <XAxis dataKey="hour" tick={tickStyle} /><YAxis tick={tickStyle} />
                 <Tooltip contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
@@ -254,7 +212,7 @@ export default function VisitorDashboard() {
                 <Bar dataKey="expected" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} name="Expected" opacity={0.6} />
               </BarChart>
             ) : trafficChartType === "line" ? (
-              <LineChart data={realHourlyData.length ? realHourlyData : hourlyData}>
+              <LineChart data={realHourlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" />
                 <XAxis dataKey="hour" tick={tickStyle} /><YAxis tick={tickStyle} />
                 <Tooltip contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
@@ -262,7 +220,7 @@ export default function VisitorDashboard() {
                 <Line type="monotone" dataKey="expected" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={{ r: 3 }} name="Expected" />
               </LineChart>
             ) : (
-              <AreaChart data={realHourlyData.length ? realHourlyData : hourlyData}>
+              <AreaChart data={realHourlyData}>
                 <defs><linearGradient id="colorV" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="hsl(173, 58%, 39%)" stopOpacity={0.2} /><stop offset="95%" stopColor="hsl(173, 58%, 39%)" stopOpacity={0} /></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" />
                 <XAxis dataKey="hour" tick={tickStyle} /><YAxis tick={tickStyle} />
@@ -277,37 +235,49 @@ export default function VisitorDashboard() {
         {/* Visitor Types */}
         <div className="lg:col-span-3 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900/50 p-5">
           <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-sm mb-4">Visitor Types</h3>
-          <ResponsiveContainer width="100%" height={140}>
-            <PieChart><Pie data={realTypeData.length ? realTypeData : typeData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value">
-              {(realTypeData.length ? realTypeData : typeData).map((e) => <Cell key={e.name} fill={e.color} />)}
-            </Pie><Tooltip contentStyle={chartStyle} /></PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-2 mt-3">
-            {(realTypeData.length ? realTypeData : typeData).map((t) => (
-              <div key={t.name} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400"><div className="w-2 h-2 rounded-full" style={{ background: t.color }} />{t.name}</div>
-                <span className="font-medium text-gray-800 dark:text-gray-200">{t.value}%</span>
+          {realTypeData.length === 0 ? (
+            <div className="h-[180px] flex items-center justify-center text-xs text-gray-400">No visitor type data</div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={140}>
+                <PieChart><Pie data={realTypeData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value">
+                  {realTypeData.map((e) => <Cell key={e.name} fill={e.color} />)}
+                </Pie><Tooltip contentStyle={chartStyle} /></PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-2 mt-3">
+                {realTypeData.map((t) => (
+                  <div key={t.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400"><div className="w-2 h-2 rounded-full" style={{ background: t.color }} />{t.name}</div>
+                    <span className="font-medium text-gray-800 dark:text-gray-200">{t.value}%</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
 
         {/* Access Methods */}
         <div className="lg:col-span-3 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900/50 p-5">
           <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-sm mb-4">Access Methods</h3>
-          <ResponsiveContainer width="100%" height={140}>
-            <PieChart><Pie data={accessMethodData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value">
-              {accessMethodData.map((e) => <Cell key={e.name} fill={e.color} />)}
-            </Pie><Tooltip contentStyle={chartStyle} /></PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-2 mt-3">
-            {accessMethodData.map((t) => (
-              <div key={t.name} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400"><div className="w-2 h-2 rounded-full" style={{ background: t.color }} />{t.name}</div>
-                <span className="font-medium text-gray-800 dark:text-gray-200">{t.value}%</span>
+          {accessMethodData.length === 0 ? (
+            <div className="h-[180px] flex items-center justify-center text-xs text-gray-400">No access method data</div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={140}>
+                <PieChart><Pie data={accessMethodData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value">
+                  {accessMethodData.map((e) => <Cell key={e.name} fill={e.color} />)}
+                </Pie><Tooltip contentStyle={chartStyle} /></PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-2 mt-3">
+                {accessMethodData.map((t) => (
+                  <div key={t.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400"><div className="w-2 h-2 rounded-full" style={{ background: t.color }} />{t.name}</div>
+                    <span className="font-medium text-gray-800 dark:text-gray-200">{t.value}%</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -329,7 +299,7 @@ export default function VisitorDashboard() {
         </div>
         <ResponsiveContainer width="100%" height={260}>
           {weeklyChartType === "bar" ? (
-            <BarChart data={realWeeklyTrend.length ? realWeeklyTrend : weeklyTrend} barCategoryGap="20%">
+            <BarChart data={realWeeklyTrend} barCategoryGap="20%">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" />
               <XAxis dataKey="day" tick={tickStyle} /><YAxis tick={tickStyle} />
               <Tooltip contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
@@ -337,7 +307,7 @@ export default function VisitorDashboard() {
               <Bar dataKey="lastWeek" fill="hsl(220, 13%, 85%)" radius={[4, 4, 0, 0]} name="Last Week" />
             </BarChart>
           ) : (
-            <LineChart data={realWeeklyTrend.length ? realWeeklyTrend : weeklyTrend}>
+            <LineChart data={realWeeklyTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" />
               <XAxis dataKey="day" tick={tickStyle} /><YAxis tick={tickStyle} />
               <Tooltip contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
