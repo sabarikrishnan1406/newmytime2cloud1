@@ -26,16 +26,22 @@ export default function MultiDropDown({
   placeholder = "Select...",
   badgesCount = 2,
   width = "w-full",
+  portalled = true,
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef(null);
   const [popoverWidth, setPopoverWidth] = useState(0);
 
   useEffect(() => {
-    if (triggerRef.current) {
-      setPopoverWidth(triggerRef.current.offsetWidth);
-    }
-  }, [triggerRef.current?.offsetWidth, open]);
+    const updatePopoverWidth = () => {
+      setPopoverWidth(triggerRef.current?.offsetWidth || 0);
+    };
+
+    updatePopoverWidth();
+    window.addEventListener("resize", updatePopoverWidth);
+
+    return () => window.removeEventListener("resize", updatePopoverWidth);
+  }, [open]);
 
   const handleSelect = (id) => {
     const isSelected = value.includes(id);
@@ -102,13 +108,16 @@ export default function MultiDropDown({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild className="w-full">
+      <PopoverTrigger asChild>
         <Button
           ref={triggerRef}
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={`${width} borderborder-gray-300 flex justify-between h-auto min-h-10 px-3 py-2`}
+          className={cn(
+            width,
+            "flex h-auto min-h-10 justify-between border border-gray-300 px-3 py-2 text-left dark:border-white/10"
+          )}
         >
           {getDisplayContent()}
           <span className="material-icons ml-2 shrink-0  text-gray-700 dark:text-slate-300">
@@ -117,7 +126,14 @@ export default function MultiDropDown({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="p-0 max-h-[200px] overflow-y-auto" side="bottom" align="start" avoidCollisions={false} style={{ width: popoverWidth }}>
+      <PopoverContent
+        portalled={portalled}
+        className="max-h-[200px] overflow-y-auto p-0 z-[60]"
+        side="bottom"
+        sideOffset={6}
+        align="start"
+        style={{ width: popoverWidth || undefined }}
+      >
         <Command>
           <CommandInput placeholder={`Search ${placeholder.toLowerCase()}`} />
           <CommandEmpty>No items found.</CommandEmpty>

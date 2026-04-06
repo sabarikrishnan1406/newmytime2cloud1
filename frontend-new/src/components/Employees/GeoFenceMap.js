@@ -1,85 +1,88 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import React, { useCallback, useRef, useEffect } from "react";
+import { GoogleMap, useJsApiLoader, Marker, Circle } from "@react-google-maps/api";
+
+const containerStyle = { width: "100%", height: "100%" };
 
 const GeoFenceMap = ({ latitude, longitude, radius, onMapClick }) => {
+    const { isLoaded } = useJsApiLoader({
+        id: "google-map-script",
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    });
+
     const mapRef = useRef(null);
-    const mapInstanceRef = useRef(null);
-    const markerRef = useRef(null);
-    const circleRef = useRef(null);
 
-    useEffect(() => {
-        if (!mapRef.current || mapInstanceRef.current) return;
+    const center = { lat: latitude || 25.276987, lng: longitude || 55.296249 };
 
-        // Fix leaflet default icon issue
-        delete L.Icon.Default.prototype._getIconUrl;
-        L.Icon.Default.mergeOptions({
-            iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-            iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-            shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-        });
-
-        const map = L.map(mapRef.current).setView([latitude, longitude], 15);
-
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            attribution: '&copy; OpenStreetMap',
-            maxZoom: 19,
-        }).addTo(map);
-
-        // Add marker
-        markerRef.current = L.marker([latitude, longitude], { draggable: true }).addTo(map);
-
-        // Add radius circle
-        circleRef.current = L.circle([latitude, longitude], {
-            radius: radius,
-            color: "#6366f1",
-            fillColor: "#6366f1",
-            fillOpacity: 0.15,
-            weight: 2,
-        }).addTo(map);
-
-        // Map click → set location
-        map.on("click", (e) => {
-            const { lat, lng } = e.latlng;
-            markerRef.current.setLatLng([lat, lng]);
-            circleRef.current.setLatLng([lat, lng]);
-            onMapClick(lat, lng);
-        });
-
-        // Marker drag → set location
-        markerRef.current.on("dragend", () => {
-            const pos = markerRef.current.getLatLng();
-            circleRef.current.setLatLng([pos.lat, pos.lng]);
-            onMapClick(pos.lat, pos.lng);
-        });
-
-        mapInstanceRef.current = map;
-
-        return () => {
-            map.remove();
-            mapInstanceRef.current = null;
-        };
+    const onLoad = useCallback((map) => {
+        mapRef.current = map;
     }, []);
 
-    // Update marker and circle when lat/lng/radius changes
-    useEffect(() => {
-        if (!mapInstanceRef.current || !markerRef.current || !circleRef.current) return;
+    const onUnmount = useCallback(() => {
+        mapRef.current = null;
+    }, []);
 
-        const lat = parseFloat(latitude);
-        const lng = parseFloat(longitude);
-        const r = parseInt(radius) || 200;
-
-        if (!isNaN(lat) && !isNaN(lng)) {
-            markerRef.current.setLatLng([lat, lng]);
-            circleRef.current.setLatLng([lat, lng]);
-            circleRef.current.setRadius(r);
-            mapInstanceRef.current.setView([lat, lng], mapInstanceRef.current.getZoom());
+    const handleClick = useCallback((e) => {
+        if (onMapClick) {
+            onMapClick(e.latLng.lat(), e.latLng.lng());
         }
-    }, [latitude, longitude, radius]);
+    }, [onMapClick]);
 
-    return <div ref={mapRef} style={{ width: "100%", height: "100%" }} />;
+    // Pan to new center when lat/lng changes
+    useEffect(() => {
+        if (mapRef.current && latitude && longitude) {
+            mapRef.current.panTo({ lat: latitude, lng: longitude });
+        }
+    }, [latitude, longitude]);
+
+    if (!isLoaded) {
+        return (
+            <div className="w-full h-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
+                <span className="text-xs text-gray-400">Loading map...</span>
+            </div>
+        );
+    }
+
+    return (
+        <GoogleMap
+            mapContainerStyle={containerStyle}
+            center={center}
+            zoom={15}
+            onLoad={onLoad}
+            onUnmount={onUnmount}
+            onClick={handleClick}
+            options={{
+                disableDefaultUI: false,
+                zoomControl: true,
+                streetViewControl: false,
+                mapTypeControl: false,
+                fullscreenControl: false,
+                styles: [
+                    { elementType: "geometry", stylers: [{ color: "#1d2c4d" }] },
+                    { elementType: "labels.text.fill", stylers: [{ color: "#8ec3b9" }] },
+                    { elementType: "labels.text.stroke", stylers: [{ color: "#1a3646" }] },
+                    { featureType: "water", elementType: "geometry.fill", stylers: [{ color: "#0e1626" }] },
+                    { featureType: "road", elementType: "geometry", stylers: [{ color: "#304a7d" }] },
+                    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#255763" }] },
+                ],
+            }}
+        >
+            <Marker position={center} draggable={true}
+                onDragEnd={(e) => { if (onMapClick) onMapClick(e.latLng.lat(), e.latLng.lng()); }} />
+            <Circle
+                center={center}
+                radius={radius || 200}
+                options={{
+                    strokeColor: "#6366f1",
+                    strokeOpacity: 0.8,
+                    strokeWeight: 2,
+                    fillColor: "#6366f1",
+                    fillOpacity: 0.15,
+                }}
+            />
+        </GoogleMap>
+    );
 };
 
 export default GeoFenceMap;

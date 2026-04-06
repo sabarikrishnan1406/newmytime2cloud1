@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Popover,
   PopoverContent,
@@ -16,18 +16,19 @@ import {
 } from "@/components/ui/command";
 
 export default function DropDown({
-  items,
+  items = [],
   value,
   onChange,
   placeholder = "Select Item",
   width = "w-[230px]",
+  portalled = true,
   ...props
 }) {
   const [itemOpen, setItemOpen] = useState(false);
 
   const handleSelect = (currentValue) => {
     const selectedItem = items.find((d) => d.name === currentValue);
-    onChange(selectedItem?.id || null);
+    onChange(selectedItem?.id ?? null);
     setItemOpen(false);
   };
 
@@ -49,7 +50,10 @@ export default function DropDown({
       </PopoverTrigger>
 
       <PopoverContent
+        portalled={portalled}
+        side="bottom"
         align="start"
+        sideOffset={6}
         className={`${width} overflow-y-auto max-h-80 p-0 z-[10001]`}
       >
         <Command>

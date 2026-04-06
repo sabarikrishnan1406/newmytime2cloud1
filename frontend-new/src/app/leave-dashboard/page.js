@@ -9,7 +9,7 @@ import {
   PieChart, Pie, Cell,
 } from "recharts";
 import { getLeavesRequest } from "@/lib/endpoint/leaves";
-import { getBranches, getDepartmentsByBranchIds } from "@/lib/api";
+import { getBranches, getDepartments, getDepartmentsByBranchIds } from "@/lib/api";
 import MultiDropDown from "@/components/ui/MultiDropDown";
 import DropDown from "@/components/ui/DropDown";
 import ProfilePicture from "@/components/ProfilePicture";
@@ -63,11 +63,20 @@ export default function LeaveDashboard() {
   }, []);
 
   useEffect(() => {
-    if (selectedBranchIds.length > 0) {
-      getDepartmentsByBranchIds(selectedBranchIds).then(setDepartments).catch(console.error);
-    } else {
-      setDepartments([]);
-    }
+    const loadDepartments = async () => {
+      try {
+        if (selectedBranchIds.length > 0) {
+          setDepartments(await getDepartmentsByBranchIds(selectedBranchIds));
+        } else {
+          setDepartments(await getDepartments());
+        }
+      } catch (error) {
+        console.error("Failed to fetch departments:", error);
+        setDepartments([]);
+      }
+    };
+
+    loadDepartments();
   }, [selectedBranchIds]);
 
   useEffect(() => {
@@ -81,7 +90,7 @@ export default function LeaveDashboard() {
         per_page: 100,
         branch_ids: selectedBranchIds.length > 0 ? selectedBranchIds : undefined,
         department_ids: selectedDepartmentIds.length > 0 ? selectedDepartmentIds : undefined,
-        status: selectedStatus !== null ? selectedStatus : undefined,
+        status_ids: selectedStatus !== null ? [String(selectedStatus)] : undefined,
       };
       const result = await getLeavesRequest(params);
       setLeaves(Array.isArray(result?.data) ? result.data : Array.isArray(result) ? result : []);
@@ -147,6 +156,7 @@ export default function LeaveDashboard() {
             value={selectedBranchIds}
             onChange={setSelectedBranchIds}
             badgesCount={1}
+            portalled={false}
           />
           <MultiDropDown
             placeholder="Select Department"
@@ -154,6 +164,7 @@ export default function LeaveDashboard() {
             value={selectedDepartmentIds}
             onChange={setSelectedDepartmentIds}
             badgesCount={1}
+            portalled={false}
           />
           <DropDown
             placeholder="All Status"
@@ -164,6 +175,7 @@ export default function LeaveDashboard() {
             ]}
             value={selectedStatus}
             onChange={setSelectedStatus}
+            portalled={false}
           />
         </div>
       </div>
