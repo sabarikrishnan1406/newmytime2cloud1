@@ -151,6 +151,22 @@ export const downloadMonthlyGridPDF = async ({ from_date, to_date, branch_ids, d
     await downloadPDF('report/monthly_grid_pdf', params, `Monthly_Attendance_Grid_${from_date}_to_${to_date}.pdf`, onProgress);
 };
 
+/**
+ * Download Summary PDF (DOMPDF)
+ */
+export const downloadSummaryPDF = async ({ from_date, to_date, branch_ids, department_ids, shift_type_id, report_type, onProgress } = {}) => {
+    const params = { from_date, to_date };
+    if (branch_ids?.length) params.branch_ids = branch_ids.join(',');
+    if (department_ids?.length) params.department_ids = department_ids.join(',');
+    if (shift_type_id !== undefined) params.shift_type_id = shift_type_id;
+
+    const fileName = report_type === 'daily'
+        ? `Daily_Summary_Report_${from_date}.pdf`
+        : `Monthly_Summary_Report_${from_date}_to_${to_date}.pdf`;
+
+    await downloadPDF('company_stats_summary_pdf', params, fileName, onProgress);
+};
+
 export const downloadReport = async (reportUrl, fileName = "Daily-Summary-Report.pdf", onProgress = null) => {
     let objectUrl = null;
 

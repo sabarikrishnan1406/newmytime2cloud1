@@ -1396,7 +1396,7 @@ class AttendanceController extends Controller
         $departmentIds = $this->normalizeIds($request->input('department_ids'));
 
         $stats = $this->companyStats($request)->getData(true);
-        $hourlyTrends = $this->companyStatsHourlyTrends($request)->getData(true);
+        $dayTrends = $this->companyStatsDayTrends($request)->getData(true);
         $departmentBreakdown = $this->companyStatsDepartmentBreakdown($request)->getData(true);
         $punctuality = $this->companyStatsPunctuality($request)->getData(true);
 
@@ -1592,7 +1592,7 @@ class AttendanceController extends Controller
             'generatedDate' => $generatedDate,
             'periodLabel' => $periodLabel,
             'stats' => $stats['stats'] ?? [],
-            'hourlyTrends' => $hourlyTrends['data'] ?? [],
+            'dayTrends' => $dayTrends['data'] ?? [],
             'departmentBreakdown' => $departmentBreakdown['data'] ?? [],
             'punctualityTop' => $punctuality['data'] ?? [],
             'highAbsenteeism' => $highAbsenteeism,
