@@ -6,6 +6,38 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
  * Download PDF report from backend DOMPDF endpoint
  */
 export const downloadPDF = async (endpoint, params = {}, fileName = "Report.pdf", onProgress = null) => {
+    let progressTimer = null;
+    let currentProgress = 0;
+
+    // Simulate smooth progress during server-side PDF generation
+    const startProgressSimulation = () => {
+        if (!onProgress) return;
+        currentProgress = 2;
+        onProgress(currentProgress);
+
+        progressTimer = setInterval(() => {
+            // Slow down as it approaches 80% (never reaches it during generation)
+            if (currentProgress < 30) {
+                currentProgress += 2;
+            } else if (currentProgress < 50) {
+                currentProgress += 1.5;
+            } else if (currentProgress < 70) {
+                currentProgress += 0.8;
+            } else if (currentProgress < 80) {
+                currentProgress += 0.3;
+            }
+            currentProgress = Math.min(currentProgress, 80);
+            onProgress(Math.round(currentProgress));
+        }, 500);
+    };
+
+    const stopProgressSimulation = () => {
+        if (progressTimer) {
+            clearInterval(progressTimer);
+            progressTimer = null;
+        }
+    };
+
     try {
         const user = await getUser();
         const queryParams = new URLSearchParams({
@@ -16,7 +48,8 @@ export const downloadPDF = async (endpoint, params = {}, fileName = "Report.pdf"
 
         const url = `${API_BASE}/${endpoint}?${queryParams.toString()}`;
 
-        if (onProgress) onProgress(5);
+        // Start smooth progress during server wait
+        startProgressSimulation();
 
         const response = await fetch(url, {
             method: 'GET',
@@ -27,7 +60,9 @@ export const downloadPDF = async (endpoint, params = {}, fileName = "Report.pdf"
             throw new Error(`Server responded with ${response.status}`);
         }
 
-        if (onProgress) onProgress(30);
+        // Server responded — stop simulation, jump to 80%
+        stopProgressSimulation();
+        if (onProgress) onProgress(80);
 
         const contentLength = response.headers.get('content-length');
         const total = contentLength ? parseInt(contentLength, 10) : 0;
@@ -42,11 +77,11 @@ export const downloadPDF = async (endpoint, params = {}, fileName = "Report.pdf"
                 if (done) break;
                 chunks.push(value);
                 received += value.length;
-                if (onProgress) onProgress(30 + Math.round((received / total) * 60));
+                if (onProgress) onProgress(80 + Math.round((received / total) * 15));
             }
 
             const blob = new Blob(chunks, { type: 'application/pdf' });
-            if (onProgress) onProgress(95);
+            if (onProgress) onProgress(97);
 
             const objectUrl = URL.createObjectURL(blob);
             const link = document.createElement("a");
@@ -57,10 +92,9 @@ export const downloadPDF = async (endpoint, params = {}, fileName = "Report.pdf"
             document.body.removeChild(link);
             setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
         } else {
-            // Fallback: simulate progress
-            if (onProgress) onProgress(50);
+            if (onProgress) onProgress(88);
             const blob = await response.blob();
-            if (onProgress) onProgress(90);
+            if (onProgress) onProgress(95);
 
             const objectUrl = URL.createObjectURL(blob);
             const link = document.createElement("a");
@@ -74,6 +108,7 @@ export const downloadPDF = async (endpoint, params = {}, fileName = "Report.pdf"
 
         if (onProgress) onProgress(100);
     } catch (err) {
+        stopProgressSimulation();
         console.error("PDF Download Error:", err);
         throw err;
     }
@@ -94,11 +129,12 @@ export const downloadDailyPDF = async ({ date, branch_ids, department_ids, emplo
 /**
  * Download Monthly Detail PDF (per employee)
  */
-export const downloadMonthlyDetailPDF = async ({ from_date, to_date, branch_ids, department_ids, employee_ids, onProgress } = {}) => {
+export const downloadMonthlyDetailPDF = async ({ from_date, to_date, branch_ids, department_ids, employee_ids, shift_type_id, onProgress } = {}) => {
     const params = { from_date, to_date };
     if (branch_ids?.length) params.branch_ids = branch_ids.join(',');
     if (department_ids?.length) params.department_ids = department_ids.join(',');
     if (employee_ids?.length) params.employee_ids = employee_ids.join(',');
+    if (shift_type_id !== undefined) params.shift_type_id = shift_type_id;
 
     await downloadPDF('report/monthly_detail_pdf', params, `Monthly_Attendance_Detail_${from_date}_to_${to_date}.pdf`, onProgress);
 };

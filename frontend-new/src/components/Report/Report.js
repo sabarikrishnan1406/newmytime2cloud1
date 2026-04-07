@@ -267,7 +267,6 @@ export default function AttendanceTable() {
 
       if (result && Array.isArray(result.data)) {
         setAttendance(result.data);
-        setCurrentPage(result.current_page || 1);
         setTotalAttendance(result.total || 0);
       } else {
         throw new Error("Invalid data structure received from API.");
@@ -389,6 +388,7 @@ export default function AttendanceTable() {
           branch_ids: selectedBranchIds,
           department_ids: selectedDepartmentIds,
           employee_ids: selectedEmployeeIds,
+          shift_type_id: shiftTypeId,
           onProgress: (p) => setPdfProgress(p),
         };
 
@@ -430,6 +430,12 @@ export default function AttendanceTable() {
   useEffect(() => {
     fetchRecords(shiftTypeId)
   }, [shiftTypeId])
+
+  useEffect(() => {
+    if (isButtonclicked) {
+      fetchRecords(shiftTypeId);
+    }
+  }, [currentPage, perPage])
 
 
 
@@ -602,6 +608,7 @@ export default function AttendanceTable() {
                     page={currentPage}
                     perPage={perPage}
                     total={total}
+                    isLoading={isLoading}
                     onPageChange={setCurrentPage}
                     onPerPageChange={(n) => {
                       setPerPage(n);

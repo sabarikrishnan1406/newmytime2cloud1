@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Reports;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Company;
+use App\Services\Attendance\AttendanceWeekOffService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -97,19 +98,34 @@ class AttendanceReportController extends Controller
         $fromDate = $request->from_date ?? Carbon::now()->startOfMonth()->format('Y-m-d');
         $toDate = $request->to_date ?? Carbon::now()->endOfMonth()->format('Y-m-d');
 
-        $company = Company::select('id', 'name')->find($companyId);
+        $company = Company::select('id', 'name', 'logo')->find($companyId);
 
-        $query = Attendance::select([
-                'id', 'employee_id', 'company_id', 'date', 'shift_id', 'shift_type_id',
-                'in', 'out', 'total_hrs', 'ot', 'late_coming', 'early_going',
-                'status', 'device_id_in', 'device_id_out', 'is_manual_entry'
-            ])
+        $shiftTypeId = $request->shift_type_id;
+        $isMultiShift = in_array($shiftTypeId, [2, '2']);
+        $isSplitShift = in_array($shiftTypeId, [5, '5']);
+
+        $selectColumns = [
+            'id', 'employee_id', 'company_id', 'date', 'shift_id', 'shift_type_id',
+            'in', 'out', 'total_hrs', 'ot', 'late_coming', 'early_going',
+            'status', 'device_id_in', 'device_id_out', 'is_manual_entry'
+        ];
+
+        if ($isMultiShift || $isSplitShift) {
+            $selectColumns[] = 'logs';
+        }
+
+        $query = Attendance::select($selectColumns)
             ->where('company_id', $companyId)
             ->whereBetween('date', [$fromDate, $toDate])
             ->with([
                 'employee:system_user_id,first_name,last_name,employee_id,department_id,branch_id,profile_picture',
                 'employee.department:id,name',
                 'employee.branch:id,branch_name',
+                'employee.schedule' => function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId);
+                    $q->withOut('shift_type');
+                },
+                'employee.schedule.shift',
                 'shift:id,name',
                 'shift_type:id,name',
                 'device_in:device_id,name',
@@ -133,32 +149,74 @@ class AttendanceReportController extends Controller
 
         $allRecords = $query->orderBy('employee_id')->orderBy('date')->get();
 
-        $employees = $allRecords->groupBy('employee_id')->map(function ($records) {
+        // Recalculate weekoff statuses (converts some "A" to "O" in-memory)
+        AttendanceWeekOffService::recalculateForReport($allRecords, (int) $companyId);
+
+        $employees = $allRecords->groupBy('employee_id')->map(function ($records) use ($isMultiShift, $isSplitShift) {
             $employee = $records->first()->employee;
-            $days = [];
 
             $shiftTypeMap = [1 => 'FILO', 2 => 'Multi', 3 => 'Auto', 4 => 'Night', 5 => 'Split', 6 => 'Single'];
 
+            $days = [];
             foreach ($records as $record) {
                 $rawDate = $record->getRawOriginal('date');
-                $days[] = [
+                // Detect missing: has IN but no OUT (or vice versa) — single shift only
+                $inTime = $record->in ?? '---';
+                $outTime = $record->out ?? '---';
+                $status = $record->status ?? '---';
+
+                if (!$isMultiShift && !$isSplitShift) {
+                    $hasIn = $inTime !== '---' && $inTime !== '' && $inTime !== null;
+                    $hasOut = $outTime !== '---' && $outTime !== '' && $outTime !== null;
+
+                    if (($hasIn !== $hasOut) && in_array($status, ['P', 'A', 'LC', 'EG', '---'])) {
+                        $status = 'M';
+                        $record->status = 'M';
+                    }
+                }
+
+                $dayData = [
                     'date' => Carbon::parse($rawDate)->format('d M y'),
                     'day' => Carbon::parse($rawDate)->format('l'),
                     'shift' => $record->shift->name ?? '---',
                     'shift_type' => $shiftTypeMap[$record->shift_type_id] ?? '---',
-                    'in' => $record->in ?? '---',
-                    'out' => $record->out ?? '---',
+                    'in' => $inTime,
+                    'out' => $outTime,
                     'late_coming' => ($record->late_coming && $record->late_coming !== '---') ? $record->late_coming : '---',
                     'early_going' => ($record->early_going && $record->early_going !== '---') ? $record->early_going : '---',
                     'total_hrs' => $record->total_hrs ?? '---',
                     'ot' => ($record->ot && $record->ot !== '00:00') ? $record->ot : '---',
-                    'status' => $record->status ?? '---',
+                    'status' => $status,
                     'device_in' => $record->device_in->name ?? '',
                     'device_out' => $record->device_out->name ?? '',
                     'is_manual' => $record->is_manual_entry ? true : false,
                 ];
+
+                if ($isMultiShift || $isSplitShift) {
+                    $logs = $record->logs ?? [];
+                    // Check missing: any session with IN but no OUT (or vice versa)
+                    $hasMissingPair = false;
+                    foreach ($logs as $log) {
+                        $logIn = $log['in'] ?? '---';
+                        $logOut = $log['out'] ?? '---';
+                        $logHasIn = $logIn !== '---' && $logIn !== '';
+                        $logHasOut = $logOut !== '---' && $logOut !== '';
+                        if ($logHasIn !== $logHasOut) {
+                            $hasMissingPair = true;
+                            break;
+                        }
+                    }
+                    if ($hasMissingPair && in_array($dayData['status'], ['P', 'A', 'LC', 'EG', '---'])) {
+                        $dayData['status'] = 'M';
+                        $record->status = 'M';
+                    }
+                    $dayData['logs'] = $logs;
+                }
+
+                $days[] = $dayData;
             }
 
+            // Recalculate stats after weekoff recalculation
             $statuses = $records->pluck('status');
             $stats = [
                 'present' => $statuses->filter(fn($s) => in_array($s, ['P', 'LC', 'EG']))->count(),
@@ -171,6 +229,7 @@ class AttendanceReportController extends Controller
                 'manual' => $records->filter(fn($r) => $r->is_manual_entry)->count(),
                 'total_hours' => $records->sum(fn($r) => $this->timeToMinutes($r->total_hrs)),
                 'total_ot' => $records->sum(fn($r) => $this->timeToMinutes($r->ot)),
+                'total_late' => $records->sum(fn($r) => $this->timeToMinutes($r->late_coming)),
             ];
 
             return [
@@ -183,20 +242,41 @@ class AttendanceReportController extends Controller
         $filters = $this->buildFilterLabels($request, null, $fromDate, $toDate);
 
         $pdf = Pdf::loadView('pdf.reports.monthly-detail', compact(
-            'company', 'employees', 'fromDate', 'toDate', 'filters'
+            'company', 'employees', 'fromDate', 'toDate', 'filters', 'isMultiShift', 'isSplitShift'
         ));
 
         $pdf->setPaper('a4', 'landscape');
         $pdf->setOption('isPhpEnabled', true);
         $pdf->setOption('isRemoteEnabled', true);
 
+        // Render first, then add footer to every page
+        $pdf->render();
+        $canvas = $pdf->getDomPDF()->getCanvas();
+        $fontMetrics = $pdf->getDomPDF()->getFontMetrics();
+        $font = $fontMetrics->getFont('Helvetica', 'normal');
+        $w = $canvas->get_width();
+        $h = $canvas->get_height();
+        $y = $h - 25;
+        $grey = [0.12, 0.15, 0.20];
+        $generatedOn = 'GENERATED ON:  ' . Carbon::now()->format('d M Y, H:i');
+
+        $canvas->page_text(28, $y, $generatedOn, $font, 6, $grey);
+        $canvas->page_text($w / 2 - 80, $y, 'CONFIDENTIAL REPORT  .  MYTIME2CLOUD.COM', $font, 6, $grey);
+        $canvas->page_text($w - 110, $y, 'PAGE {PAGE_NUM} OF {PAGE_COUNT}', $font, 6, $grey);
+
         $filename = 'Monthly_Attendance_Detail_' . $fromDate . '_to_' . $toDate . '.pdf';
 
         if ($request->input('action') === 'download') {
-            return $pdf->download($filename);
+            return response($pdf->getDomPDF()->output(), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ]);
         }
 
-        return $pdf->stream($filename);
+        return response($pdf->getDomPDF()->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
     }
 
     /**

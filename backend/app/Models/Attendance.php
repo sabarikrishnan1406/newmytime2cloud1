@@ -245,31 +245,25 @@ class Attendance extends Model
             $q->whereBetween("date", [$request->from_date, $request->to_date]);
         });
 
-        $model->whereHas('employee', function ($q) use ($company_id) {
+        // Pre-fetch eligible employee IDs to avoid slow nested whereHas subqueries
+        $scheduleQuery = \App\Models\ScheduleEmployee::where('company_id', $company_id);
+        $showTabsRaw = json_decode(request("showTabs") ?? '[]', true);
+        $filteredTabsCount = count(array_filter($showTabsRaw, fn($value) => $value === true));
+        if ($filteredTabsCount > 1) {
+            if (($showTabsRaw['multi'] == true || $showTabsRaw['double'] == true) && request("shift_type_id", 0) > 0) {
+                $scheduleQuery->where('shift_type_id', request("shift_type_id"));
+            } else {
+                $scheduleQuery->whereIn('shift_type_id', [1, 3, 4, 6]);
+            }
+        }
+        $scheduledEmployeeIds = $scheduleQuery->pluck('employee_id')->unique();
 
+        $eligibleEmployeeIds = Employee::where('company_id', $company_id)
+            ->where('status', 1)
+            ->whereIn('system_user_id', $scheduledEmployeeIds)
+            ->pluck('system_user_id');
 
-
-            $q->where('company_id', $company_id);
-            $q->where('status', 1);
-            $q->whereHas(
-                "schedule",
-                function ($q) use ($company_id) {
-                    $q->where('company_id', $company_id);
-
-                    $showTabs = json_decode(request("showTabs") ?? '[]', true);
-
-                    $filteredTabs = array_filter($showTabs, fn($value) => $value === true);
-
-                    if (count($filteredTabs) > 1) {
-                        if (($showTabs['multi'] == true || $showTabs['double'] == true) && request("shift_type_id", 0) > 0) {
-                            $q->where('shift_type_id',  request("shift_type_id"));
-                        } else {
-                            $q->whereIn('shift_type_id',  [1, 3, 4, 6]);
-                        }
-                    }
-                }
-            );
-        });
+        $model->whereIn('employee_id', $eligibleEmployeeIds);
 
         $model->with([
             'employee' => function ($q) use ($company_id) {
@@ -328,10 +322,16 @@ class Attendance extends Model
             }
         });
 
-        $model->whereDoesntHave('device_in', fn($q) => $q->where('device_type', 'Access Control'));
-        $model->whereDoesntHave('device_out', fn($q) => $q->where('device_type', 'Access Control'));
-
-
+        // Pre-fetch access control device IDs to avoid slow whereDoesntHave subqueries
+        $accessControlDeviceIds = \App\Models\Device::where('device_type', 'Access Control')->pluck('device_id');
+        if ($accessControlDeviceIds->isNotEmpty()) {
+            $model->where(function ($q) use ($accessControlDeviceIds) {
+                $q->whereNull('device_id_in')->orWhereNotIn('device_id_in', $accessControlDeviceIds);
+            });
+            $model->where(function ($q) use ($accessControlDeviceIds) {
+                $q->whereNull('device_id_out')->orWhereNotIn('device_id_out', $accessControlDeviceIds);
+            });
+        }
 
         return $model;
     }

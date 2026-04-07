@@ -6,7 +6,7 @@
     <style>
         @page {
             size: A4 landscape;
-            margin: 0;
+            margin: 0 0 65px 0;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -14,45 +14,36 @@
         body {
             font-family: Helvetica, Arial, sans-serif;
             font-size: 8.5pt;
-            color: #1e293b;
+            color: #334155;
             line-height: 1.4;
+            background: #f8fafc;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
 
         .page-break { page-break-after: always; }
 
-        .page-wrapper {
-            padding: 24px 28px 20px 28px;
-            position: relative;
-        }
-
-        /* ===== TOP ACCENT BAR ===== */
-        .accent-bar {
-            height: 7px;
-            background: #4f46e5;
+        .report-container {
+            background: #fff;
+            border-top: 4px solid #4f46e5;
+            padding: 24px 28px 16px 28px;
         }
 
         /* ===== HEADER ===== */
-        .header-table {
+        .header-row {
             width: 100%;
             border-collapse: collapse;
-            border-bottom: 1px solid #e2e8f0;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
 
-        .header-table td {
-            border: none;
-            padding: 0 0 14px 0;
-            vertical-align: middle;
-        }
+        .header-row td { border: none; padding: 0; vertical-align: middle; }
 
         .report-title {
             font-size: 18pt;
             font-weight: bold;
-            color: #0f172a;
+            color: #1e293b;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
 
         .report-meta {
@@ -61,363 +52,298 @@
             margin-top: 4px;
         }
 
-        .report-meta-icon { color: #4f46e5; }
-
-        .company-badge {
-            text-align: right;
+        .report-meta-icon {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border: 1.5px solid #64748b;
+            border-radius: 1.5px;
+            border-top: 3px solid #64748b;
+            vertical-align: middle;
+            margin-right: 4px;
         }
 
         .company-card {
             display: inline-block;
-            background: #f8fafc;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
-            padding: 8px 14px;
+            padding: 10px 14px;
         }
 
-        .company-card-table {
-            border: none;
-            border-collapse: collapse;
-        }
-
-        .company-card-table td {
-            border: none;
-            padding: 0;
-            vertical-align: middle;
-        }
+        .company-card table { border: none; border-collapse: collapse; }
+        .company-card td { border: none; padding: 0; vertical-align: middle; }
 
         .company-icon {
-            width: 34px;
-            height: 34px;
+            width: 36px;
+            height: 36px;
             background: #4f46e5;
             border-radius: 6px;
+            margin-right: 10px;
             text-align: center;
-            line-height: 34px;
-            color: #fff;
-            font-size: 14pt;
-            font-weight: bold;
+        }
+
+        .company-icon-grid table {
+            border-collapse: separate;
+            border-spacing: 2px;
+            width: 20px;
+            margin: 8px auto 0 auto;
+        }
+
+        .company-icon-grid td {
+            width: 5px; height: 5px;
+            background: #fff;
+            border-radius: 1px;
+            border: none; padding: 0;
+        }
+
+        .company-logo {
+            width: 36px; height: 36px;
+            border-radius: 6px;
+            object-fit: contain;
             margin-right: 10px;
         }
 
         .company-name {
             font-size: 9pt;
             font-weight: bold;
-            color: #0f172a;
+            color: #1e293b;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
-        .company-location {
+        .company-branch {
             font-size: 6.5pt;
             color: #64748b;
         }
 
-        /* ===== EMPLOYEE + STATS ROW ===== */
-        .info-row {
+        /* ===== STATS ROW ===== */
+        .stats-row {
             width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 12px;
+            border-collapse: separate;
+            border-spacing: 10px 0;
+            margin-bottom: 18px;
+            margin-left: -10px;
         }
 
-        .info-row td {
-            border: none;
-            padding: 0;
-            vertical-align: top;
-        }
-
-        .emp-card {
-            background: #f8fafc;
+        .stats-row td {
             border: 1px solid #e2e8f0;
             border-radius: 10px;
-            padding: 14px 16px;
-            width: 100%;
-        }
-
-        .emp-card-inner {
-            width: 100%;
-            border: none;
-            border-collapse: collapse;
-        }
-
-        .emp-card-inner td {
-            border: none;
-            padding: 0;
+            padding: 12px 10px;
             vertical-align: middle;
+            background: #fff;
         }
+
+        .emp-cell { width: 24%; padding: 12px 14px !important; }
+
+        .emp-table { width: 100%; border: none; border-collapse: collapse; }
+        .emp-table td { border: none; padding: 0; vertical-align: middle; }
 
         .emp-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 25px;
-            border: 2px solid #e2e8f0;
+            width: 48px; height: 48px;
+            border-radius: 8px;
             object-fit: cover;
         }
 
         .emp-avatar-placeholder {
-            width: 50px;
-            height: 50px;
-            background: #f1f5f9;
-            border: 2px solid #e2e8f0;
-            border-radius: 25px;
+            width: 48px; height: 48px;
+            background: #e2e8f0;
+            border-radius: 8px;
             text-align: center;
-            line-height: 50px;
-            color: #94a3b8;
-            font-size: 20pt;
+            overflow: hidden;
+        }
+
+        .avatar-head {
+            width: 14px; height: 14px;
+            background: #94a3b8;
+            border-radius: 7px;
+            margin: 9px auto 0 auto;
+        }
+
+        .avatar-body {
+            width: 24px; height: 14px;
+            background: #94a3b8;
+            border-radius: 12px 12px 0 0;
+            margin: 2px auto 0 auto;
         }
 
         .emp-name {
-            font-size: 12pt;
+            font-size: 9pt;
             font-weight: bold;
-            color: #0f172a;
+            color: #1e293b;
+            text-transform: uppercase;
         }
 
         .emp-id {
             font-size: 7pt;
             font-weight: bold;
             color: #4f46e5;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 2px;
         }
 
         .emp-dept {
-            font-size: 7pt;
-            color: #64748b;
-            margin-top: 1px;
-        }
-
-        /* Stat cards */
-        .stat-cards {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 8px 0;
-        }
-
-        .stat-cards td {
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 10px 8px;
-            text-align: center;
-            vertical-align: middle;
-            background: #fff;
-            width: 25%;
-        }
-
-        .stat-label {
             font-size: 6pt;
+            color: #94a3b8;
+        }
+
+        .stat-cell { text-align: center; }
+        .stat-label {
+            font-size: 5.5pt;
             font-weight: bold;
             color: #94a3b8;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 0.5px;
         }
 
         .stat-value {
             font-size: 18pt;
             font-weight: bold;
-            color: #0f172a;
-            margin-top: 2px;
+            color: #1e293b;
         }
 
-        .stat-unit {
-            font-size: 7pt;
-            color: #94a3b8;
-            font-weight: normal;
-        }
+        .stat-unit { font-size: 7pt; color: #94a3b8; }
 
-        .stat-late {
-            background: #fff1f2 !important;
-            border-color: #fecdd3 !important;
-        }
-        .stat-late .stat-label { color: #e11d48; }
-        .stat-late .stat-value { color: #e11d48; }
-
-        .stat-ot {
-            background: #eef2ff !important;
-            border-color: #c7d2fe !important;
-        }
         .stat-ot .stat-label { color: #4f46e5; }
-        .stat-ot .stat-value { color: #4f46e5; }
+        .stat-ot .stat-value { color: #312e81; }
 
-        /* ===== SUMMARY BAR ===== */
-        .summary-bar {
+        .stat-lost .stat-label { color: #e11d48; }
+        .stat-lost .stat-value { color: #e11d48; }
+
+        /* ===== SUMMARY TILES ===== */
+        .summary-row {
             width: 100%;
+            border-collapse: separate;
+            border-spacing: 8px 0;
+            margin-bottom: 20px;
+            margin-left: -8px;
+        }
+
+        .summary-row td {
             border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            margin-bottom: 12px;
-            overflow: hidden;
+            border-radius: 8px;
+            padding: 6px 8px;
             background: #fff;
-        }
-
-        .summary-bar-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .summary-bar-table td {
-            text-align: center;
-            padding: 8px 4px 10px 4px;
-            border-right: 1px solid #f1f5f9;
             vertical-align: middle;
         }
 
-        .summary-bar-table td:last-child {
-            border-right: none;
+        .sum-inner {
+            width: 100%;
+            border: none;
+            border-collapse: collapse;
+        }
+
+        .sum-inner td {
+            border: none;
+            padding: 0;
+            vertical-align: middle;
+            background: none;
         }
 
         .sum-label {
-            font-size: 5.5pt;
+            font-size: 6.5pt;
             font-weight: bold;
-            color: #94a3b8;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
+            letter-spacing: 0.3px;
+            text-align: left;
         }
 
-        .sum-value {
-            font-size: 14pt;
-            font-weight: bold;
-            color: #0f172a;
-        }
+        .sum-value { font-size: 14pt; font-weight: bold; color: #1e293b; text-align: right; }
 
-        .sum-bar {
-            width: 20px;
-            height: 3px;
-            border-radius: 2px;
-            margin: 5px auto 0 auto;
-        }
-
-        .bar-green { background: #10b981; }
-        .bar-red { background: #ef4444; }
-        .bar-slate { background: #94a3b8; }
-        .bar-amber { background: #f59e0b; }
-        .bar-violet { background: #8b5cf6; }
-        .bar-orange { background: #f97316; }
-        .bar-cyan { background: #06b6d4; }
+        .lbl-present { color: #10b981; }
+        .lbl-absent { color: #ef4444; }
+        .lbl-weekoff { color: #94a3b8; }
+        .lbl-leave { color: #f59e0b; }
+        .lbl-holiday { color: #a78bfa; }
+        .lbl-missing { color: #c2410c; }
+        .lbl-manual { color: #94a3b8; }
 
         /* ===== DATA TABLE ===== */
         .data-table {
             width: 100%;
             border-collapse: collapse;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            overflow: hidden;
-            background: #fff;
         }
 
         .data-table thead th {
             background: #f8fafc;
-            color: #64748b;
-            padding: 9px 10px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 6.5pt;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            color: #1e293b;
+            padding: 10px 12px;
+            font-weight: 700;
+            font-size: 7pt;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            border-bottom: 1px solid #e2e8f0;
         }
 
-        .data-table thead th.col-center { text-align: center; }
-        .data-table thead th.col-right { text-align: right; }
-        .data-table thead th.col-late { color: #e11d48; }
-        .data-table thead th.col-early { color: #d97706; }
-        .data-table thead th.col-ot { color: #4f46e5; }
+        .data-table thead th:first-child { text-align: left; }
+        .data-table thead th:last-child { text-align: right; }
+        .data-table thead th { text-align: center; }
 
         .data-table tbody td {
-            padding: 9px 10px;
+            padding: 12px 12px;
             border-bottom: 1px solid #f1f5f9;
             vertical-align: middle;
-        }
-
-        .data-table tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        /* Date */
-        .td-date-main {
-            font-size: 9pt;
-            font-weight: bold;
-            color: #0f172a;
-        }
-
-        .td-date-day {
-            font-size: 6.5pt;
-            color: #64748b;
-        }
-
-        /* Shift */
-        .td-shift {
-            font-size: 7pt;
-            font-weight: 500;
-            color: #334155;
-        }
-
-        .td-shift-type {
-            font-size: 5.5pt;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* Time */
-        .td-time { font-size: 8.5pt; font-weight: 500; color: #0f172a; }
-        .td-time-dash { font-size: 8.5pt; color: #cbd5e1; }
-        .td-device { font-size: 5.5pt; color: #94a3b8; }
-
-        /* Mono values */
-        .td-mono { font-size: 8pt; text-align: center; }
-        .td-mono-late { color: #e11d48; font-weight: bold; }
-        .td-mono-early { color: #d97706; font-weight: bold; }
-        .td-mono-ot { color: #4f46e5; font-weight: bold; }
-        .td-mono-zero { color: #cbd5e1; }
-        .td-mono-hrs { color: #475569; font-weight: 600; }
-
-        /* Status badges */
-        .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 3px;
-            font-size: 6pt;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
             text-align: center;
+            font-size: 8pt;
         }
 
-        .badge-present { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
-        .badge-absent { background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; }
-        .badge-weekoff { background: #fff; color: #64748b; border: 1px solid #e2e8f0; }
-        .badge-holiday { background: #fff; color: #64748b; border: 1px solid #e2e8f0; }
-        .badge-leave { background: #faf5ff; color: #7c3aed; border: 1px solid #ddd6fe; }
-        .badge-missing { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
-        .badge-manual { font-size: 5pt; color: #d97706; display: block; margin-top: 2px; }
+        .data-table tbody td:first-child { text-align: left; }
+        .data-table tbody td:last-child { text-align: right; }
+
+        .td-date { font-weight: bold; color: #1e293b; font-size: 9pt; }
+        .td-day { font-size: 6pt; color: #94a3b8; }
+        .td-shift { font-weight: bold; color: #475569; font-size: 7.5pt; }
+        .td-shift-type { font-size: 5.5pt; color: #64748b; text-transform: uppercase; }
+        .td-time { font-weight: bold; color: #1e293b; font-size: 8.5pt; }
+        .td-device { font-size: 5pt; color: #475569; text-transform: uppercase; }
+        .td-dash { color: #cbd5e1; font-size: 8.5pt; }
+        .td-late { color: #e11d48; font-weight: bold; }
+        .td-early { color: #d97706; font-weight: bold; }
+        .td-ot { color: #4f46e5; font-weight: bold; }
+        .td-hrs { color: #475569; font-weight: 600; }
+        .td-zero { color: #cbd5e1; }
+
+        /* Status text */
+        .st-present { font-weight: bold; font-size: 7pt; color: #059669; }
+        .st-absent { font-weight: bold; font-size: 7pt; color: #ef4444; }
+        .st-weekoff { font-weight: bold; font-size: 7pt; color: #94a3b8; }
+        .st-holiday { font-weight: bold; font-size: 7pt; color: #8b5cf6; }
+        .st-leave { font-weight: bold; font-size: 7pt; color: #7c3aed; }
+        .st-missing { font-weight: bold; font-size: 7pt; color: #f97316; }
+        .st-missing { font-weight: bold; color: #f97316; }
+        .st-manual { font-size: 5pt; color: #d97706; }
 
         /* Row highlights */
-        .row-absent td { background: #fff5f5; }
-        .row-weekoff td { background: #f8fafc; }
-        .row-holiday td { background: #f8fafc; }
-        .row-weekoff .td-date-main, .row-holiday .td-date-main { color: #64748b; }
-        .row-weekoff .td-date-day, .row-holiday .td-date-day { color: #94a3b8; }
+        .row-absent td { background: #fff5f5 !important; }
+        .row-weekoff td { background: #f1f5f9 !important; }
+        .row-weekoff .td-day { color: #6366f1; font-weight: bold; }
+        .row-holiday td { background: #faf5ff !important; }
 
-        .text-right { text-align: right; }
+        /* Multi-shift */
+        .td-session { font-family: Helvetica, Arial, sans-serif; font-size: 8pt; font-weight: bold; color: #1e293b; }
+        .td-session-device { font-family: Helvetica, Arial, sans-serif; font-size: 5pt; color: #475569; }
+        .td-session-empty { color: #d1d5db; font-size: 8pt; }
 
-        /* ===== FOOTER ===== */
-        .footer {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 14px;
-            border-top: 1px solid #f1f5f9;
-            padding-top: 8px;
-        }
-
-        .footer td {
-            border: none;
-            padding: 6px 0 0 0;
-            font-size: 6pt;
-            color: #94a3b8;
+        /* Split shift labels */
+        .split-label {
+            display: inline-block;
+            font-size: 5.5pt;
+            font-weight: bold;
+            color: #fff;
+            background: #4f46e5;
+            padding: 1px 5px;
+            border-radius: 2px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            vertical-align: middle;
+            margin-right: 4px;
         }
+
+        .split-label-aftn { background: #7c3aed; }
+        .split-time { font-size: 7pt; color: #475569; font-weight: 500; }
+
+        .split-row td { border-bottom: none !important; padding-bottom: 3px !important; }
+        .split-row-sub td { border-top: none !important; padding-top: 3px !important; }
+
+        .row-message { font-size: 7.5pt; font-style: italic; color: #94a3b8; }
+        .row-message-holiday { font-size: 7.5pt; font-weight: bold; color: #4f46e5; text-transform: uppercase; }
+        .row-message-absent { font-size: 7.5pt; font-style: italic; color: #e11d48; }
+
     </style>
 </head>
 <body>
@@ -430,33 +356,45 @@
             $totalDays = count($days);
             $score = $totalDays > 0 ? round(($st['present'] / $totalDays) * 100, 0) : 0;
             $totalHrs = floor($st['total_hours'] / 60);
-            $totalHrsFormatted = $totalHrs . ':' . str_pad($st['total_hours'] % 60, 2, '0', STR_PAD_LEFT);
             $totalOtFormatted = floor($st['total_ot'] / 60) . ':' . str_pad($st['total_ot'] % 60, 2, '0', STR_PAD_LEFT);
+            $totalLate = $st['total_late'] ?? 0;
+            $totalLateFormatted = floor($totalLate / 60) . ':' . str_pad($totalLate % 60, 2, '0', STR_PAD_LEFT);
         @endphp
 
-        <!-- ACCENT BAR -->
-        <div class="accent-bar"></div>
-
-        <div class="page-wrapper">
-            <!-- HEADER -->
-            <table class="header-table">
+        <div class="report-container">
+            {{-- HEADER --}}
+            <table class="header-row">
                 <tr>
                     <td style="width: 65%;">
-                        <div class="report-title">Monthly Attendance Report</div>
+                        <div class="report-title">Monthly Attendance Report{{ $isSplitShift ? ' - Split Duty' : ($isMultiShift ? ' - Multi Shift' : '') }}</div>
                         <div class="report-meta">
-                            <span class="report-meta-icon">&#x1F4C5;</span>
+                            <span class="report-meta-icon"></span>
                             {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }} - {{ \Carbon\Carbon::parse($toDate)->format('d M Y') }}
-                            &nbsp;&bull;&nbsp; Monthly Exact
+                            &nbsp;&bull;&nbsp; {{ $isMultiShift ? 'Multi Shift' : ($isSplitShift ? 'Split Duty' : 'Monthly Exact') }}
                         </div>
                     </td>
-                    <td class="company-badge">
+                    <td style="text-align: right;">
                         <div class="company-card">
-                            <table class="company-card-table">
+                            <table>
                                 <tr>
-                                    <td><div class="company-icon">&#x1F3E2;</div></td>
+                                    <td>
+                                        @php
+                                            $logoRaw = $company->getRawOriginal('logo');
+                                            $logoPath = $logoRaw ? public_path('upload/' . $logoRaw) : null;
+                                        @endphp
+                                        @if($logoPath && file_exists($logoPath))
+                                            <img src="{{ $logoPath }}" class="company-logo" />
+                                        @else
+                                            <div class="company-icon">
+                                                <div class="company-icon-grid">
+                                                    <table><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr></table>
+                                                </div>
+                                            </div>
+                                        @endif
+                                    </td>
                                     <td>
                                         <div class="company-name">{{ $company->name ?? 'Company' }}</div>
-                                        <div class="company-location">&#x1F4CD; {{ $emp->branch->branch_name ?? 'Head Office' }}</div>
+                                        <div class="company-branch">{{ $emp->branch->branch_name ?? 'Head Office' }}</div>
                                     </td>
                                 </tr>
                             </table>
@@ -465,135 +403,120 @@
                 </tr>
             </table>
 
-            <!-- EMPLOYEE + STATS -->
-            <table class="info-row">
+            {{-- STATS ROW --}}
+            <table class="stats-row">
                 <tr>
-                    <td style="width: 34%; padding-right: 12px;">
-                        <div class="emp-card">
-                            <table class="emp-card-inner">
-                                <tr>
-                                    <td style="width: 58px; padding-right: 12px;">
-                                        @if($emp->profile_picture)
-                                            <img src="{{ $emp->profile_picture }}" class="emp-avatar" />
-                                        @else
-                                            <div class="emp-avatar-placeholder">&#x1F464;</div>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <div class="emp-name">{{ $emp->first_name ?? '' }} {{ $emp->last_name ?? '' }}</div>
-                                        <div class="emp-id">ID: {{ $emp->employee_id ?? '---' }}</div>
-                                        <div class="emp-dept">{{ $emp->department->name ?? '---' }}</div>
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                    </td>
-                    <td style="width: 66%;">
-                        <table class="stat-cards">
+                    <td class="emp-cell">
+                        <table class="emp-table">
                             <tr>
-                                <td>
-                                    <div class="stat-label">Score</div>
-                                    <div class="stat-value">{{ $score }}%</div>
+                                <td style="width: 54px; padding-right: 10px;">
+                                    @if($emp->profile_picture)
+                                        <img src="{{ $emp->profile_picture }}" class="emp-avatar" />
+                                    @else
+                                        <div class="emp-avatar-placeholder">
+                                            <div class="avatar-head"></div>
+                                            <div class="avatar-body"></div>
+                                        </div>
+                                    @endif
                                 </td>
                                 <td>
-                                    <div class="stat-label">Worked</div>
-                                    <div class="stat-value">{{ $totalHrs }} <span class="stat-unit">h</span></div>
-                                </td>
-                                <td class="stat-late">
-                                    <div class="stat-label">Late In</div>
-                                    <div class="stat-value">{{ $st['late'] > 0 ? $st['late'] : '00:00' }}</div>
-                                </td>
-                                <td class="stat-ot">
-                                    <div class="stat-label">Overtime</div>
-                                    <div class="stat-value">{{ $totalOtFormatted }}</div>
+                                    <div class="emp-name">{{ $emp->first_name ?? '' }} {{ $emp->last_name ?? '' }}</div>
+                                    <div class="emp-id">ID: {{ $emp->employee_id ?? '---' }}</div>
+                                    <div class="emp-dept">{{ $emp->department->name ?? '---' }}</div>
                                 </td>
                             </tr>
                         </table>
                     </td>
+                    <td class="stat-cell">
+                        <div class="stat-label">Score</div>
+                        <div class="stat-value">{{ $score }}%</div>
+                    </td>
+                    <td class="stat-cell">
+                        <div class="stat-label">Worked Hours</div>
+                        <div class="stat-value">{{ $totalHrs }} <span class="stat-unit">h</span></div>
+                    </td>
+                    @if($isSplitShift)
+                        <td class="stat-cell stat-lost">
+                            <div class="stat-label">Lost Hours</div>
+                            <div class="stat-value">{{ $totalLateFormatted }}</div>
+                        </td>
+                    @endif
+                    <td class="stat-cell stat-ot">
+                        <div class="stat-label">Overtime</div>
+                        <div class="stat-value">{{ $totalOtFormatted }}</div>
+                    </td>
                 </tr>
             </table>
 
-            <!-- SUMMARY BAR -->
-            <div class="summary-bar">
-                <table class="summary-bar-table">
-                    <tr>
-                        <td>
-                            <div class="sum-label">Present</div>
-                            <div class="sum-value">{{ $st['present'] }}</div>
-                            <div class="sum-bar bar-green"></div>
-                        </td>
-                        <td>
-                            <div class="sum-label">Absent</div>
-                            <div class="sum-value">{{ $st['absent'] }}</div>
-                            <div class="sum-bar bar-red"></div>
-                        </td>
-                        <td>
-                            <div class="sum-label">Week Off</div>
-                            <div class="sum-value">{{ $st['week_off'] }}</div>
-                            <div class="sum-bar bar-slate"></div>
-                        </td>
-                        <td>
-                            <div class="sum-label">Leaves</div>
-                            <div class="sum-value">{{ $st['leave'] }}</div>
-                            <div class="sum-bar bar-amber"></div>
-                        </td>
-                        <td>
-                            <div class="sum-label">Holidays</div>
-                            <div class="sum-value">{{ $st['holiday'] }}</div>
-                            <div class="sum-bar bar-violet"></div>
-                        </td>
-                        <td>
-                            <div class="sum-label">Missing</div>
-                            <div class="sum-value">{{ $st['missing'] }}</div>
-                            <div class="sum-bar bar-orange"></div>
-                        </td>
-                        <td>
-                            <div class="sum-label">Manual</div>
-                            <div class="sum-value">{{ $st['manual'] }}</div>
-                            <div class="sum-bar bar-cyan"></div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
+            {{-- SUMMARY TILES --}}
+            <table class="summary-row">
+                <tr>
+                    <td><table class="sum-inner"><tr><td class="sum-label lbl-present">Present</td><td class="sum-value">{{ str_pad($st['present'], 2, '0', STR_PAD_LEFT) }}</td></tr></table></td>
+                    <td><table class="sum-inner"><tr><td class="sum-label lbl-absent">Absent</td><td class="sum-value">{{ str_pad($st['absent'], 2, '0', STR_PAD_LEFT) }}</td></tr></table></td>
+                    <td><table class="sum-inner"><tr><td class="sum-label lbl-weekoff">Weekoff</td><td class="sum-value">{{ str_pad($st['week_off'], 2, '0', STR_PAD_LEFT) }}</td></tr></table></td>
+                    <td><table class="sum-inner"><tr><td class="sum-label lbl-leave">Leave</td><td class="sum-value">{{ str_pad($st['leave'], 2, '0', STR_PAD_LEFT) }}</td></tr></table></td>
+                    <td><table class="sum-inner"><tr><td class="sum-label lbl-holiday">Holiday</td><td class="sum-value">{{ str_pad($st['holiday'], 2, '0', STR_PAD_LEFT) }}</td></tr></table></td>
+                    <td><table class="sum-inner"><tr><td class="sum-label lbl-missing">Missing</td><td class="sum-value">{{ str_pad($st['missing'], 2, '0', STR_PAD_LEFT) }}</td></tr></table></td>
+                    <td><table class="sum-inner"><tr><td class="sum-label lbl-manual">Manual</td><td class="sum-value">{{ str_pad($st['manual'], 2, '0', STR_PAD_LEFT) }}</td></tr></table></td>
+                </tr>
+            </table>
 
-            <!-- DATA TABLE -->
+            {{-- DATA TABLE --}}
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th style="width: 90px;">Date</th>
-                        <th>Shift Details</th>
-                        <th>In Time</th>
-                        <th>Out Time</th>
-                        <th class="col-center col-late">Late In</th>
-                        <th class="col-center col-early">Early Go</th>
-                        <th class="col-center col-ot">Overtime</th>
-                        <th class="col-center">Work Hrs</th>
-                        <th class="col-right">Status</th>
+                        <th style="text-align: left; width: 90px;">Date</th>
+                        @if($isMultiShift)
+                            @for($i = 1; $i <= 5; $i++)
+                                <th>IN/OUT{{ $i }}</th>
+                            @endfor
+                            <th>OT</th>
+                            <th>Total</th>
+                        @elseif($isSplitShift)
+                            <th style="text-align: left;">Shift Details</th>
+                            <th>In Time</th>
+                            <th>Out Time</th>
+                            <th style="color: #e11d48;">Late In</th>
+                            <th style="color: #d97706;">Early Go</th>
+                            <th>Lost Hrs</th>
+                            <th style="color: #4f46e5;">Overtime</th>
+                            <th>Work Hrs</th>
+                        @else
+                            <th style="text-align: left;">Shift Details</th>
+                            <th>In Time</th>
+                            <th>Out Time</th>
+                            <th>Late In</th>
+                            <th>Early Go</th>
+                            <th>Overtime</th>
+                            <th>Work Hrs</th>
+                        @endif
+                        <th style="text-align: right;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($days as $day)
                         @php
+
                             $rowClass = '';
                             if ($day['status'] === 'H') $rowClass = 'row-holiday';
                             elseif ($day['status'] === 'O') $rowClass = 'row-weekoff';
                             elseif ($day['status'] === 'A') $rowClass = 'row-absent';
 
-                            $statusText = match($day['status']) {
-                                'P' => 'PRESENT', 'A' => 'ABSENT', 'O' => 'WEEK OFF',
+                            $stClass = match($day['status']) {
+                                'P', 'LC', 'EG' => 'st-present',
+                                'A' => 'st-absent',
+                                'O' => 'st-weekoff',
+                                'H' => 'st-holiday',
+                                'L' => 'st-leave',
+                                'M' => 'st-missing',
+                                default => 'st-weekoff',
+                            };
+
+                            $stText = match($day['status']) {
+                                'P' => 'PRESENT', 'A' => 'ABSENT', 'O' => 'WEEKOFF',
                                 'H' => 'HOLIDAY', 'L' => 'LEAVE', 'M' => 'MISSING',
                                 'LC' => 'PRESENT', 'EG' => 'PRESENT', 'V' => 'VACATION',
                                 default => $day['status'],
-                            };
-
-                            $badgeClass = match($day['status']) {
-                                'P', 'LC', 'EG' => 'badge-present',
-                                'A' => 'badge-absent',
-                                'O' => 'badge-weekoff',
-                                'H' => 'badge-holiday',
-                                'L' => 'badge-leave',
-                                'M' => 'badge-missing',
-                                default => 'badge-weekoff',
                             };
 
                             $hasLate = $day['late_coming'] !== '---' && $day['late_coming'] !== '00:00';
@@ -601,61 +524,169 @@
                             $hasOt = $day['ot'] !== '---' && $day['ot'] !== '00:00';
                             $hasHrs = $day['total_hrs'] !== '---' && $day['total_hrs'] !== '00:00';
                         @endphp
-                        <tr class="{{ $rowClass }}">
-                            <td>
-                                <div class="td-date-main">{{ $day['date'] }}</div>
-                                <div class="td-date-day">{{ $day['day'] }}</div>
-                            </td>
-                            <td>
-                                <div class="td-shift">{{ $day['shift'] }}</div>
-                                <div class="td-shift-type">{{ $day['shift_type'] ?? '' }}</div>
-                            </td>
-                            <td>
-                                @if($day['in'] !== '---')
-                                    <div class="td-time">{{ $day['in'] }}</div>
-                                    <div class="td-device">{{ $day['device_in'] ?: '' }}</div>
+
+
+                        @if($isMultiShift)
+                            <tr class="{{ $rowClass }}">
+                                <td style="text-align: left;">
+                                    <div class="td-date">{{ \Carbon\Carbon::parse($day['date'])->format('d M') }}</div>
+                                    <div class="td-day">{{ $day['day'] }}</div>
+                                </td>
+                                @if($day['status'] === 'A')
+                                    @for($i = 0; $i < 5; $i++)
+                                        <td><span class="td-session-empty">&ndash;</span></td>
+                                    @endfor
+                                    <td class="td-zero">00:00</td>
+                                    <td class="td-zero">00:00</td>
+                                @elseif(in_array($day['status'], ['O', 'H', 'L']))
+                                    <td colspan="5" style="text-align: center;">
+                                        @if($day['status'] === 'O')<span class="row-message">Weekoff</span>
+                                        @elseif($day['status'] === 'H')<span class="row-message-holiday">Public Holiday</span>
+                                        @elseif($day['status'] === 'L')<span class="row-message">On Leave</span>
+                                        @endif
+                                    </td>
+                                    <td class="td-zero">00:00</td>
+                                    <td class="td-zero">00:00</td>
                                 @else
-                                    <div class="td-time-dash">-- : --</div>
+                                    @for($i = 0; $i < 5; $i++)
+                                        @php
+                                            $logIn = $day['logs'][$i]['in'] ?? '---';
+                                            $logOut = $day['logs'][$i]['out'] ?? '---';
+                                            $devIn = $day['logs'][$i]['device_in'] ?? '';
+                                            $devOut = $day['logs'][$i]['device_out'] ?? '';
+                                            $hasSes = ($logIn !== '---' && $logIn !== '') || ($logOut !== '---' && $logOut !== '');
+                                        @endphp
+                                        <td>
+                                            @if($hasSes)
+                                                <div class="td-session">{{ $logIn !== '---' ? $logIn : '--' }} - {{ $logOut !== '---' ? $logOut : '--' }}</div>
+                                                @if($devIn || $devOut)<div class="td-session-device">{{ $devIn ?: '--' }} / {{ $devOut ?: '--' }}</div>@endif
+                                            @else
+                                                <span class="td-session-empty">&ndash;</span>
+                                            @endif
+                                        </td>
+                                    @endfor
+                                    <td class="{{ $hasOt ? 'td-ot' : 'td-zero' }}">{{ $hasOt ? $day['ot'] : '00:00' }}</td>
+                                    <td class="{{ $hasHrs ? 'td-hrs' : 'td-zero' }}">{{ $hasHrs ? $day['total_hrs'] : '00:00' }}</td>
                                 @endif
-                            </td>
-                            <td>
-                                @if($day['out'] !== '---')
-                                    <div class="td-time">{{ $day['out'] }}</div>
-                                    <div class="td-device">{{ $day['device_out'] ?: '' }}</div>
-                                @else
-                                    <div class="td-time-dash">-- : --</div>
-                                @endif
-                            </td>
-                            <td class="td-mono {{ $hasLate ? 'td-mono-late' : 'td-mono-zero' }}">
-                                {{ $hasLate ? $day['late_coming'] : '-' }}
-                            </td>
-                            <td class="td-mono {{ $hasEarly ? 'td-mono-early' : 'td-mono-zero' }}">
-                                {{ $hasEarly ? $day['early_going'] : '-' }}
-                            </td>
-                            <td class="td-mono {{ $hasOt ? 'td-mono-ot' : 'td-mono-zero' }}">
-                                {{ $hasOt ? $day['ot'] : '-' }}
-                            </td>
-                            <td class="td-mono {{ $hasHrs ? 'td-mono-hrs' : 'td-mono-zero' }}">
-                                {{ $hasHrs ? $day['total_hrs'] : '--:--' }}
-                            </td>
-                            <td class="text-right">
-                                <span class="badge {{ $badgeClass }}">{{ $statusText }}</span>
-                                @if($day['is_manual'] ?? false)
-                                    <span class="badge-manual">MANUAL</span>
-                                @endif
-                            </td>
-                        </tr>
+                                <td style="text-align: right;"><span class="{{ $stClass }}">{{ $stText }}</span></td>
+                            </tr>
+
+                        @elseif($isSplitShift)
+                            @php
+                                $logs = $day['logs'] ?? [];
+                                $isNonWork = in_array($day['status'], ['O', 'H', 'A', 'L']);
+                            @endphp
+                            @if($isNonWork)
+                                <tr class="{{ $rowClass }}">
+                                    <td style="text-align: left;">
+                                        <div class="td-date">{{ \Carbon\Carbon::parse($day['date'])->format('d M') }}</div>
+                                        <div class="td-day">{{ $day['day'] }}</div>
+                                    </td>
+                                    <td style="text-align: left;">
+                                        <div class="td-shift">{{ $day['shift'] }}</div>
+                                        <div class="td-shift-type">{{ $day['shift_type'] ?? '' }}</div>
+                                    </td>
+                                    @if($day['status'] === 'A')
+                                        <td><span class="td-dash">-- : --</span></td>
+                                        <td><span class="td-dash">-- : --</span></td>
+                                        <td class="td-zero">-</td>
+                                        <td class="td-zero">-</td>
+                                        <td class="td-zero">-</td>
+                                        <td class="td-zero">-</td>
+                                        <td class="td-zero">00:00</td>
+                                    @else
+                                        <td colspan="4" style="vertical-align: middle;">
+                                            @if($day['status'] === 'O')<span class="row-message">Weekoff</span>
+                                            @elseif($day['status'] === 'H')<span class="row-message-holiday">Public Holiday</span>
+                                            @elseif($day['status'] === 'L')<span class="row-message">On Leave</span>@endif
+                                        </td>
+                                        <td class="td-zero">-</td><td class="td-zero">-</td><td class="td-zero">00:00</td>
+                                    @endif
+                                    <td style="text-align: right;"><span class="{{ $stClass }}">{{ $stText }}</span></td>
+                                </tr>
+                            @else
+                                @php
+                                    $s1 = $logs[0] ?? []; $s2 = $logs[1] ?? [];
+                                    $s1In = $s1['in'] ?? '---'; $s1Out = $s1['out'] ?? '---';
+                                    $s1DevIn = $s1['device_in'] ?? ''; $s1DevOut = $s1['device_out'] ?? '';
+                                    $s1HasIn = $s1In !== '---' && $s1In !== ''; $s1HasOut = $s1Out !== '---' && $s1Out !== '';
+                                    $s2In = $s2['in'] ?? '---'; $s2Out = $s2['out'] ?? '---';
+                                    $s2DevIn = $s2['device_in'] ?? ''; $s2DevOut = $s2['device_out'] ?? '';
+                                    $s2HasIn = $s2In !== '---' && $s2In !== ''; $s2HasOut = $s2Out !== '---' && $s2Out !== '';
+                                    $s1Late = $s1['late_coming'] ?? '---'; $s1Early = $s1['early_going'] ?? '---';
+                                    $s2Late = $s2['late_coming'] ?? '---'; $s2Early = $s2['early_going'] ?? '---';
+                                    $s1HasLate = $s1Late !== '---' && $s1Late !== '00:00' && $s1Late !== '';
+                                    $s1HasEarly = $s1Early !== '---' && $s1Early !== '00:00' && $s1Early !== '';
+                                    $s2HasLate = $s2Late !== '---' && $s2Late !== '00:00' && $s2Late !== '';
+                                    $s2HasEarly = $s2Early !== '---' && $s2Early !== '00:00' && $s2Early !== '';
+                                @endphp
+                                <tr class="{{ $rowClass }}">
+                                    <td style="text-align: left;">
+                                        <div class="td-date">{{ \Carbon\Carbon::parse($day['date'])->format('d M') }}</div>
+                                        <div class="td-day">{{ $day['day'] }}</div>
+                                    </td>
+                                    <td style="text-align: left;">
+                                        <div class="td-shift">{{ $day['shift'] }}</div>
+                                        <div class="td-shift-type">{{ $day['shift_type'] ?? '' }}</div>
+                                    </td>
+                                    <td>
+                                        @if($s1HasIn)<div class="td-time">{{ $s1In }}</div>@if($s1DevIn)<div class="td-device">{{ $s1DevIn }}</div>@endif @else<span class="td-dash">-- : --</span>@endif
+                                        @if($s2HasIn)<div class="td-time" style="margin-top: 4px;">{{ $s2In }}</div>@if($s2DevIn)<div class="td-device">{{ $s2DevIn }}</div>@endif @else<div style="margin-top: 4px;"><span class="td-dash">-- : --</span></div>@endif
+                                    </td>
+                                    <td>
+                                        @if($s1HasOut)<div class="td-time">{{ $s1Out }}</div>@if($s1DevOut)<div class="td-device">{{ $s1DevOut }}</div>@endif @else<span class="td-dash">-- : --</span>@endif
+                                        @if($s2HasOut)<div class="td-time" style="margin-top: 4px;">{{ $s2Out }}</div>@if($s2DevOut)<div class="td-device">{{ $s2DevOut }}</div>@endif @else<div style="margin-top: 4px;"><span class="td-dash">-- : --</span></div>@endif
+                                    </td>
+                                    <td class="{{ $s1HasLate || $s2HasLate ? 'td-late' : 'td-zero' }}">
+                                        <div>{{ $s1HasLate ? $s1Late : '-' }}</div>
+                                        <div style="margin-top: 4px;">{{ $s2HasLate ? $s2Late : '-' }}</div>
+                                    </td>
+                                    <td class="{{ $s1HasEarly || $s2HasEarly ? 'td-early' : 'td-zero' }}">
+                                        <div>{{ $s1HasEarly ? $s1Early : '-' }}</div>
+                                        <div style="margin-top: 4px;">{{ $s2HasEarly ? $s2Early : '-' }}</div>
+                                    </td>
+                                    <td>{{ $hasLate ? $day['late_coming'] : '-' }}</td>
+                                    <td class="{{ $hasOt ? 'td-ot' : 'td-zero' }}">{{ $hasOt ? $day['ot'] : '-' }}</td>
+                                    <td class="{{ $hasHrs ? 'td-hrs' : 'td-zero' }}">{{ $hasHrs ? $day['total_hrs'] : '00:00' }}</td>
+                                    <td style="text-align: right;"><span class="{{ $stClass }}">{{ $stText }}</span></td>
+                                </tr>
+                            @endif
+
+                        @else
+                            {{-- SINGLE SHIFT --}}
+                            <tr class="{{ $rowClass }}">
+                                <td style="text-align: left;">
+                                    <div class="td-date">{{ $day['date'] }}</div>
+                                    <div class="td-day">{{ $day['day'] }}</div>
+                                </td>
+                                <td style="text-align: left;">
+                                    <div class="td-shift">{{ $day['shift'] }}</div>
+                                    <div class="td-shift-type">{{ $day['shift_type'] ?? '' }}</div>
+                                </td>
+                                <td>
+                                    @if($day['in'] !== '---')
+                                        <div class="td-time">{{ $day['in'] }}</div>
+                                        <div class="td-device">{{ $day['device_in'] ?: '' }}</div>
+                                    @else<span class="td-dash">-- : --</span>@endif
+                                </td>
+                                <td>
+                                    @if($day['out'] !== '---')
+                                        <div class="td-time">{{ $day['out'] }}</div>
+                                        <div class="td-device">{{ $day['device_out'] ?: '' }}</div>
+                                    @else<span class="td-dash">-- : --</span>@endif
+                                </td>
+                                <td class="{{ $hasLate ? 'td-late' : 'td-zero' }}">{{ $hasLate ? $day['late_coming'] : '-' }}</td>
+                                <td class="{{ $hasEarly ? 'td-early' : 'td-zero' }}">{{ $hasEarly ? $day['early_going'] : '-' }}</td>
+                                <td class="{{ $hasOt ? 'td-ot' : 'td-zero' }}">{{ $hasOt ? $day['ot'] : '-' }}</td>
+                                <td class="{{ $hasHrs ? 'td-hrs' : 'td-zero' }}">{{ $hasHrs ? $day['total_hrs'] : '--:--' }}</td>
+                                <td style="text-align: right;">
+                                    <span class="{{ $stClass }}">{{ $stText }}</span>
+                                    @if($day['is_manual'] ?? false)<span class="st-manual">MANUAL</span>@endif
+                                </td>
+                            </tr>
+                        @endif
                     @endforeach
                 </tbody>
-            </table>
-
-            <!-- FOOTER -->
-            <table class="footer">
-                <tr>
-                    <td style="width: 33%;">Generated on: <strong style="color: #475569;">{{ \Carbon\Carbon::now()->format('d M Y, H:i') }}</strong></td>
-                    <td style="text-align: center; width: 34%;">Confidential Report &bull; mytime2cloud.com</td>
-                    <td style="text-align: right; width: 33%;">Page {{ $loop->iteration }} of {{ $loop->count }}</td>
-                </tr>
             </table>
         </div>
 
