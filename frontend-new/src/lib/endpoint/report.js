@@ -1,6 +1,7 @@
 import { getUser } from "@/config/index";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const PDF_SERVICE_BASE = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://localhost:3002';
 
 /**
  * Download PDF report from backend DOMPDF endpoint
@@ -155,16 +156,26 @@ export const downloadMonthlyGridPDF = async ({ from_date, to_date, branch_ids, d
  * Download Summary PDF (DOMPDF)
  */
 export const downloadSummaryPDF = async ({ from_date, to_date, branch_ids, department_ids, shift_type_id, report_type, onProgress } = {}) => {
-    const params = { from_date, to_date };
-    if (branch_ids?.length) params.branch_ids = branch_ids.join(',');
-    if (department_ids?.length) params.department_ids = department_ids.join(',');
-    if (shift_type_id !== undefined) params.shift_type_id = shift_type_id;
+    const user = await getUser();
+    const params = new URLSearchParams({
+        api_base: API_BASE,
+        company_id: String(user?.company_id || 0),
+        from_date,
+        to_date,
+    });
+
+    if (branch_ids?.length) params.set('branch_ids', branch_ids.join(','));
+    if (department_ids?.length) params.set('department_ids', department_ids.join(','));
+    if (shift_type_id !== undefined) params.set('shift_type_id', String(shift_type_id));
+
+    const templateName = report_type === 'daily' ? 'daily' : 'monthly';
+    const reportUrl = `${PDF_SERVICE_BASE}/templates/${templateName}/?${params.toString()}`;
 
     const fileName = report_type === 'daily'
         ? `Daily_Summary_Report_${from_date}.pdf`
         : `Monthly_Summary_Report_${from_date}_to_${to_date}.pdf`;
 
-    await downloadPDF('company_stats_summary_pdf', params, fileName, onProgress);
+    await downloadReport(reportUrl, fileName, onProgress);
 };
 
 export const downloadReport = async (reportUrl, fileName = "Daily-Summary-Report.pdf", onProgress = null) => {
@@ -173,7 +184,7 @@ export const downloadReport = async (reportUrl, fileName = "Daily-Summary-Report
     try {
         if (onProgress) onProgress(5);
 
-        const response = await fetch("http://localhost:3002/pdf", {
+        const response = await fetch(`${PDF_SERVICE_BASE}/pdf`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url: reportUrl })

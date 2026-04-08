@@ -1,10 +1,12 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const puppeteer = require("puppeteer");
 
 const app = express();
 app.use(cors({ origin: "*", methods: ["GET", "POST", "OPTIONS"], allowedHeaders: ["Content-Type"] }));
 app.use(express.json({ limit: "10mb" }));
+app.use("/templates", express.static(path.resolve(__dirname, "..", "summary-report")));
 
 app.post("/pdf", async (req, res) => {
   const { url } = req.body;
