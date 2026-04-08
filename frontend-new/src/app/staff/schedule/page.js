@@ -1,386 +1,784 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { api, buildQueryParams } from "@/lib/api-client";
+import { motion } from "framer-motion";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
+  CalendarCheck,
+  CalendarOff,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Cloud,
+  Coffee,
+  Moon,
+  Sun,
+  TrendingUp,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { API_BASE, api, buildQueryParams } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 import { getStaffUser } from "@/lib/staff-user";
 
-const defaultWeeklyPlanner = [
-  {
-    day: "Mon",
-    date: "23",
-    active: false,
-    shifts: [
-      {
-        title: "Day Shift",
-        time: "08:00 - 16:00",
-        location: "Sector C-4",
-        theme: "primary",
-        team: ["JT", "AL"],
-      },
-    ],
-  },
-  {
-    day: "Tue",
-    date: "24",
-    active: false,
-    shifts: [
-      {
-        title: "Day Shift",
-        time: "08:00 - 16:00",
-        location: "Sector C-4",
-        theme: "primary",
-      },
-    ],
-  },
-  {
-    day: "Wed",
-    date: "25",
-    active: true,
-    shifts: [
-      {
-        title: "Lead Shift",
-        time: "09:00 - 18:00",
-        location: "Command Center",
-        theme: "highlight",
-        team: ["MT", "+4"],
-      },
-    ],
-  },
-  {
-    day: "Thu",
-    date: "26",
-    active: false,
-    shifts: [
-      {
-        title: "Late Shift",
-        time: "16:00 - 00:00",
-        location: "Vault Area",
-        theme: "secondary",
-      },
-    ],
-  },
-  {
-    day: "Fri",
-    date: "27",
-    active: false,
-    shifts: [
-      {
-        title: "Rest Period",
-        time: "-",
-        location: "",
-        theme: "neutral",
-      },
-    ],
-  },
-  {
-    day: "Sat",
-    date: "28",
-    active: false,
-    shifts: [
-      {
-        title: "Weekend Lead",
-        time: "10:00 - 18:00",
-        location: "Full Complex",
-        theme: "primary",
-      },
-    ],
-  },
-  {
-    day: "Sun",
-    date: "29",
-    active: false,
-    shifts: [
-      {
-        title: "Off",
-        time: "-",
-        location: "",
-        theme: "neutral",
-      },
-    ],
-  },
-];
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const FULL_DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DEFAULT_WORKING_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
-const upcomingQueue = [
-  {
-    month: "OCT",
-    day: "30",
-    title: "Emergency Protocol Simulation",
-    detail: "08:00 - 12:00 • High-Security Wing",
-    members: ["LN", "AR"],
-    status: "Confirmed",
-    statusClass: "bg-emerald-400/10 text-emerald-300 border border-emerald-400/20",
-  },
-  {
-    month: "OCT",
-    day: "31",
-    title: "Quarterly Review Cycle",
-    detail: "14:00 - 18:00 • Boardroom Alpha",
-    members: ["MT"],
-    status: "Pending Swap",
-    statusClass: "bg-purple-400/10 text-purple-300 border border-purple-400/20",
-  },
-  {
-    month: "NOV",
-    day: "01",
-    title: "System Calibration Phase",
-    detail: "08:00 - 16:00 • Maintenance Deck",
-    members: ["+3"],
-    status: "Scheduled",
-    statusClass: "bg-slate-800 text-slate-400 border border-white/10",
-  },
-];
+const SHIFT_LABELS = {
+  morning: "Morning",
+  afternoon: "Afternoon",
+  night: "Night",
+  off: "Off",
+};
 
-function getShiftTheme(theme) {
-  if (theme === "secondary") {
-    return {
-      wrapper: "bg-purple-400/10 border-l-4 border-purple-300",
-      title: "text-purple-300",
-    };
+const SHIFT_COLORS = {
+  morning: "#f59e0b",
+  afternoon: "#38bdf8",
+  night: "#8b5cf6",
+  off: "#475569",
+};
+
+const SHIFT_STYLES = {
+  morning: {
+    pill: "border-amber-400/20 bg-amber-400/15 text-amber-200",
+    icon: Sun,
+  },
+  afternoon: {
+    pill: "border-sky-400/20 bg-sky-400/15 text-sky-200",
+    icon: Cloud,
+  },
+  night: {
+    pill: "border-violet-400/20 bg-violet-400/15 text-violet-200",
+    icon: Moon,
+  },
+  off: {
+    pill: "border-white/10 bg-slate-800 text-slate-300",
+    icon: Coffee,
+  },
+};
+
+function getInitials(name) {
+  if (!name) return "ST";
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+function getProfileImageUrl(profilePicture) {
+  if (!profilePicture) return null;
+  if (String(profilePicture).startsWith("http")) return profilePicture;
+  const mediaBase = API_BASE.replace(/\/api$/, "");
+  return `${mediaBase}/media/employee/profile_picture/${profilePicture}`;
+}
+
+function matchesEmployeeRecord(employee, identifiers) {
+  const recordValues = [
+    employee?.id,
+    employee?.employee_id,
+    employee?.system_user_id,
+    employee?.user_id,
+  ]
+    .filter((value) => value !== undefined && value !== null && value !== "")
+    .map(String);
+
+  return identifiers.some((identifier) => recordValues.includes(String(identifier)));
+}
+
+function getBestScheduleRecord(employee) {
+  if (!employee) return null;
+
+  const activeSchedule = employee?.schedule_active?.id ? employee.schedule_active : null;
+  if (activeSchedule?.shift?.name && activeSchedule.shift.name !== "---") {
+    return activeSchedule;
   }
-  if (theme === "highlight") {
-    return {
-      wrapper: "bg-gradient-to-br from-cyan-400/20 to-transparent border-l-4 border-cyan-300 shadow-[0_10px_30px_rgba(129,236,255,0.15)]",
-      title: "text-cyan-300",
-    };
+
+  const assignedSchedule = employee?.schedule?.id ? employee.schedule : null;
+  if (assignedSchedule?.shift?.name && assignedSchedule.shift.name !== "---") {
+    return assignedSchedule;
   }
-  if (theme === "neutral") {
-    return {
-      wrapper: "bg-slate-800/60 border-l-4 border-slate-600",
-      title: "text-slate-400",
-    };
+
+  const historicalSchedule = Array.isArray(employee?.schedule_all)
+    ? employee.schedule_all.find((item) => item?.id && item?.shift?.name && item.shift.name !== "---")
+    : null;
+
+  return historicalSchedule || null;
+}
+
+function getWeekStart(baseDate, offset = 0) {
+  const date = new Date(baseDate);
+  const day = date.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + mondayOffset + offset * 7);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function addDays(date, count) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + count);
+  return next;
+}
+
+function formatWeekRange(baseDate, offset = 0) {
+  const start = getWeekStart(baseDate, offset);
+  const end = addDays(start, 6);
+
+  const startMonth = start.toLocaleDateString("en-US", { month: "short" });
+  const endMonth = end.toLocaleDateString("en-US", { month: "short" });
+  const startDay = start.toLocaleDateString("en-US", { day: "numeric" });
+  const endDay = end.toLocaleDateString("en-US", { day: "numeric" });
+  const year = end.getFullYear();
+
+  return startMonth === endMonth
+    ? `${startMonth} ${startDay} - ${endDay}, ${year}`
+    : `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
+}
+
+function formatShortDate(date) {
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function normalizeDayLabel(day) {
+  if (!day) return null;
+  const value = String(day).trim().slice(0, 3).toLowerCase();
+  const match = DAY_LABELS.find((label) => label.toLowerCase() === value);
+  return match || null;
+}
+
+function parseTimeToMinutes(timeValue) {
+  if (!timeValue || timeValue === "---" || timeValue === "-") return null;
+
+  const raw = String(timeValue).trim();
+
+  if (/am|pm/i.test(raw)) {
+    const normalized = raw.replace(/\s+/g, " ").toUpperCase();
+    const match = normalized.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/);
+    if (!match) return null;
+
+    let hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const meridiem = match[3];
+
+    if (meridiem === "PM" && hours !== 12) hours += 12;
+    if (meridiem === "AM" && hours === 12) hours = 0;
+
+    return hours * 60 + minutes;
   }
-  return {
-    wrapper: "bg-cyan-400/10 border-l-4 border-cyan-300",
-    title: "text-cyan-300",
-  };
+
+  const parts = raw.split(":");
+  if (parts.length < 2) return null;
+
+  const hours = Number(parts[0]);
+  const minutes = Number(parts[1]);
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+
+  return hours * 60 + minutes;
+}
+
+function formatTimeLabel(timeValue) {
+  if (!timeValue || timeValue === "---" || timeValue === "-") return "-";
+
+  const minutes = parseTimeToMinutes(timeValue);
+  if (minutes === null) return String(timeValue);
+
+  const hours = Math.floor(minutes / 60) % 24;
+  const mins = minutes % 60;
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+
+  return `${displayHours}:${String(mins).padStart(2, "0")} ${suffix}`;
+}
+
+function getShiftHours(shift) {
+  const workingHours = shift?.working_hours;
+  if (workingHours && typeof workingHours === "string" && workingHours.includes(":")) {
+    const [hoursPart, minutesPart] = workingHours.split(":").map((chunk) => Number(chunk));
+    if (!Number.isNaN(hoursPart) && !Number.isNaN(minutesPart)) {
+      return Number((hoursPart + minutesPart / 60).toFixed(1));
+    }
+  }
+
+  const start = parseTimeToMinutes(shift?.on_duty_time);
+  const end = parseTimeToMinutes(shift?.off_duty_time);
+
+  if (start === null || end === null) return 8;
+
+  const duration = end >= start ? end - start : 24 * 60 - start + end;
+  return Number((duration / 60).toFixed(1));
+}
+
+function getShiftType(shift) {
+  if (!shift) return "off";
+
+  const shiftName = String(shift.name || "").toLowerCase();
+  if (shiftName.includes("night") || shiftName.includes("overnight")) return "night";
+  if (shiftName.includes("afternoon") || shiftName.includes("evening")) return "afternoon";
+  if (shiftName.includes("morning")) return "morning";
+
+  const startMinutes = parseTimeToMinutes(shift.on_duty_time);
+  if (startMinutes === null) return "morning";
+
+  const hour = Math.floor(startMinutes / 60);
+  if (hour >= 5 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 19) return "afternoon";
+  return "night";
+}
+
+function buildWeeklyShifts(shift, branchName, weekOffset) {
+  const weekStart = getWeekStart(new Date(), weekOffset);
+  const normalizedDays = (shift?.days || []).map(normalizeDayLabel).filter(Boolean);
+  const activeDays = normalizedDays.length ? normalizedDays : shift ? DEFAULT_WORKING_DAYS : [];
+  const shiftType = getShiftType(shift);
+  const hours = shift ? getShiftHours(shift) : 0;
+  const start = shift ? formatTimeLabel(shift.on_duty_time) : "-";
+  const end = shift ? formatTimeLabel(shift.off_duty_time) : "-";
+  const todayToken = new Date().toDateString();
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const currentDate = addDays(weekStart, index);
+    const shortDay = DAY_LABELS[currentDate.getDay()];
+    const isWorkingDay = activeDays.includes(shortDay);
+    const currentShiftType = isWorkingDay ? shiftType : "off";
+
+    return {
+      key: `${currentDate.toISOString()}-${shortDay}`,
+      day: shortDay,
+      fullDay: FULL_DAY_LABELS[currentDate.getDay()],
+      dateLabel: formatShortDate(currentDate),
+      dateNumber: currentDate.getDate(),
+      isToday: currentDate.toDateString() === todayToken,
+      type: currentShiftType,
+      shiftName: isWorkingDay ? shift?.name || SHIFT_LABELS[currentShiftType] : "Day Off",
+      start,
+      end,
+      hours: isWorkingDay ? hours : 0,
+      location: branchName || "---",
+    };
+  });
+}
+
+function formatHours(value) {
+  if (!value) return "0h";
+  const hasDecimal = Math.abs(value % 1) > 0;
+  return `${hasDecimal ? value.toFixed(1) : value.toFixed(0)}h`;
+}
+
+function ProfileAvatar({ name, imageUrl }) {
+  const initials = getInitials(name);
+
+  return (
+    <div className="h-12 w-12 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70 shadow-[0_10px_24px_rgba(0,0,0,0.22)] sm:h-14 sm:w-14">
+      {imageUrl ? (
+        <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-cyan-400/10 text-sm font-semibold text-cyan-200 sm:text-base">
+          {initials}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ShiftBadge({ type, start, end, shiftName }) {
+  const config = SHIFT_STYLES[type];
+  const Icon = config.icon;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          className={cn(
+            "inline-flex cursor-default items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-transform duration-200 hover:scale-[1.02]",
+            config.pill
+          )}
+        >
+          <Icon className="h-3 w-3" />
+          <span>{SHIFT_LABELS[type]}</span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent className="border border-white/10 bg-[#0b1628] text-slate-100">
+        <p className="font-semibold text-slate-100">{shiftName}</p>
+        <p className="text-[11px] text-slate-400">
+          {type === "off" ? "No scheduled hours" : `${start} - ${end}`}
+        </p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function StatsCards({ items }) {
+  return (
+    <div className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-4">
+      {items.map((item, index) => (
+        <motion.div
+          key={item.label}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.05, duration: 0.24 }}
+          className="staff-glass-card min-h-[92px] rounded-[22px] border border-white/10 p-3.5"
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              {item.label}
+            </span>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-1.5 text-cyan-200">
+              <item.icon className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <p className="font-headline text-[1.85rem] font-bold leading-none text-slate-50">{item.value}</p>
+          <p className="mt-1 text-[11px] text-slate-400">{item.subtext}</p>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+function ChartTooltipContent({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+
+  const point = payload[0].payload;
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#091120] px-3 py-2 text-xs shadow-xl">
+      <p className="font-semibold text-slate-100">{point.fullDay || label}</p>
+      <p className="mt-1 text-slate-400">
+        {point.type === "off" ? "Off day" : `${point.shiftName} - ${formatHours(point.hours)}`}
+      </p>
+      {point.type !== "off" ? (
+        <p className="mt-1 text-[11px] text-slate-500">
+          {point.start} - {point.end}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function WeeklyChart({ weeklyShifts }) {
+  const chartData = weeklyShifts.map((shift) => ({
+    day: shift.day,
+    fullDay: shift.fullDay,
+    hours: shift.hours,
+    type: shift.type,
+    shiftName: shift.shiftName,
+    start: shift.start,
+    end: shift.end,
+  }));
+
+  const totalHours = weeklyShifts.reduce((sum, shift) => sum + shift.hours, 0);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.18, duration: 0.28 }}
+      className="staff-glass-card flex h-full min-h-0 flex-col overflow-hidden rounded-[22px] border border-white/10"
+    >
+      <div className="shrink-0 border-b border-white/10 px-4 py-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-headline text-base font-semibold text-slate-100">Weekly Hours</h3>
+            <p className="mt-0.5 text-[11px] text-slate-400">Daily shift breakdown</p>
+          </div>
+          <div className="text-right">
+            <p className="font-headline text-xl font-bold text-slate-50">{formatHours(totalHours)}</p>
+            <p className="text-[10px] text-slate-500">Scheduled</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 px-2 pb-1 pt-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }} barCategoryGap="24%">
+            <CartesianGrid vertical={false} stroke="rgba(148, 163, 184, 0.12)" strokeDasharray="4 4" />
+            <XAxis
+              dataKey="day"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 10, fill: "#94a3b8", fontWeight: 600 }}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 10, fill: "#64748b" }}
+              domain={[0, (dataMax) => Math.max(10, Math.ceil(dataMax + 1))]}
+              width={22}
+              ticks={[0, 3, 6, 9]}
+            />
+            <RechartsTooltip
+              content={<ChartTooltipContent />}
+              cursor={{ fill: "rgba(148, 163, 184, 0.08)", radius: 10 }}
+            />
+            <Bar dataKey="hours" radius={[7, 7, 0, 0]} maxBarSize={26}>
+              {chartData.map((entry) => (
+                <Cell key={`${entry.day}-${entry.type}`} fill={SHIFT_COLORS[entry.type]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="shrink-0 flex flex-wrap items-center justify-center gap-3 px-4 pb-3 pt-1">
+        {Object.entries(SHIFT_LABELS).map(([type, label]) => (
+          <div key={type} className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: SHIFT_COLORS[type] }} />
+            <span className="text-[10px] text-slate-400">{label}</span>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+function ScheduleList({ weeklyShifts }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.12, duration: 0.28 }}
+      className="staff-glass-card flex h-full min-h-0 flex-col overflow-hidden rounded-[22px] border border-white/10"
+    >
+      <div className="shrink-0 border-b border-white/10 px-4 py-3">
+        <h3 className="font-headline text-base font-semibold text-slate-100">This Week&apos;s Schedule</h3>
+        <p className="mt-0.5 text-[11px] text-slate-400">
+          {weeklyShifts[0]?.dateLabel} - {weeklyShifts[weeklyShifts.length - 1]?.dateLabel}
+        </p>
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col divide-y divide-white/5">
+        {weeklyShifts.map((shift, index) => (
+          <motion.div
+            key={shift.key}
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.03, duration: 0.18 }}
+            className={cn(
+              "grid min-h-[56px] flex-1 grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 transition-colors",
+              shift.isToday && "bg-cyan-400/5"
+            )}
+          >
+            <div className="text-center">
+              <p className={cn("text-[10px] font-semibold uppercase tracking-[0.18em]", shift.isToday ? "text-cyan-300" : "text-slate-500")}>
+                {shift.day}
+              </p>
+              <p className={cn("font-headline text-xl font-bold leading-none", shift.isToday ? "text-cyan-200" : "text-slate-100")}>
+                {shift.dateNumber}
+              </p>
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-semibold text-slate-100">{shift.fullDay}</p>
+                {shift.isToday ? (
+                  <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-cyan-200">
+                    Today
+                  </span>
+                ) : null}
+              </div>
+              <p className="truncate text-[11px] text-slate-400">
+                {shift.location} - {shift.shiftName}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 text-right">
+              <ShiftBadge
+                type={shift.type}
+                start={shift.start}
+                end={shift.end}
+                shiftName={shift.shiftName}
+              />
+              <div className="min-w-[110px]">
+                {shift.type === "off" ? (
+                  <p className="text-[11px] text-slate-400">Day Off</p>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-slate-100">{shift.start} - {shift.end}</p>
+                    <p className="text-[10px] text-slate-500">{formatHours(shift.hours)}</p>
+                  </>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </motion.div>
+  );
 }
 
 export default function StaffSchedulePage() {
-  const [weeklyPlanner, setWeeklyPlanner] = useState(defaultWeeklyPlanner);
-  const [shiftInfo, setShiftInfo] = useState({ name: "---", time: "---" });
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState({
+    name: "Employee",
+    employeeCode: "---",
+    designation: "---",
+    department: "---",
+    branchName: "---",
+    profilePicture: null,
+  });
+  const [shiftData, setShiftData] = useState(null);
+  const [stats, setStats] = useState({
+    present: 0,
+    absent: 0,
+    leave: 0,
+    weekOff: 0,
+    holiday: 0,
+    incomplete: 0,
+    overtime: "0:00",
+  });
 
   useEffect(() => {
-    const fetchData = async () => {
+    let ignore = false;
+
+    async function fetchSchedulePage() {
       try {
-        const u = await getStaffUser();
+        const staffUser = await getStaffUser();
         const params = await buildQueryParams({});
+        const systemUserId = staffUser?.system_user_id || staffUser?.employee_id;
 
-        // Fetch schedule
-        const { data } = await api.get("/employees_with_schedule_count", { params: { ...params, per_page: 50 } });
-        const myEmp = (data?.data || []).find((e) => e.id === u.employee_id);
-        const shift = myEmp?.schedule_active?.shift;
+        const [meResult, employeeResult, statsResult] = await Promise.allSettled([
+          api.get("/me"),
+          api.get("/employees_with_schedule_count", { params: { ...params, per_page: 500 } }),
+          api.get("/staff-stats", {
+            params: {
+              ...params,
+              system_user_id: systemUserId,
+              user_id: staffUser?.id,
+            },
+          }),
+        ]);
 
-        if (shift) {
-          setShiftInfo({ name: shift.name || "---", time: `${shift.on_duty_time || "---"} - ${shift.off_duty_time || "---"}` });
+        if (ignore) return;
 
-          const shiftDays = shift.days || [];
-          const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-          const now = new Date();
-          const todayIdx = now.getDay();
-          const mondayOffset = todayIdx === 0 ? -6 : 1 - todayIdx;
-          const monday = new Date(now);
-          monday.setDate(now.getDate() + mondayOffset);
+        const me = meResult.status === "fulfilled" ? meResult.value?.data?.user : null;
+        const employees = employeeResult.status === "fulfilled" ? employeeResult.value?.data?.data || [] : [];
+        const employeeIdentifiers = [
+          staffUser?.id,
+          staffUser?.employee_id,
+          staffUser?.system_user_id,
+          me?.id,
+          me?.employee_id,
+          me?.system_user_id,
+          me?.employee_code,
+        ].filter((value) => value !== undefined && value !== null && value !== "");
+        const employeeRecord = employees.find((employee) => matchesEmployeeRecord(employee, employeeIdentifiers)) || null;
+        const scheduleRecord = getBestScheduleRecord(employeeRecord);
 
-          const week = [];
-          for (let i = 0; i < 7; i++) {
-            const d = new Date(monday);
-            d.setDate(monday.getDate() + i);
-            const dayName = dayNames[d.getDay()];
-            const isToday = d.toDateString() === now.toDateString();
-            const isWorkingDay = shiftDays.includes(dayName);
+        const resolvedName =
+          me?.employee_name ||
+          (employeeRecord ? `${employeeRecord.first_name || ""} ${employeeRecord.last_name || ""}`.trim() : "") ||
+          me?.name ||
+          staffUser?.employee_name ||
+          "Employee";
 
-            week.push({
-              day: dayName,
-              date: String(d.getDate()),
-              active: isToday,
-              shifts: [{
-                title: isWorkingDay ? shift.name : "Day Off",
-                time: isWorkingDay ? `${shift.on_duty_time} - ${shift.off_duty_time}` : "-",
-                location: myEmp?.branch?.branch_name || "",
-                theme: isToday ? "highlight" : isWorkingDay ? "primary" : "neutral",
-              }],
-            });
-          }
-          setWeeklyPlanner(week);
+        const resolvedProfilePicture =
+          me?.employee_profile_picture ||
+          employeeRecord?.profile_picture ||
+          staffUser?.employee_profile_picture ||
+          null;
+
+        setProfile({
+          name: resolvedName,
+          employeeCode: employeeRecord?.employee_id || staffUser?.employee_id || "---",
+          designation: employeeRecord?.designation?.name || staffUser?.designation_name || "---",
+          department: employeeRecord?.department?.name || staffUser?.department_name || "---",
+          branchName:
+            employeeRecord?.branch?.branch_name ||
+            me?.branch?.branch_name ||
+            staffUser?.branch_name ||
+            "---",
+          profilePicture: resolvedProfilePicture,
+        });
+
+        setShiftData(
+          scheduleRecord?.shift
+            ? {
+                ...scheduleRecord.shift,
+                branchName:
+                  employeeRecord?.branch?.branch_name ||
+                  me?.branch?.branch_name ||
+                  staffUser?.branch_name ||
+                  "---",
+              }
+            : null
+        );
+
+        if (statsResult.status === "fulfilled") {
+          const data = statsResult.value?.data || {};
+          setStats({
+            present: Number(data.present || 0),
+            absent: Number(data.absent || 0),
+            leave: Number(data.leave || 0),
+            weekOff: Number(data.week_off || 0),
+            holiday: Number(data.holiday || 0),
+            incomplete: Number(data.incomplete || 0),
+            overtime: data.overtime || "0:00",
+          });
         }
-      } catch (e) { console.warn("Schedule error", e); }
+      } catch (error) {
+        console.error("Failed to load staff schedule page", error);
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchSchedulePage();
+
+    return () => {
+      ignore = true;
     };
-    fetchData();
   }, []);
 
+  const weeklyShifts = buildWeeklyShifts(shiftData, profile.branchName, weekOffset);
+  const totalHoursThisWeek = weeklyShifts.reduce((sum, shift) => sum + shift.hours, 0);
+  const workDays = weeklyShifts.filter((shift) => shift.type !== "off").length;
+  const trackedAttendanceDays = stats.present + stats.absent + stats.incomplete;
+  const attendanceRate = trackedAttendanceDays > 0 ? ((stats.present / trackedAttendanceDays) * 100).toFixed(1) : "0.0";
+  const firstName = profile.name.split(" ")[0] || "Employee";
+  const activeShiftLabel = shiftData?.name || "No active shift assigned";
+  const activeShiftTime = shiftData
+    ? `${formatTimeLabel(shiftData.on_duty_time)} - ${formatTimeLabel(shiftData.off_duty_time)}`
+    : "No scheduled hours";
+  const profileImageUrl = getProfileImageUrl(profile.profilePicture);
+
+  const statItems = [
+    {
+      label: "Hours This Week",
+      value: formatHours(totalHoursThisWeek),
+      subtext: `${workDays} scheduled day${workDays === 1 ? "" : "s"}`,
+      icon: Clock,
+    },
+    {
+      label: "Attendance",
+      value: `${attendanceRate}%`,
+      subtext: `${stats.present} present / ${Math.max(trackedAttendanceDays, 0)} tracked`,
+      icon: CalendarCheck,
+    },
+    {
+      label: "Overtime",
+      value: stats.overtime || "0:00",
+      subtext: "Recorded this period",
+      icon: TrendingUp,
+    },
+    {
+      label: "Leave Days",
+      value: `${stats.leave}`,
+      subtext: `${stats.holiday} holiday / ${stats.weekOff} week off`,
+      icon: CalendarOff,
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center p-4">
+        <div className="staff-glass-card rounded-[22px] border border-white/10 px-5 py-4 text-sm text-slate-300">
+          Loading schedule...
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
-      <div>
-        <header className="sticky top-0 z-20 -mx-4 mb-8 bg-[#081223]/70 px-4 py-4 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-          <div className="flex flex-col">
-            <div className="flex flex-col">
-              <h1 className="font-headline text-2xl font-bold tracking-tight text-slate-100">Shift Schedule</h1>
-              <p className="text-sm font-medium text-slate-500">October 23 - October 29, 2023</p>
-            </div>
-          </div>
-        </header>
-
-        <section className="staff-glass-card mb-10 rounded-[24px] p-6 xl:p-8">
-          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <h2 className="font-headline text-xl font-bold text-slate-100">Weekly Planner</h2>
-              <div className="flex rounded-lg bg-slate-800 p-1">
-                <button className="rounded-md bg-slate-700 px-3 py-1 text-xs font-bold text-cyan-300 shadow-sm">Week</button>
-                <button className="rounded-md px-3 py-1 text-xs font-bold text-slate-500 transition hover:text-slate-100">Month</button>
+    <div className="h-full overflow-hidden p-2 sm:p-3">
+      <div className="flex h-full w-full min-w-0 flex-col gap-3">
+        <motion.section
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="staff-glass-card shrink-0 rounded-[22px] border border-white/10 p-4"
+        >
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex items-start gap-3">
+              <ProfileAvatar name={profile.name} imageUrl={profileImageUrl} />
+              <div>
+                <h1 className="font-headline text-[1.9rem] font-bold tracking-tight text-slate-50">
+                  {firstName}&apos;s Schedule
+                </h1>
+                <p className="mt-0.5 text-sm text-slate-400">
+                  {profile.designation} - {profile.department} - {formatWeekRange(new Date(), weekOffset)}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-slate-300">
+                    {activeShiftLabel}
+                  </span>
+                  <span className="rounded-full border border-cyan-400/15 bg-cyan-400/10 px-3 py-1 text-[11px] font-medium text-cyan-200">
+                    {activeShiftTime}
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-slate-400">
+                    {profile.branchName}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 transition hover:bg-slate-800">
-                <span className="material-symbols-outlined text-xl">chevron_left</span>
-              </button>
-              <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 transition hover:bg-slate-800">
-                <span className="material-symbols-outlined text-xl">chevron_right</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <div className="grid min-w-[980px] grid-cols-7 gap-4">
-              {weeklyPlanner.map((day) => (
-                <div
-                  key={`${day.day}-${day.date}`}
-                  className={`relative flex flex-col gap-4 rounded-2xl p-2 ${
-                    day.active ? "border border-cyan-400/20 bg-cyan-400/5" : ""
-                  }`}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-2xl border-white/10 bg-white/5 px-3 text-xs text-slate-100 hover:bg-white/10 hover:text-white"
+              >
+                <Link href="/staff/leave/apply">
+                  <CalendarOff className="h-3.5 w-3.5" />
+                  Request Leave
+                </Link>
+              </Button>
+              <div className="ml-1 flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  className="rounded-2xl border-white/10 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white"
+                  onClick={() => setWeekOffset((value) => value - 1)}
                 >
-                  <div className="pb-4 text-center">
-                    <p className={`text-[10px] font-bold uppercase tracking-widest ${day.active ? "text-cyan-300" : "text-slate-500"}`}>{day.day}</p>
-                    <p className={`text-xl font-bold ${day.active ? "text-cyan-300" : "text-slate-100"}`}>{day.date}</p>
-                    {day.active && <div className="mx-auto mt-2 h-1 w-1 rounded-full bg-cyan-300"></div>}
-                  </div>
-
-                  <div className="flex flex-col gap-3">
-                    {day.shifts.map((shift) => {
-                      const theme = getShiftTheme(shift.theme);
-                      return (
-                        <div key={`${day.day}-${shift.title}`} className={`rounded-xl p-3 ${theme.wrapper}`}>
-                          <p className={`mb-1 text-[10px] font-bold uppercase ${theme.title}`}>{shift.title}</p>
-                          <p className="text-xs font-bold leading-tight text-slate-100">{shift.time}</p>
-                          {shift.location && <p className="mt-2 text-[10px] text-slate-500">{shift.location}</p>}
-                          {shift.team && (
-                            <div className="mt-2 flex -space-x-2">
-                              {shift.team.map((member) => (
-                                <div
-                                  key={`${day.day}-${shift.title}-${member}`}
-                                  className="flex h-5 w-5 items-center justify-center rounded-full border border-[#11192a] bg-slate-700 text-[8px] font-bold text-cyan-300"
-                                >
-                                  {member}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="grid gap-8 lg:grid-cols-3">
-          <div className="staff-glass-card rounded-[24px] p-6 lg:col-span-2">
-            <div className="mb-6 flex items-center justify-between">
-              <h3 className="font-headline text-lg font-bold text-slate-100">Upcoming Shift Queue</h3>
-              <button className="text-xs font-bold text-cyan-300 transition hover:underline">View All History</button>
-            </div>
-
-            <div className="space-y-1">
-              {upcomingQueue.map((item) => (
-                <div key={`${item.month}-${item.day}-${item.title}`} className="group flex flex-col gap-4 rounded-xl p-4 transition hover:bg-slate-900/30 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 flex-col items-center justify-center rounded-xl border border-white/10 bg-slate-800">
-                      <p className="text-[10px] font-bold leading-none text-slate-500">{item.month}</p>
-                      <p className="text-base font-bold text-slate-100">{item.day}</p>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-100 transition group-hover:text-cyan-300">{item.title}</h4>
-                      <p className="text-xs text-slate-500">{item.detail}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-                    <div className="flex -space-x-2">
-                      {item.members.map((member) => (
-                        <div
-                          key={`${item.title}-${member}`}
-                          className="flex h-6 w-6 items-center justify-center rounded-full border border-[#11192a] bg-slate-700 text-[10px] font-bold text-cyan-300"
-                        >
-                          {member}
-                        </div>
-                      ))}
-                    </div>
-                    <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase ${item.statusClass}`}>{item.status}</span>
-                    <button className="text-slate-500 transition hover:text-slate-100">
-                      <span className="material-symbols-outlined">more_vert</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="staff-glass-card flex flex-col items-center rounded-[24px] p-6">
-            <h3 className="mb-8 w-full font-headline text-lg font-bold text-slate-100">Shift Coverage</h3>
-
-            <div className="relative mb-6 h-48 w-48">
-              <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="42" fill="transparent" stroke="rgba(28,38,57,0.9)" strokeWidth="8"></circle>
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  fill="transparent"
-                  stroke="url(#coverage-gradient)"
-                  strokeDasharray="264"
-                  strokeDashoffset="31.6"
-                  strokeLinecap="round"
-                  strokeWidth="8"
-                ></circle>
-                <defs>
-                  <linearGradient id="coverage-gradient" x1="0%" x2="100%" y1="0%" y2="0%">
-                    <stop offset="0%" stopColor="#81ecff"></stop>
-                    <stop offset="100%" stopColor="#00e3fd"></stop>
-                  </linearGradient>
-                </defs>
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="font-headline text-4xl font-bold text-slate-100">88%</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">Optimal</span>
-              </div>
-            </div>
-
-            <div className="w-full space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_8px_rgba(129,236,255,0.5)]"></span>
-                  <span className="text-xs font-medium text-slate-500">Active Personnel</span>
-                </div>
-                <span className="text-xs font-bold text-slate-100">24/28</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-purple-300 shadow-[0_0_8px_rgba(175,136,255,0.4)]"></span>
-                  <span className="text-xs font-medium text-slate-500">On-Call Support</span>
-                </div>
-                <span className="text-xs font-bold text-slate-100">12 Available</span>
-              </div>
-              <div className="flex items-center justify-between border-t border-white/10 pt-4">
-                <span className="text-xs italic text-slate-500">Next gap detected in 18h</span>
-                <button className="text-cyan-300 transition hover:text-cyan-200">
-                  <span className="material-symbols-outlined text-sm">notifications_active</span>
-                </button>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 rounded-2xl border-white/10 bg-white/5 px-3 text-xs text-slate-100 hover:bg-white/10 hover:text-white"
+                  onClick={() => setWeekOffset(0)}
+                >
+                  Today
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  className="rounded-2xl border-white/10 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white"
+                  onClick={() => setWeekOffset((value) => value + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
+
+        <StatsCards items={statItems} />
+
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.72fr)_minmax(320px,0.92fr)]">
+          <div className="min-h-0">
+            <ScheduleList weeklyShifts={weeklyShifts} />
+          </div>
+          <div className="min-h-0">
+            <WeeklyChart weeklyShifts={weeklyShifts} />
+          </div>
+        </div>
       </div>
     </div>
   );

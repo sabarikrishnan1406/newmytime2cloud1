@@ -1,296 +1,879 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import {
+  Building2,
+  CalendarDays,
+  CalendarOff,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Clock,
+  Download,
+  FileText,
+  Globe,
+  Search,
+} from "lucide-react";
+
 import { api, buildQueryParams } from "@/lib/api-client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { getStaffUser } from "@/lib/staff-user";
 
-const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const dayLabels = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-
-const palette = [
-  { color: "cyan", icon: "celebration", iconClass: "bg-cyan-300/10 text-cyan-300", tagClass: "bg-cyan-300/10 text-cyan-300 border-cyan-300/20", dotClass: "bg-cyan-300", glowClass: "bg-cyan-300/10 group-hover:bg-cyan-300/20", lineClass: "from-cyan-300/30", hoverClass: "group-hover:border-cyan-300/40", badgeClass: "bg-cyan-300/10 text-cyan-300", textClass: "text-cyan-300" },
-  { color: "purple", icon: "corporate_fare", iconClass: "bg-purple-300/10 text-purple-300", tagClass: "bg-purple-300/10 text-purple-300 border-purple-300/20", dotClass: "bg-purple-300", glowClass: "bg-purple-300/10 group-hover:bg-purple-300/20", lineClass: "from-purple-300/30", hoverClass: "group-hover:border-purple-300/40", badgeClass: "bg-purple-300/10 text-purple-300", textClass: "text-purple-300" },
-  { color: "emerald", icon: "nature_people", iconClass: "bg-emerald-300/10 text-emerald-300", tagClass: "bg-emerald-300/10 text-emerald-300 border-emerald-300/20", dotClass: "bg-emerald-300", glowClass: "bg-emerald-300/10 group-hover:bg-emerald-300/20", lineClass: "from-emerald-300/30", hoverClass: "group-hover:border-emerald-300/40", badgeClass: "bg-emerald-300/10 text-emerald-300", textClass: "text-emerald-300" },
-  { color: "amber", icon: "beach_access", iconClass: "bg-amber-300/10 text-amber-300", tagClass: "bg-amber-300/10 text-amber-300 border-amber-300/20", dotClass: "bg-amber-300", glowClass: "bg-amber-300/10 group-hover:bg-amber-300/20", lineClass: "from-amber-300/30", hoverClass: "group-hover:border-amber-300/40", badgeClass: "bg-amber-300/10 text-amber-300", textClass: "text-amber-300" },
-  { color: "red", icon: "flag", iconClass: "bg-red-300/10 text-red-300", tagClass: "bg-red-300/10 text-red-300 border-red-300/20", dotClass: "bg-red-300", glowClass: "bg-red-300/10 group-hover:bg-red-300/20", lineClass: "from-red-300/30", hoverClass: "group-hover:border-red-300/40", badgeClass: "bg-red-300/10 text-red-300", textClass: "text-red-300" },
-  { color: "blue", icon: "event", iconClass: "bg-blue-300/10 text-blue-300", tagClass: "bg-blue-300/10 text-blue-300 border-blue-300/20", dotClass: "bg-blue-300", glowClass: "bg-blue-300/10 group-hover:bg-blue-300/20", lineClass: "from-blue-300/30", hoverClass: "group-hover:border-blue-300/40", badgeClass: "bg-blue-300/10 text-blue-300", textClass: "text-blue-300" },
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
-function buildCalendarDays(year, month, holidayDates) {
+const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const FILTER_CONFIG = {
+  all: { label: "All Holidays" },
+  branch: { label: "Branch" },
+};
+
+function matchesEmployeeRecord(employee, identifiers) {
+  const recordValues = [
+    employee?.id,
+    employee?.employee_id,
+    employee?.system_user_id,
+    employee?.user_id,
+  ]
+    .filter((value) => value !== undefined && value !== null && value !== "")
+    .map(String);
+
+  return identifiers.some((identifier) => recordValues.includes(String(identifier)));
+}
+
+function parseDateValue(value) {
+  if (!value) return null;
+
+  const [year, month, day] = String(value)
+    .split("-")
+    .map((part) => Number(part));
+
+  if (!year || !month || !day) return null;
+
+  return new Date(year, month - 1, day);
+}
+
+function toDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function differenceInDays(fromDate, toDate) {
+  const start = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+  const end = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
+  return Math.round((end.getTime() - start.getTime()) / 86400000);
+}
+
+function formatDateLabel(date) {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatDateRange(startDate, endDate) {
+  if (toDateKey(startDate) === toDateKey(endDate)) {
+    return startDate.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
+  return `${formatDateLabel(startDate)} - ${formatDateLabel(endDate)}`;
+}
+
+function buildCalendarDays(year, month, holidayMap) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
-  const days = [];
+  const previousMonthDays = new Date(year, month, 0).getDate();
+  const todayKey = toDateKey(new Date());
+  const cells = [];
 
-  // Previous month padding
-  const prevDays = new Date(year, month, 0).getDate();
-  for (let i = firstDay - 1; i >= 0; i--) {
-    days.push({ label: String(prevDays - i), muted: true });
+  for (let index = firstDay - 1; index >= 0; index -= 1) {
+    cells.push({
+      key: `prev-${index}`,
+      label: String(previousMonthDays - index),
+      muted: true,
+    });
   }
 
-  // Current month
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    const isToday = dateStr === todayStr;
-    const isHoliday = holidayDates.has(dateStr);
-    days.push({ label: String(d), active: isToday, holiday: isHoliday });
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = new Date(year, month, day);
+    const dateKey = toDateKey(date);
+
+    cells.push({
+      key: dateKey,
+      label: String(day),
+      isToday: dateKey === todayKey,
+      holiday: holidayMap.get(dateKey) || null,
+    });
   }
 
-  // Next month padding
-  const remaining = 42 - days.length;
-  for (let i = 1; i <= remaining; i++) {
-    days.push({ label: String(i), muted: true });
+  while (cells.length < 42) {
+    const nextLabel = cells.length - (firstDay + daysInMonth) + 1;
+    cells.push({
+      key: `next-${nextLabel}`,
+      label: String(nextLabel),
+      muted: true,
+    });
   }
-  return days;
+
+  return cells;
+}
+
+function getHolidayCategory(holiday) {
+  if (holiday.branchName) return "branch";
+  return "standard";
+}
+
+function getHolidayTone(holiday) {
+  switch (holiday.category) {
+    case "branch":
+      return {
+        badge: "border border-emerald-400/20 bg-emerald-400/15 text-emerald-200",
+        dot: "bg-emerald-500",
+      };
+    default:
+      return {
+        badge: "border border-sky-400/20 bg-sky-400/15 text-sky-200",
+        dot: "bg-sky-500",
+      };
+  }
+}
+
+function HeroStatCard({ title, value, subtitle, icon: Icon, accentClass, delay }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, delay }}
+      className="staff-glass-card min-h-[102px] rounded-2xl border border-white/10 p-3.5"
+    >
+      <div className="mb-2.5 flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{title}</span>
+        <div className={cn("rounded-xl p-1.5", accentClass)}>
+          <Icon className="h-3.5 w-3.5" />
+        </div>
+      </div>
+      <p className="font-headline text-[2rem] font-bold tracking-tight text-slate-50">{value}</p>
+      <p className="mt-1 text-xs text-slate-400">{subtitle}</p>
+    </motion.div>
+  );
+}
+
+function HolidayListCard({ holidays, title, emptyMessage, className }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const scrollRef = useRef(null);
+  const resetKey = `${title}-${holidays.map((holiday) => holiday.id).join("|") || "none"}`;
+
+  useLayoutEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+      scrollRef.current.scrollLeft = 0;
+    }
+  }, [resetKey]);
+
+  return (
+    <div
+      className={cn(
+        "staff-glass-card flex flex-col rounded-2xl border border-white/10 p-4 transition-all",
+        className,
+        collapsed ? "min-h-0 flex-none" : "min-h-[180px]"
+      )}
+    >
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-headline text-base font-semibold text-slate-100">{title}</h3>
+          <p className="mt-0.5 text-xs text-slate-500">{holidays.length} result{holidays.length === 1 ? "" : "s"}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setCollapsed((value) => !value)}
+          className="rounded-lg border border-white/10 bg-white/5 p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-100"
+          aria-label={collapsed ? `Expand ${title}` : `Collapse ${title}`}
+        >
+          {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+        </button>
+      </div>
+
+      {!collapsed ? (
+      <div
+        key={resetKey}
+        ref={scrollRef}
+        data-pdf-scroll-area="true"
+        className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1 pt-1 [overflow-anchor:none]"
+      >
+        {holidays.length === 0 ? (
+          <div className="flex min-h-[120px] items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/5 px-4 py-8 text-center text-sm text-slate-500">
+            {emptyMessage}
+          </div>
+        ) : (
+          holidays.map((holiday) => {
+            const tone = getHolidayTone(holiday);
+
+            return (
+              <article
+                key={holiday.id}
+                className="rounded-2xl border border-white/8 bg-white/5 px-4 py-3.5 transition-transform duration-200 hover:-translate-y-0.5 hover:bg-white/10"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={cn("h-2.5 w-2.5 rounded-full", tone.dot)} />
+                      <h4 className="truncate text-sm font-semibold text-slate-100">{holiday.name}</h4>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-400">{formatDateRange(holiday.startDate, holiday.endDate)}</p>
+                    {holiday.branchName ? (
+                      <p className="mt-1 text-xs text-slate-400">Branch: {holiday.branchName}</p>
+                    ) : null}
+                  </div>
+
+                  <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold", tone.badge)}>
+                    {holiday.totalDays} day{holiday.totalDays === 1 ? "" : "s"}
+                  </span>
+                </div>
+              </article>
+            );
+          })
+        )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function HolidayCalendarCard({ year, month, onMonthChange, holidayMap }) {
+  const calendarDays = useMemo(() => buildCalendarDays(year, month, holidayMap), [year, month, holidayMap]);
+
+  const handlePreviousMonth = () => {
+    if (month === 0) {
+      onMonthChange(11, year - 1);
+      return;
+    }
+
+    onMonthChange(month - 1, year);
+  };
+
+  const handleNextMonth = () => {
+    if (month === 11) {
+      onMonthChange(0, year + 1);
+      return;
+    }
+
+    onMonthChange(month + 1, year);
+  };
+
+  return (
+    <div className="staff-glass-card flex h-full min-h-0 flex-col rounded-[24px] border border-white/10 p-4">
+      <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
+        <div>
+          <h3 className="font-headline text-lg font-semibold text-slate-100">
+            {MONTHS[month]} {year}
+          </h3>
+          <p className="mt-0.5 text-xs text-slate-400">Tap a date to see where holidays fall this month.</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePreviousMonth}
+            className="rounded-xl border border-white/10 bg-white/5 p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-100"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            className="rounded-xl border border-white/10 bg-white/5 p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-100"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="mb-2 grid shrink-0 grid-cols-7 gap-2">
+        {WEEK_DAYS.map((day) => (
+          <div key={day} className="py-1 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            {day}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 gap-2">
+        {calendarDays.map((day) => {
+          const holidayTone = day.holiday ? getHolidayTone(day.holiday) : null;
+
+          return (
+            <div
+              key={day.key}
+              title={day.holiday?.name || ""}
+              className={cn(
+                "relative flex h-full min-h-0 items-center justify-center rounded-2xl border text-sm transition-colors",
+                day.muted
+                  ? "border-transparent bg-transparent text-slate-600"
+                  : "border-white/10 bg-white/[0.04] text-slate-300",
+                day.isToday ? "border-cyan-400/30 bg-cyan-400/10 font-semibold text-cyan-200 shadow-[0_0_0_1px_rgba(34,211,238,0.12)]" : "",
+                day.holiday ? "bg-white/[0.08] font-semibold text-slate-100" : ""
+              )}
+            >
+              {day.label}
+              {day.holiday ? (
+                <span className={cn("absolute bottom-2 h-1.5 w-1.5 rounded-full", holidayTone?.dot)} />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function StaffHolidaysPage() {
+  const today = useMemo(() => new Date(), []);
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+  const pdfContentRef = useRef(null);
+
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [calMonth, setCalMonth] = useState(new Date().getMonth());
-  const [calYear, setCalYear] = useState(new Date().getFullYear());
-  // All months collapsed by default
-  const [collapsedMonths, setCollapsedMonths] = useState(() => {
-    const all = {};
-    for (let i = 0; i < 12; i++) all[i] = true;
-    return all;
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [calendarMonth, setCalendarMonth] = useState(currentMonth);
+  const [calendarYear, setCalendarYear] = useState(currentYear);
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [staffStats, setStaffStats] = useState({
+    leave: 0,
+    weekOff: 0,
   });
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchHolidays = async () => {
       setLoading(true);
+
       try {
         const params = await buildQueryParams({});
-        const { data } = await api.get("/holidays", { params: { ...params, per_page: 100, year: selectedYear } });
-        setHolidays(data?.data || (Array.isArray(data) ? data : []));
-      } catch (e) { console.warn("Holidays error", e); }
-      finally { setLoading(false); }
+        const { data } = await api.get("/holidays", {
+          params: { ...params, per_page: 200, year: selectedYear },
+        });
+
+        setHolidays(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.warn("Failed to fetch holidays", error);
+        setHolidays([]);
+      } finally {
+        setLoading(false);
+      }
     };
-    fetchData();
+
+    fetchHolidays();
   }, [selectedYear]);
 
-  const now = new Date();
-  const upcoming = holidays.filter((h) => new Date(h.start_date) >= now).sort((a, b) => new Date(a.start_date) - new Date(b.start_date)).slice(0, 3);
-  const byMonth = {};
-  holidays.forEach((h) => { const m = new Date(h.start_date).getMonth(); if (!byMonth[m]) byMonth[m] = []; byMonth[m].push(h); });
-  const totalDays = holidays.reduce((s, h) => s + (parseInt(h.total_days) || 1), 0);
+  useEffect(() => {
+    let ignore = false;
 
-  // Calendar holiday dates
-  const holidayDates = new Set();
-  holidays.forEach((h) => {
-    let d = new Date(h.start_date);
-    const end = new Date(h.end_date || h.start_date);
-    while (d <= end) { holidayDates.add(d.toISOString().split("T")[0]); d.setDate(d.getDate() + 1); }
-  });
-  const calDays = buildCalendarDays(calYear, calMonth, holidayDates);
+    const fetchStaffStats = async () => {
+      try {
+        const staffUser = await getStaffUser();
+        const params = await buildQueryParams({});
+        const [meResult, employeeResult] = await Promise.allSettled([
+          api.get("/me"),
+          api.get("/employees_with_schedule_count", { params: { ...params, per_page: 500 } }),
+        ]);
 
-  if (loading) return <div className="p-8 flex items-center justify-center min-h-screen"><div className="text-slate-400 text-sm">Loading...</div></div>;
+        const me = meResult.status === "fulfilled" ? meResult.value?.data?.user : null;
+        const employees = employeeResult.status === "fulfilled" ? employeeResult.value?.data?.data || [] : [];
+        const employeeIdentifiers = [
+          staffUser?.id,
+          staffUser?.employee_id,
+          staffUser?.system_user_id,
+          me?.id,
+          me?.employee_id,
+          me?.system_user_id,
+          me?.employee_code,
+        ].filter((value) => value !== undefined && value !== null && value !== "");
+        const employeeRecord = employees.find((employee) => matchesEmployeeRecord(employee, employeeIdentifiers)) || null;
+
+        const resolvedSystemUserId =
+          me?.system_user_id ||
+          employeeRecord?.system_user_id ||
+          staffUser?.system_user_id ||
+          staffUser?.employee_id;
+
+        const resolvedUserId =
+          staffUser?.id ||
+          me?.id ||
+          employeeRecord?.user_id ||
+          null;
+
+        if (!resolvedSystemUserId) {
+          return;
+        }
+
+        const { data } = await api.get("/staff-stats", {
+          params: {
+            ...params,
+            period: "year",
+            year: selectedYear,
+            system_user_id: resolvedSystemUserId,
+            user_id: resolvedUserId,
+          },
+        });
+
+        if (ignore) return;
+
+        setStaffStats({
+          leave: Number(data?.leave || 0),
+          weekOff: Number(data?.week_off || 0),
+        });
+      } catch (error) {
+        if (!ignore) {
+          console.warn("Failed to fetch holiday staff stats", error);
+          setStaffStats({ leave: 0, weekOff: 0 });
+        }
+      }
+    };
+
+    fetchStaffStats();
+
+    return () => {
+      ignore = true;
+    };
+  }, [selectedYear]);
+
+  useEffect(() => {
+    setCalendarYear(selectedYear);
+  }, [selectedYear]);
+
+  const normalizedHolidays = useMemo(() => {
+    return holidays
+      .map((holiday) => {
+        const startDate = parseDateValue(holiday.start_date);
+        const endDate = parseDateValue(holiday.end_date || holiday.start_date) || startDate;
+
+        if (!startDate) return null;
+
+        const calculatedDays = endDate ? differenceInDays(startDate, endDate) + 1 : 1;
+        const totalDays = Number(holiday.total_days) || Math.max(1, calculatedDays);
+        const branchName = holiday.branch?.branch_name || "";
+
+        return {
+          id: holiday.id || `${holiday.name}-${holiday.start_date}`,
+          name: holiday.name || holiday.title || "Holiday",
+          startDate,
+          endDate: endDate || startDate,
+          date: toDateKey(startDate),
+          totalDays,
+          branchName,
+          category: "",
+        };
+      })
+      .filter(Boolean)
+      .map((holiday) => ({
+        ...holiday,
+        category: getHolidayCategory(holiday),
+      }))
+      .sort((left, right) => left.startDate - right.startDate);
+  }, [holidays]);
+
+  const holidayMap = useMemo(() => {
+    const map = new Map();
+
+    normalizedHolidays.forEach((holiday) => {
+      const cursor = new Date(holiday.startDate);
+
+      while (cursor <= holiday.endDate) {
+        const key = toDateKey(cursor);
+        if (!map.has(key)) {
+          map.set(key, holiday);
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    });
+
+    return map;
+  }, [normalizedHolidays]);
+
+  const countsByCategory = useMemo(
+    () =>
+      normalizedHolidays.reduce(
+        (accumulator, holiday) => {
+          accumulator[holiday.category] += 1;
+          return accumulator;
+        },
+        { standard: 0, branch: 0 }
+      ),
+    [normalizedHolidays]
+  );
+
+  const totalHolidayDays = useMemo(
+    () => normalizedHolidays.reduce((sum, holiday) => sum + holiday.totalDays, 0),
+    [normalizedHolidays]
+  );
+
+  const todayKey = useMemo(() => toDateKey(today), [today]);
+
+  const nextHoliday = useMemo(
+    () => normalizedHolidays.find((holiday) => toDateKey(holiday.endDate) >= todayKey) || null,
+    [normalizedHolidays, todayKey]
+  );
+
+  const daysUntilNext = nextHoliday ? Math.max(0, differenceInDays(today, nextHoliday.startDate)) : null;
+
+  const visibleHolidays = useMemo(() => {
+    const searchValue = search.trim().toLowerCase();
+
+    return normalizedHolidays.filter((holiday) => {
+      const matchesFilter = filter === "all" || holiday.category === filter;
+      const haystack = `${holiday.name} ${holiday.branchName}`.toLowerCase();
+      const matchesSearch = searchValue === "" || haystack.includes(searchValue);
+
+      return matchesFilter && matchesSearch;
+    });
+  }, [filter, normalizedHolidays, search]);
+
+  const monthStart = new Date(calendarYear, calendarMonth, 1);
+  const monthEnd = new Date(calendarYear, calendarMonth + 1, 0);
+
+  const monthHolidays = useMemo(() => {
+    return visibleHolidays.filter((holiday) => holiday.startDate <= monthEnd && holiday.endDate >= monthStart);
+  }, [monthEnd, monthStart, visibleHolidays]);
+
+  const filterTabs = [
+    { key: "all", label: FILTER_CONFIG.all.label, count: normalizedHolidays.length },
+    { key: "branch", label: FILTER_CONFIG.branch.label, count: countsByCategory.branch },
+  ];
+
+  const yearOptions = Array.from(new Set([currentYear + 1, currentYear, currentYear - 1, currentYear - 2])).sort((a, b) => b - a);
+
+  const handleDownloadPdf = async () => {
+    if (!pdfContentRef.current || isDownloadingPdf) return;
+
+    setIsDownloadingPdf(true);
+
+    try {
+      const exportNode = pdfContentRef.current;
+      const clonedElement = exportNode.cloneNode(true);
+      const tempContainer = document.createElement("div");
+
+      tempContainer.style.position = "absolute";
+      tempContainer.style.left = "-9999px";
+      tempContainer.style.top = "-9999px";
+      tempContainer.style.backgroundColor = "#050b18";
+      tempContainer.style.padding = "24px";
+
+      clonedElement.style.width = `${exportNode.offsetWidth}px`;
+      clonedElement.style.height = "auto";
+      clonedElement.style.maxHeight = "none";
+      clonedElement.style.overflow = "visible";
+      clonedElement.style.background = "transparent";
+
+      clonedElement.querySelectorAll("[data-pdf-scroll-area='true']").forEach((element) => {
+        element.style.maxHeight = "none";
+        element.style.height = "auto";
+        element.style.overflow = "visible";
+      });
+
+      tempContainer.appendChild(clonedElement);
+      document.body.appendChild(tempContainer);
+
+      const html2pdfLib = (await import("html2pdf.js")).default;
+      const fileDate = new Date().toISOString().split("T")[0];
+
+      await html2pdfLib()
+        .set({
+          margin: 8,
+          filename: `Staff_Holiday_Calendar_${selectedYear}_${fileDate}.pdf`,
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: {
+            scale: 2,
+            logging: false,
+            backgroundColor: "#050b18",
+            allowTaint: true,
+            useCORS: true,
+          },
+          jsPDF: { orientation: "landscape", unit: "mm", format: "a4" },
+          pagebreak: { mode: ["css", "legacy"] },
+        })
+        .from(clonedElement)
+        .save();
+
+      document.body.removeChild(tempContainer);
+    } catch (error) {
+      console.error("Failed to download holiday PDF", error);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="h-full p-3 sm:p-4">
+        <div className="flex h-full w-full items-center justify-center rounded-[30px] bg-transparent p-6">
+          <div className="staff-glass-card rounded-2xl border border-white/10 px-4 py-10 text-center text-sm text-slate-400">
+            Loading holidays...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 min-h-screen relative">
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -right-[10%] -top-[10%] h-[400px] w-[400px] rounded-full bg-cyan-300/10 blur-[150px]"></div>
-        <div className="absolute -bottom-[10%] -left-[10%] h-[300px] w-[300px] rounded-full bg-purple-300/10 blur-[120px]"></div>
-      </div>
+    <div className="h-full overflow-hidden p-2 sm:p-3">
+      <div ref={pdfContentRef} className="flex h-full w-full min-w-0 flex-col rounded-[30px] bg-transparent p-4 sm:p-5">
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+            className="staff-glass-card shrink-0 rounded-[28px] border border-white/10 px-6 py-5 text-slate-100 sm:px-7"
+          >
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="rounded-2xl border border-cyan-400/15 bg-cyan-400/10 p-3 text-cyan-200">
+                  <CalendarDays className="h-7 w-7" />
+                </div>
+                <div>
+                  <h1 className="font-headline text-3xl font-bold tracking-tight">Holiday Calendar</h1>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Fiscal Year {selectedYear} · {normalizedHolidays.length} scheduled holidays
+                    {nextHoliday ? (
+                      <span className="ml-2 text-slate-300">
+                        · Next: <span className="font-semibold text-white">{nextHoliday.name}</span>
+                        <span className="text-slate-500">
+                          {" "}
+                          ({daysUntilNext === 0 ? "Today!" : `${daysUntilNext}d`})
+                        </span>
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
+              </div>
 
-      <div>
-        {/* Header */}
-        <section className="mb-5 rounded-2xl border border-cyan-300/10 bg-[#070e1b]/80 px-5 py-4 backdrop-blur-xl flex items-center justify-between">
-          <div>
-            <h1 className="font-headline text-xl font-bold tracking-tight text-slate-100">Holidays & Calendar</h1>
-            <p className="mt-0.5 text-xs text-slate-500">{totalDays} days off scheduled for {selectedYear}</p>
-          </div>
-          <select value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} className="rounded-xl border border-white/10 bg-slate-800/80 px-3 py-2 text-xs text-slate-100">
-            {[2026, 2025, 2024].map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </section>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select
+                  value={String(selectedYear)}
+                  onValueChange={(value) => setSelectedYear(Number(value))}
+                >
+                  <SelectTrigger className="h-10 w-[92px] rounded-xl border-white/10 bg-white/5 font-medium text-slate-100 shadow-none hover:bg-white/10 focus:ring-cyan-400/20 data-[placeholder]:text-slate-400">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border border-white/10 bg-slate-950 text-slate-100 shadow-2xl">
+                    {yearOptions.map((year) => (
+                      <SelectItem
+                        key={year}
+                        value={String(year)}
+                        className="rounded-lg text-slate-200 focus:bg-white/10 focus:text-white"
+                      >
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-        {/* Upcoming Cards */}
-        {upcoming.length > 0 && (
-          <section className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-3">
-            {upcoming.map((h, i) => {
-              const s = palette[i % palette.length];
-              const dt = new Date(h.start_date);
-              const diff = Math.ceil((dt - now) / 86400000);
-              return (
-                <article key={h.id} className="staff-glass-card group relative overflow-hidden rounded-2xl p-5 transition duration-300 hover:scale-[1.01]">
-                  <div className={`absolute -right-4 -top-4 h-20 w-20 rounded-full blur-3xl transition-all ${s.glowClass}`}></div>
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.iconClass}`}>
-                      <span className="material-symbols-outlined text-2xl">{s.icon}</span>
-                    </div>
-                    <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${s.tagClass}`}>
-                      {diff > 0 ? `In ${diff} days` : diff === 0 ? "Today!" : "Passed"}
-                    </span>
-                  </div>
-                  <h3 className="font-headline text-base font-bold text-slate-100">{h.name}</h3>
-                  <p className="mt-1 text-xs text-slate-500">{dt.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className={`h-1.5 w-1.5 rounded-full ${s.dotClass}`}></span>
-                    <span className="text-[10px] font-semibold text-slate-300">{h.total_days || 1} Day{(h.total_days || 1) > 1 ? "s" : ""} Off</span>
-                  </div>
-                </article>
-              );
-            })}
-          </section>
-        )}
-
-        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12">
-          {/* Monthly List */}
-          <div className="lg:col-span-8">
-            <div className="staff-glass-card rounded-2xl p-5">
-              <h2 className="mb-5 font-headline text-sm font-bold text-slate-100">{selectedYear} Holiday Calendar</h2>
-              {Object.keys(byMonth).sort((a, b) => a - b).map((m, idx) => {
-                const s = palette[parseInt(m) % palette.length];
-                const isCollapsed = collapsedMonths[m];
-                return (
-                  <section key={m} className="mb-5 last:mb-0">
-                    <div
-                      className="mb-2 flex items-center gap-3 cursor-pointer select-none"
-                      onClick={() => setCollapsedMonths((prev) => ({ ...prev, [m]: !prev[m] }))}
-                    >
-                      <h4 className={`font-headline text-xs font-bold ${s.textClass}`}>{monthNames[m]}</h4>
-                      <div className={`h-px flex-1 bg-gradient-to-r ${s.lineClass} to-transparent`}></div>
-                      <span className="text-[9px] font-bold text-slate-500">{byMonth[m].length} holiday{byMonth[m].length > 1 ? "s" : ""}</span>
-                      <span className={`material-symbols-outlined text-sm text-slate-500 transition-transform ${isCollapsed ? "" : "rotate-180"}`}>expand_less</span>
-                    </div>
-                    {!isCollapsed && (
-                      <div className="space-y-2">
-                        {byMonth[m].map((h, hIdx) => {
-                          const hs = palette[(parseInt(m) + hIdx) % palette.length];
-                          const dt = new Date(h.start_date);
-                          return (
-                            <article key={h.id} className="group flex items-center justify-between gap-3 rounded-xl bg-slate-900/30 p-3 transition hover:bg-slate-800/40">
-                              <div className="flex items-center gap-3">
-                                <div className={`flex h-9 w-9 flex-col items-center justify-center rounded-lg border border-white/10 bg-slate-800/70 transition ${hs.hoverClass}`}>
-                                  <span className="text-[7px] font-bold uppercase text-slate-500">{monthShort[m]}</span>
-                                  <span className="text-xs font-bold leading-none text-slate-100">{dt.getDate()}</span>
-                                </div>
-                                <div>
-                                  <h5 className="text-xs font-semibold text-slate-100">{h.name}</h5>
-                                  <p className="text-[10px] text-slate-500">
-                                    {h.end_date && h.end_date !== h.start_date
-                                      ? `${dt.toLocaleDateString("en-US", { month: "short", day: "numeric" })} — ${new Date(h.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                                      : dt.toLocaleDateString("en-US", { weekday: "long" })}
-                                  </p>
-                                </div>
-                              </div>
-                              <span className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase ${hs.badgeClass}`}>
-                                {h.total_days || 1} Day{(h.total_days || 1) > 1 ? "s" : ""}
-                              </span>
-                            </article>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </section>
-                );
-              })}
-              {Object.keys(byMonth).length === 0 && (
-                <div className="text-center text-slate-500 text-xs py-8">No holidays found for {selectedYear}</div>
-              )}
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  disabled={isDownloadingPdf}
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-white/10"
+                >
+                  <Download className="h-4 w-4" />
+                  {isDownloadingPdf ? "Downloading..." : "Download PDF"}
+                </button>
+              </div>
             </div>
+          </motion.div>
+
+          <div className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-5">
+            <HeroStatCard
+              title="Total Holidays"
+              value={normalizedHolidays.length}
+              subtitle="Scheduled entries this year"
+              icon={CalendarDays}
+              accentClass="bg-sky-400/15 text-sky-200"
+              delay={0.05}
+            />
+            <HeroStatCard
+              title="Holiday Days"
+              value={totalHolidayDays}
+              subtitle="Combined holiday duration"
+              icon={Globe}
+              accentClass="bg-cyan-400/15 text-cyan-200"
+              delay={0.1}
+            />
+            <HeroStatCard
+              title="Week Off"
+              value={staffStats.weekOff}
+              subtitle="Recorded week off days this year"
+              icon={CalendarOff}
+              accentClass="bg-violet-400/15 text-violet-200"
+              delay={0.15}
+            />
+            <HeroStatCard
+              title="Leave Days"
+              value={staffStats.leave}
+              subtitle="Approved leave days this year"
+              icon={FileText}
+              accentClass="bg-amber-400/15 text-amber-200"
+              delay={0.2}
+            />
+            <HeroStatCard
+              title="Next Holiday"
+              value={nextHoliday ? (daysUntilNext === 0 ? "Today!" : `${daysUntilNext}d`) : "—"}
+              subtitle={nextHoliday?.name || "No upcoming holiday"}
+              icon={Clock}
+              accentClass="bg-emerald-400/15 text-emerald-200"
+              delay={0.2}
+            />
           </div>
 
-          {/* Sidebar: Mini Calendar + Legend */}
-          <aside className="space-y-5 lg:col-span-4">
-            {/* Mini Calendar */}
-            <section className="staff-glass-card rounded-2xl p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <h4 className="font-headline text-sm font-bold text-slate-100">{monthNames[calMonth]} {calYear}</h4>
-                <div className="flex gap-1">
-                  <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); } else setCalMonth(calMonth - 1); }}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-cyan-300/10 hover:text-cyan-300">
-                    <span className="material-symbols-outlined text-base">chevron_left</span>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.25, duration: 0.25 }}
+            className="staff-glass-card shrink-0 rounded-2xl border border-white/10 p-3"
+          >
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="relative w-full max-w-sm">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search holidays..."
+                  className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-slate-100 outline-none transition-shadow placeholder:text-slate-500 focus:ring-2 focus:ring-cyan-400/20"
+                />
+              </div>
+
+              <div className="hidden h-7 w-px bg-white/10 lg:block" />
+
+              <div className="flex flex-wrap gap-2">
+                {filterTabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setFilter(tab.key)}
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold tracking-wide transition-all",
+                      filter === tab.key
+                        ? "bg-gradient-to-r from-sky-600 to-cyan-500 text-white shadow-[0_10px_24px_rgba(14,165,233,0.22)]"
+                        : "bg-white/5 text-slate-300 hover:bg-white/10"
+                    )}
+                  >
+                    {tab.label}
+                    <span
+                      className={cn(
+                        "rounded-md px-1.5 py-0.5 text-[10px]",
+                        filter === tab.key ? "bg-white/20 text-white" : "bg-white/10 text-slate-400"
+                      )}
+                    >
+                      {tab.count}
+                    </span>
                   </button>
-                  <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); } else setCalMonth(calMonth + 1); }}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 transition hover:bg-cyan-300/10 hover:text-cyan-300">
-                    <span className="material-symbols-outlined text-base">chevron_right</span>
-                  </button>
-                </div>
+                ))}
               </div>
+            </div>
+          </motion.div>
 
-              <div className="mb-1 grid grid-cols-7 gap-1">
-                {dayLabels.map((d) => <div key={d} className="py-1 text-center text-[9px] font-bold uppercase text-slate-500">{d}</div>)}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {calDays.map((day, i) => {
-                  const base = "aspect-square flex items-center justify-center rounded-lg text-[11px] transition-colors";
-                  if (day.active) return <div key={i} className={`${base} bg-cyan-300 font-bold text-[#070e1b] shadow-[0_0_8px_rgba(0,229,255,0.4)]`}>{day.label}</div>;
-                  if (day.muted) return <div key={i} className={`${base} text-slate-500/30`}>{day.label}</div>;
-                  if (day.holiday) {
-                    const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day.label).padStart(2, "0")}`;
-                    const holIdx = holidays.findIndex((h) => dateStr >= h.start_date && dateStr <= (h.end_date || h.start_date));
-                    const hol = holIdx >= 0 ? holidays[holIdx] : null;
-                    const holColor = palette[(holIdx >= 0 ? holIdx : 0) % palette.length];
-                    return (
-                      <div key={i} className={`${base} relative font-bold ${holColor.textClass} bg-${holColor.color}-300/5 cursor-pointer group/cal`} title={hol?.name || "Holiday"}>
-                        {day.label}
-                        <span className={`absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full ${holColor.dotClass}`}></span>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/cal:block z-50 pointer-events-none">
-                          <div className="rounded-lg bg-[#0D1626] border border-cyan-300/20 px-3 py-2 shadow-lg shadow-cyan-300/10 whitespace-nowrap">
-                            <p className="text-[10px] font-bold text-cyan-300">{hol?.name || "Holiday"}</p>
-                            {hol?.total_days > 1 && <p className="text-[9px] text-slate-400">{hol.total_days} days</p>}
-                          </div>
-                          <div className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 rotate-45 bg-[#0D1626] border-r border-b border-cyan-300/20"></div>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return <div key={i} className={`${base} text-slate-100 hover:bg-cyan-300/5 cursor-pointer`}>{day.label}</div>;
-                })}
-              </div>
-            </section>
+          <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-5">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.35 }}
+              className="min-h-0 lg:col-span-3"
+            >
+              <HolidayCalendarCard
+                year={calendarYear}
+                month={calendarMonth}
+                holidayMap={holidayMap}
+                onMonthChange={(month, year) => {
+                  setCalendarMonth(month);
+                  setCalendarYear(year);
+                  setSelectedYear(year);
+                }}
+              />
+            </motion.div>
 
-            {/* Legend */}
-            <section className="staff-glass-card rounded-2xl p-5">
-              <h4 className="mb-3 font-headline text-sm font-bold text-slate-100">Summary</h4>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-cyan-300"></span>
-                    <span className="text-xs font-medium text-slate-200">Total Holidays</span>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.36, duration: 0.35 }}
+              className="flex min-h-0 flex-col gap-3 lg:col-span-2"
+            >
+              <HolidayListCard
+                holidays={monthHolidays}
+                title={`${MONTHS[calendarMonth]} Holidays`}
+                emptyMessage="No holidays for this month"
+                className="min-h-[195px] flex-[0.92]"
+              />
+              <HolidayListCard
+                holidays={visibleHolidays}
+                title="All Holidays"
+                emptyMessage="No holidays match your search"
+                className="min-h-[220px] flex-[1.05]"
+              />
+              <div className="staff-glass-card shrink-0 rounded-2xl border border-white/10 p-3.5">
+                <h3 className="font-headline text-base font-semibold text-slate-100">Summary</h3>
+                <div className="mt-3 space-y-2.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <CalendarDays className="h-4 w-4 text-sky-300" />
+                      Holiday entries
+                    </div>
+                    <span className="font-semibold text-slate-100">{normalizedHolidays.length}</span>
                   </div>
-                  <span className="font-mono text-sm font-bold text-cyan-300">{holidays.length}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-purple-300"></span>
-                    <span className="text-xs font-medium text-slate-200">Total Days Off</span>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                      Branch-specific holidays
+                    </div>
+                    <span className="font-semibold text-slate-100">{countsByCategory.branch}</span>
                   </div>
-                  <span className="font-mono text-sm font-bold text-purple-300">{totalDays}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-300"></span>
-                    <span className="text-xs font-medium text-slate-200">Upcoming</span>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <CalendarOff className="h-4 w-4 text-violet-300" />
+                      Week off days
+                    </div>
+                    <span className="font-semibold text-slate-100">{staffStats.weekOff}</span>
                   </div>
-                  <span className="font-mono text-sm font-bold text-emerald-300">{upcoming.length}</span>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <FileText className="h-4 w-4 text-amber-300" />
+                      Leave days
+                    </div>
+                    <span className="font-semibold text-slate-100">{staffStats.leave}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <Building2 className="h-4 w-4 text-slate-400" />
+                      Current year
+                    </div>
+                    <span className="font-semibold text-slate-100">{selectedYear}</span>
+                  </div>
                 </div>
               </div>
-            </section>
-
-            {/* Next Holiday */}
-            {upcoming.length > 0 && (
-              <section className="staff-glass-card rounded-2xl border-l-4 border-cyan-300 p-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-300/10 text-cyan-300">
-                    <span className="material-symbols-outlined">event</span>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-100">{upcoming[0].name}</p>
-                    <p className="text-[10px] text-slate-500">
-                      {new Date(upcoming[0].start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      {" — "}
-                      {Math.ceil((new Date(upcoming[0].start_date) - now) / 86400000)} days away
-                    </p>
-                  </div>
-                </div>
-              </section>
-            )}
-          </aside>
+            </motion.div>
+          </div>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attendance;
 use App\Models\AttendanceLog;
 use App\Models\Employee;
 use App\Models\EmployeeLeaves;
@@ -33,9 +34,29 @@ class StaffStatsController extends Controller
         }
 
         $now = Carbon::now();
-        $monthStart = $now->copy()->startOfMonth()->format('Y-m-d');
-        $monthEnd = $now->format('Y-m-d');
-        $todayDay = $now->day;
+        $period = strtolower((string) $request->input('period', 'month'));
+        $selectedYear = (int) $request->input('year', $now->year);
+        $isYearly = $period === 'year';
+
+        $rangeStart = $isYearly
+            ? Carbon::create($selectedYear, 1, 1)->startOfDay()
+            : $now->copy()->startOfMonth()->startOfDay();
+
+        if ($isYearly) {
+            if ($selectedYear > (int) $now->year) {
+                $rangeEnd = Carbon::create($selectedYear, 12, 31)->endOfDay();
+            } elseif ($selectedYear === (int) $now->year) {
+                $rangeEnd = $now->copy()->endOfDay();
+            } else {
+                $rangeEnd = Carbon::create($selectedYear, 12, 31)->endOfDay();
+            }
+        } else {
+            $rangeEnd = $now->copy()->endOfDay();
+        }
+
+        $rangeStartDate = $rangeStart->toDateString();
+        $rangeEndDate = $rangeEnd->toDateString();
+        $todayDay = max(1, $rangeStart->copy()->diffInDays($rangeEnd) + 1);
 
         // Get shift info
         $employee = Employee::where('system_user_id', $sysUserId)
@@ -56,11 +77,63 @@ class StaffStatsController extends Controller
         $workingHours = $shift?->working_hours;
         $lateGrace = $shift?->late_time ?? '00:15';
 
+        if ($isYearly) {
+            $attendanceRecords = Attendance::where('company_id', $companyId)
+                ->where('employee_id', $sysUserId)
+                ->whereBetween('date', [$rangeStartDate, $rangeEndDate])
+                ->get(['date', 'status', 'late_coming', 'early_going', 'total_hrs']);
+
+            $presentDays = $attendanceRecords->filter(fn($attendance) => in_array($attendance->status, ['P', 'LC', 'EG', 'ME']))->count();
+            $absentDays = $attendanceRecords->where('status', 'A')->count();
+            $lateDays = $attendanceRecords->filter(fn($attendance) => !empty($attendance->late_coming) && $attendance->late_coming !== '---')->count();
+            $earlyOutDays = $attendanceRecords->filter(fn($attendance) => !empty($attendance->early_going) && $attendance->early_going !== '---')->count();
+            $holidayDays = $attendanceRecords->where('status', 'H')->count();
+            $weekOffDays = $attendanceRecords->where('status', 'O')->count();
+            $totalWorkMins = $attendanceRecords->reduce(function ($minutes, $attendance) {
+                return $minutes + $this->timeToMinutes($attendance->total_hrs ?? '0:00');
+            }, 0);
+
+            $leaveDays = 0;
+            if ($employee) {
+                $leaves = EmployeeLeaves::where('employee_id', $employee->id)
+                    ->where('company_id', $companyId)
+                    ->where('status', 1)
+                    ->where(function ($q) use ($rangeStartDate, $rangeEndDate) {
+                        $q->where('start_date', '<=', $rangeEndDate)
+                            ->where('end_date', '>=', $rangeStartDate);
+                    })
+                    ->get();
+
+                foreach ($leaves as $leave) {
+                    $start = Carbon::parse($leave->start_date)->max($rangeStart);
+                    $end = Carbon::parse($leave->end_date)->min($rangeEnd);
+                    $leaveDays += $start->diffInDays($end) + 1;
+                }
+            }
+
+            return response()->json([
+                'present' => $presentDays,
+                'absent' => $absentDays,
+                'late' => $lateDays,
+                'early_out' => $earlyOutDays,
+                'leave' => $leaveDays,
+                'holiday' => $holidayDays,
+                'week_off' => $weekOffDays,
+                'overtime' => '0:00',
+                'total_work_hours' => round($totalWorkMins / 60, 1),
+                'incomplete' => 0,
+                'total_days' => $todayDay,
+                'shift_name' => $shift?->name,
+                'on_duty_time' => $onDutyTime,
+                'off_duty_time' => $offDutyTime,
+            ]);
+        }
+
         // Get raw logs this month
         $logs = AttendanceLog::where('UserID', $sysUserId)
             ->where('company_id', $companyId)
-            ->where('LogTime', '>=', $monthStart)
-            ->where('LogTime', '<=', $monthEnd . ' 23:59:59')
+            ->where('LogTime', '>=', $rangeStartDate)
+            ->where('LogTime', '<=', $rangeEndDate . ' 23:59:59')
             ->orderBy('LogTime')
             ->get();
 
@@ -126,29 +199,29 @@ class StaffStatsController extends Controller
             $leaves = EmployeeLeaves::where('employee_id', $employee->id)
                 ->where('company_id', $companyId)
                 ->where('status', 1) // approved
-                ->where(function ($q) use ($monthStart, $monthEnd) {
-                    $q->where('start_date', '<=', $monthEnd)
-                      ->where('end_date', '>=', $monthStart);
+                ->where(function ($q) use ($rangeStartDate, $rangeEndDate) {
+                    $q->where('start_date', '<=', $rangeEndDate)
+                      ->where('end_date', '>=', $rangeStartDate);
                 })
                 ->get();
 
             foreach ($leaves as $leave) {
-                $start = Carbon::parse($leave->start_date)->max(Carbon::parse($monthStart));
-                $end = Carbon::parse($leave->end_date)->min(Carbon::parse($monthEnd));
+                $start = Carbon::parse($leave->start_date)->max($rangeStart);
+                $end = Carbon::parse($leave->end_date)->min($rangeEnd);
                 $leaveDays += $start->diffInDays($end) + 1;
             }
         }
 
         // Holidays this month
         $holidayDays = Holidays::where('company_id', $companyId)
-            ->where(function ($q) use ($monthStart, $monthEnd) {
-                $q->where('start_date', '<=', $monthEnd)
-                  ->where('end_date', '>=', $monthStart);
+            ->where(function ($q) use ($rangeStartDate, $rangeEndDate) {
+                $q->where('start_date', '<=', $rangeEndDate)
+                  ->where('end_date', '>=', $rangeStartDate);
             })
             ->get()
-            ->sum(function ($h) use ($monthStart, $monthEnd) {
-                $start = Carbon::parse($h->start_date)->max(Carbon::parse($monthStart));
-                $end = Carbon::parse($h->end_date)->min(Carbon::parse($monthEnd));
+            ->sum(function ($h) use ($rangeStart, $rangeEnd) {
+                $start = Carbon::parse($h->start_date)->max($rangeStart);
+                $end = Carbon::parse($h->end_date)->min($rangeEnd);
                 return $start->diffInDays($end) + 1;
             });
 
@@ -161,7 +234,7 @@ class StaffStatsController extends Controller
                 if (isset($dayMap[$d])) $shiftDayNums[] = $dayMap[$d];
             }
             for ($d = 1; $d <= $todayDay; $d++) {
-                $dayOfWeek = Carbon::parse("$monthStart")->addDays($d - 1)->dayOfWeek;
+                $dayOfWeek = $rangeStart->copy()->addDays($d - 1)->dayOfWeek;
                 if (!in_array($dayOfWeek, $shiftDayNums)) {
                     $weekOffDays++;
                 }

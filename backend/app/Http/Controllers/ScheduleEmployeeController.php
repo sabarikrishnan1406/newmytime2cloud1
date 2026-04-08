@@ -43,7 +43,11 @@ class ScheduleEmployeeController extends Controller
                 $q->whereIn('department_id', request("department_ids"));
             })
 
-            ->with(["schedule.shift:id,name"]);
+            ->with([
+                "schedule.shift" => function ($q) use ($request) {
+                    $q->where('company_id', $request->company_id);
+                }
+            ]);
 
         $model->with([
             'schedule_active.shift' => function ($q) use ($request) {
@@ -96,7 +100,11 @@ class ScheduleEmployeeController extends Controller
         //$model->has('schedule_active.shift_type_id', '>', 2);
 
         $model->with(["schedule_all" => function ($q) use ($request) {
-            $q->where("company_id", $request->company_id)->with('shift:id,name');
+            $q->where("company_id", $request->company_id)->with([
+                "shift" => function ($shiftQuery) use ($request) {
+                    $shiftQuery->where('company_id', $request->company_id);
+                }
+            ]);
         }]);
 
         if ($request->filled('schedules_count')) {
