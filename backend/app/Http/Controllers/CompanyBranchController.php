@@ -9,6 +9,7 @@ use App\Models\CompanyBranch;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\ReverseGeocodeService;
 
 class CompanyBranchController extends Controller
 {
@@ -101,6 +102,29 @@ class CompanyBranchController extends Controller
             return $this->response("Branch limit exceeded. Maximum limit is " . $max_branches, null, false);
         }
 
+        // Auto-detect country and timezone from latitude/longitude
+        if (!empty($data['lat']) && !empty($data['lon'])) {
+            $geoService = new ReverseGeocodeService();
+            
+            // Auto-detect country if not provided
+            if (empty($data['country'])) {
+                $country = $geoService->getCountryCode($data['lat'], $data['lon']);
+                if ($country) {
+                    $data['country'] = $country;
+                    \Log::info("✅ Auto-detected country: $country for branch: " . $data['branch_name']);
+                }
+            }
+            
+            // Auto-detect timezone if not provided
+            if (empty($data['timezone'])) {
+                $timezone = $geoService->getTimezone($data['lat'], $data['lon']);
+                if ($timezone) {
+                    $data['timezone'] = $timezone;
+                    \Log::info("✅ Auto-detected timezone: $timezone for branch: " . $data['branch_name']);
+                }
+            }
+        }
+
         if (isset($request->logo)) {
             $file = $request->file('logo');
             $ext = $file->getClientOriginalExtension();
@@ -126,8 +150,28 @@ class CompanyBranchController extends Controller
     {
         $data = $request->validated();
 
-
-
+        // Auto-detect country and timezone from latitude/longitude
+        if (!empty($data['lat']) && !empty($data['lon'])) {
+            $geoService = new ReverseGeocodeService();
+            
+            // Auto-detect country if not provided
+            if (empty($data['country'])) {
+                $country = $geoService->getCountryCode($data['lat'], $data['lon']);
+                if ($country) {
+                    $data['country'] = $country;
+                    \Log::info("✅ Auto-detected country: $country for branch: " . $data['branch_name']);
+                }
+            }
+            
+            // Auto-detect timezone if not provided
+            if (empty($data['timezone'])) {
+                $timezone = $geoService->getTimezone($data['lat'], $data['lon']);
+                if ($timezone) {
+                    $data['timezone'] = $timezone;
+                    \Log::info("✅ Auto-detected timezone: $timezone for branch: " . $data['branch_name']);
+                }
+            }
+        }
 
         CompanyBranch::where("user_id", $data['user_id'])->update(["user_id" => 0]);
 
@@ -155,12 +199,33 @@ class CompanyBranchController extends Controller
     public function updateGeoFencing(Request $request, $id)
     {
         try {
-            $record = CompanyBranch::where("id", $id)->update([
+            $updateData = [
                 "lat" => $request->lat,
                 "lon" => $request->lon,
                 "geofence_enabled" => $request->geofence_enabled,
                 "geofence_radius_meter" => $request->geofence_radius_meter,
-            ]);
+            ];
+
+            // Auto-detect country and timezone from new coordinates
+            if (!empty($request->lat) && !empty($request->lon)) {
+                $geoService = new ReverseGeocodeService();
+                
+                // Auto-detect country
+                $country = $geoService->getCountryCode($request->lat, $request->lon);
+                if ($country) {
+                    $updateData['country'] = $country;
+                    \Log::info("✅ Auto-detected country: $country for geofencing update");
+                }
+                
+                // Auto-detect timezone
+                $timezone = $geoService->getTimezone($request->lat, $request->lon);
+                if ($timezone) {
+                    $updateData['timezone'] = $timezone;
+                    \Log::info("✅ Auto-detected timezone: $timezone for geofencing update");
+                }
+            }
+
+            $record = CompanyBranch::where("id", $id)->update($updateData);
 
             if ($record) {
                 return $this->response('Branch successfully updated.', null, true);

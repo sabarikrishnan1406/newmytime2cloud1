@@ -5,14 +5,12 @@ import { motion } from "framer-motion";
 import {
   Building2,
   CalendarDays,
-  CalendarOff,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
   Clock,
   Download,
-  FileText,
   Globe,
   Search,
 } from "lucide-react";
@@ -41,7 +39,8 @@ const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const FILTER_CONFIG = {
   all: { label: "All Holidays" },
-  branch: { label: "Branch" },
+  assign_leave: { label: "Assign Leave" },
+  government: { label: "Government Leave" },
 };
 
 function matchesEmployeeRecord(employee, identifiers) {
@@ -141,17 +140,30 @@ function buildCalendarDays(year, month, holidayMap) {
   return cells;
 }
 
-function getHolidayCategory(holiday) {
-  if (holiday.branchName) return "branch";
-  return "standard";
+function getHolidayCategory(item) {
+  // Check if it's a government holiday (from API - no branch relationship)
+  // vs assigned holiday (has branch relationship)
+  if (item.type === 'government' || item.country_code) {
+    return "government";
+  }
+  if (item.branchName || item.branch) {
+    return "assign_leave";
+  }
+  // Default to government if no branch specified
+  return "government";
 }
 
 function getHolidayTone(holiday) {
   switch (holiday.category) {
-    case "branch":
+    case "assign_leave":
       return {
         badge: "border border-emerald-400/20 bg-emerald-400/15 text-emerald-200",
         dot: "bg-emerald-500",
+      };
+    case "government":
+      return {
+        badge: "border border-blue-400/20 bg-blue-400/15 text-blue-200",
+        dot: "bg-blue-500",
       };
     default:
       return {
@@ -362,10 +374,81 @@ export default function StaffHolidaysPage() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-  const [staffStats, setStaffStats] = useState({
-    leave: 0,
-    weekOff: 0,
-  });
+  const [branchCountry, setBranchCountry] = useState(null);
+  const [branchId, setBranchId] = useState(null);
+
+  // Fetch employee's branch to get country information
+  useEffect(() => {
+    let ignore = false;
+
+    const fetchEmployeeBranch = async () => {
+      try {
+        const staffUser = await getStaffUser();
+        const params = await buildQueryParams({});
+        const result = await api.get("/employees_with_schedule_count", { params: { ...params, per_page: 500 } });
+
+        const employees = result?.data?.data || [];
+        const employeeIdentifiers = [
+          staffUser?.id,
+          staffUser?.employee_id,
+          staffUser?.system_user_id,
+        ].filter((value) => value !== undefined && value !== null && value !== "");
+
+        const employeeRecord = employees.find((employee) => matchesEmployeeRecord(employee, employeeIdentifiers));
+
+        if (employeeRecord?.branch_id) {
+          if (!ignore) {
+            setBranchId(employeeRecord.branch_id);
+            
+            let countryCode = null;
+
+            // Method 1: Fetch branches list with company_id + branch_id
+            try {
+              console.log("📍 Fetching branch country for branch_id:", employeeRecord.branch_id);
+              console.log("📍 Using company_id:", params.company_id);
+              
+              const branchesResult = await api.get("/branches_list", {
+                params: { 
+                  company_id: params.company_id,
+                  branch_id: employeeRecord.branch_id
+                }
+              });
+              
+              console.log("📍 Raw response:", branchesResult);
+              const branches = Array.isArray(branchesResult?.data) ? branchesResult.data : [];
+              console.log("📍 Parsed branches:", branches);
+              
+              if (branches.length > 0) {
+                const branch = branches[0];
+                console.log("📍 Branch object:", branch);
+                countryCode = branch?.country;
+                if (countryCode) {
+                  console.log("✅ SUCCESS - Found country code:", countryCode, "for branch:", branch?.id);
+                }
+              }
+            } catch (error) {
+              console.error("❌ Branches list error:", error?.response?.status, error?.response?.data || error.message);
+            }
+
+            if (countryCode) {
+              setBranchCountry(countryCode);
+              console.log("✅ Branch Country set to:", countryCode);
+            } else {
+              console.warn("❌ Could not determine branch country");
+            }
+          }
+        }
+      } catch (error) {
+        console.warn("Failed to fetch employee branch", error);
+      }
+    };
+
+    fetchEmployeeBranch();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   useEffect(() => {
     const fetchHolidays = async () => {
@@ -373,11 +456,59 @@ export default function StaffHolidaysPage() {
 
       try {
         const params = await buildQueryParams({});
-        const { data } = await api.get("/holidays", {
-          params: { ...params, per_page: 200, year: selectedYear },
+        
+        // Fetch branch-assigned holidays
+        const queryParams = { ...params, per_page: 200, year: selectedYear };
+        if (branchId) {
+          queryParams.branch_id = branchId;
+        }
+        
+        const { data: holidayData } = await api.get("/holidays", {
+          params: queryParams,
         });
 
-        setHolidays(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
+        let allHolidays = Array.isArray(holidayData?.data) ? holidayData.data : Array.isArray(holidayData) ? holidayData : [];
+
+        // Fetch government holidays by country code if branch country is available
+        if (branchCountry) {
+          try {
+            // Country is already stored as code (e.g., "AE", "IN", "GB")
+            const countryCode = branchCountry.toUpperCase().trim();
+
+            console.log("Fetching government holidays for country code:", countryCode);
+
+            const { data: govData } = await api.get("/government-holidays", {
+              params: {
+                ...params,
+                country_code: countryCode,
+                year: selectedYear,
+              },
+            });
+
+            console.log("Government holidays response status:", govData?.success);
+            console.log("Government holidays response:", govData);
+
+            if (govData?.success && govData?.data && govData.data.length > 0) {
+              // Combine government holidays with branch holidays
+              allHolidays = [...allHolidays, ...govData.data];
+              console.log("✅ Successfully added", govData.data.length, "government holidays");
+            } else if (!govData?.success) {
+              console.warn("⚠️ Government holidays API returned error:", govData?.message);
+            } else {
+              console.log("ℹ️ No government holidays returned for", countryCode);
+            }
+          } catch (error) {
+            console.error("❌ Failed to fetch government holidays:", error.response?.status, error.message);
+            if (error.response?.data) {
+              console.error("Response data:", error.response.data);
+            }
+            // Continue with branch holidays only
+          }
+        } else {
+          console.log("⚠️ No branch country available, skipping government holidays");
+        }
+
+        setHolidays(allHolidays);
       } catch (error) {
         console.warn("Failed to fetch holidays", error);
         setHolidays([]);
@@ -386,80 +517,9 @@ export default function StaffHolidaysPage() {
       }
     };
 
+    // Fetch holidays whenever year or branch country changes
     fetchHolidays();
-  }, [selectedYear]);
-
-  useEffect(() => {
-    let ignore = false;
-
-    const fetchStaffStats = async () => {
-      try {
-        const staffUser = await getStaffUser();
-        const params = await buildQueryParams({});
-        const [meResult, employeeResult] = await Promise.allSettled([
-          api.get("/me"),
-          api.get("/employees_with_schedule_count", { params: { ...params, per_page: 500 } }),
-        ]);
-
-        const me = meResult.status === "fulfilled" ? meResult.value?.data?.user : null;
-        const employees = employeeResult.status === "fulfilled" ? employeeResult.value?.data?.data || [] : [];
-        const employeeIdentifiers = [
-          staffUser?.id,
-          staffUser?.employee_id,
-          staffUser?.system_user_id,
-          me?.id,
-          me?.employee_id,
-          me?.system_user_id,
-          me?.employee_code,
-        ].filter((value) => value !== undefined && value !== null && value !== "");
-        const employeeRecord = employees.find((employee) => matchesEmployeeRecord(employee, employeeIdentifiers)) || null;
-
-        const resolvedSystemUserId =
-          me?.system_user_id ||
-          employeeRecord?.system_user_id ||
-          staffUser?.system_user_id ||
-          staffUser?.employee_id;
-
-        const resolvedUserId =
-          staffUser?.id ||
-          me?.id ||
-          employeeRecord?.user_id ||
-          null;
-
-        if (!resolvedSystemUserId) {
-          return;
-        }
-
-        const { data } = await api.get("/staff-stats", {
-          params: {
-            ...params,
-            period: "year",
-            year: selectedYear,
-            system_user_id: resolvedSystemUserId,
-            user_id: resolvedUserId,
-          },
-        });
-
-        if (ignore) return;
-
-        setStaffStats({
-          leave: Number(data?.leave || 0),
-          weekOff: Number(data?.week_off || 0),
-        });
-      } catch (error) {
-        if (!ignore) {
-          console.warn("Failed to fetch holiday staff stats", error);
-          setStaffStats({ leave: 0, weekOff: 0 });
-        }
-      }
-    };
-
-    fetchStaffStats();
-
-    return () => {
-      ignore = true;
-    };
-  }, [selectedYear]);
+  }, [selectedYear, branchId, branchCountry]);
 
   useEffect(() => {
     setCalendarYear(selectedYear);
@@ -485,6 +545,8 @@ export default function StaffHolidaysPage() {
           date: toDateKey(startDate),
           totalDays,
           branchName,
+          type: holiday.type, // Include type for government vs branch distinction
+          country_code: holiday.country_code, // Include country code
           category: "",
         };
       })
@@ -521,13 +583,21 @@ export default function StaffHolidaysPage() {
           accumulator[holiday.category] += 1;
           return accumulator;
         },
-        { standard: 0, branch: 0 }
+        { assign_leave: 0, government: 0 }
       ),
     [normalizedHolidays]
   );
 
   const totalHolidayDays = useMemo(
     () => normalizedHolidays.reduce((sum, holiday) => sum + holiday.totalDays, 0),
+    [normalizedHolidays]
+  );
+
+  // Calculate only branch-assigned holiday days (assign_leave)
+  const assignBranchHolidayDays = useMemo(
+    () => normalizedHolidays
+      .filter(holiday => holiday.category === 'assign_leave')
+      .reduce((sum, holiday) => sum + holiday.totalDays, 0),
     [normalizedHolidays]
   );
 
@@ -561,7 +631,8 @@ export default function StaffHolidaysPage() {
 
   const filterTabs = [
     { key: "all", label: FILTER_CONFIG.all.label, count: normalizedHolidays.length },
-    { key: "branch", label: FILTER_CONFIG.branch.label, count: countsByCategory.branch },
+    { key: "assign_leave", label: FILTER_CONFIG.assign_leave.label, count: countsByCategory.assign_leave },
+    { key: "government", label: FILTER_CONFIG.government.label, count: countsByCategory.government },
   ];
 
   const yearOptions = Array.from(new Set([currentYear + 1, currentYear, currentYear - 1, currentYear - 2])).sort((a, b) => b - a);
@@ -656,7 +727,12 @@ export default function StaffHolidaysPage() {
                 <div>
                   <h1 className="font-headline text-3xl font-bold tracking-tight">Holiday Calendar</h1>
                   <p className="mt-1 text-sm text-slate-400">
-                    Fiscal Year {selectedYear} · {normalizedHolidays.length} scheduled holidays
+                    Fiscal Year {selectedYear} · {totalHolidayDays} holiday day{totalHolidayDays === 1 ? "" : "s"}
+                    {branchCountry && (
+                      <span className="ml-2 text-slate-300">
+                        · Country: <span className="font-semibold text-white">{branchCountry}</span>
+                      </span>
+                    )}
                     {nextHoliday ? (
                       <span className="ml-2 text-slate-300">
                         · Next: <span className="font-semibold text-white">{nextHoliday.name}</span>
@@ -704,38 +780,30 @@ export default function StaffHolidaysPage() {
             </div>
           </motion.div>
 
-          <div className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-5">
+          <div className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-4">
             <HeroStatCard
-              title="Total Holidays"
-              value={normalizedHolidays.length}
-              subtitle="Scheduled entries this year"
+              title="Total Holiday Days"
+              value={totalHolidayDays}
+              subtitle="Combined holiday days this year"
               icon={CalendarDays}
               accentClass="bg-sky-400/15 text-sky-200"
               delay={0.05}
             />
             <HeroStatCard
-              title="Holiday Days"
-              value={totalHolidayDays}
-              subtitle="Combined holiday duration"
+              title="Your Branch Holiday Days"
+              value={assignBranchHolidayDays}
+              subtitle="Holiday days assigned to your branch"
               icon={Globe}
               accentClass="bg-cyan-400/15 text-cyan-200"
               delay={0.1}
             />
             <HeroStatCard
-              title="Week Off"
-              value={staffStats.weekOff}
-              subtitle="Recorded week off days this year"
-              icon={CalendarOff}
-              accentClass="bg-violet-400/15 text-violet-200"
+              title="Government Leave"
+              value={countsByCategory.government}
+              subtitle="Government holidays this year"
+              icon={Globe}
+              accentClass="bg-blue-400/15 text-blue-200"
               delay={0.15}
-            />
-            <HeroStatCard
-              title="Leave Days"
-              value={staffStats.leave}
-              subtitle="Approved leave days this year"
-              icon={FileText}
-              accentClass="bg-amber-400/15 text-amber-200"
-              delay={0.2}
             />
             <HeroStatCard
               title="Next Holiday"
@@ -838,31 +906,33 @@ export default function StaffHolidaysPage() {
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2 text-slate-400">
                       <CalendarDays className="h-4 w-4 text-sky-300" />
-                      Holiday entries
+                      Total holiday days
                     </div>
-                    <span className="font-semibold text-slate-100">{normalizedHolidays.length}</span>
+                    <span className="font-semibold text-slate-100">{totalHolidayDays}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2 text-slate-400">
                       <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                      Branch-specific holidays
+                      Your branch holiday days
                     </div>
-                    <span className="font-semibold text-slate-100">{countsByCategory.branch}</span>
+                    <span className="font-semibold text-slate-100">{assignBranchHolidayDays}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2 text-slate-400">
-                      <CalendarOff className="h-4 w-4 text-violet-300" />
-                      Week off days
+                      <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                      Government leave
                     </div>
-                    <span className="font-semibold text-slate-100">{staffStats.weekOff}</span>
+                    <span className="font-semibold text-slate-100">{countsByCategory.government}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2 text-slate-400">
-                      <FileText className="h-4 w-4 text-amber-300" />
-                      Leave days
+                  {branchCountry && (
+                    <div className="flex items-center justify-between text-sm border-t border-white/10 pt-2.5 mt-2.5">
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <Globe className="h-4 w-4 text-cyan-300" />
+                        Branch country
+                      </div>
+                      <span className="font-semibold text-slate-100">{branchCountry}</span>
                     </div>
-                    <span className="font-semibold text-slate-100">{staffStats.leave}</span>
-                  </div>
+                  )}
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2 text-slate-400">
                       <Building2 className="h-4 w-4 text-slate-400" />

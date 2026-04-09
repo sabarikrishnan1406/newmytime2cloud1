@@ -1,76 +1,34 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
-  CalendarCheck,
-  CalendarOff,
+  Briefcase,
+  Building2,
   ChevronLeft,
   ChevronRight,
-  Clock,
-  Cloud,
-  Coffee,
-  Moon,
-  Sun,
-  TrendingUp,
+  Clock3,
+  MapPin,
+  Navigation,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { API_BASE, api, buildQueryParams } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { getStaffUser } from "@/lib/staff-user";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const FULL_DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DEFAULT_WORKING_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
 const SHIFT_LABELS = {
   morning: "Morning",
   afternoon: "Afternoon",
   night: "Night",
-  off: "Off",
-};
-
-const SHIFT_COLORS = {
-  morning: "#f59e0b",
-  afternoon: "#38bdf8",
-  night: "#8b5cf6",
-  off: "#475569",
-};
-
-const SHIFT_STYLES = {
-  morning: {
-    pill: "border-amber-400/20 bg-amber-400/15 text-amber-200",
-    icon: Sun,
-  },
-  afternoon: {
-    pill: "border-sky-400/20 bg-sky-400/15 text-sky-200",
-    icon: Cloud,
-  },
-  night: {
-    pill: "border-violet-400/20 bg-violet-400/15 text-violet-200",
-    icon: Moon,
-  },
-  off: {
-    pill: "border-white/10 bg-slate-800 text-slate-300",
-    icon: Coffee,
-  },
+  off: "Off Day",
 };
 
 function getInitials(name) {
   if (!name) return "ST";
+
   return name
     .split(" ")
     .filter(Boolean)
@@ -82,6 +40,7 @@ function getInitials(name) {
 function getProfileImageUrl(profilePicture) {
   if (!profilePicture) return null;
   if (String(profilePicture).startsWith("http")) return profilePicture;
+
   const mediaBase = API_BASE.replace(/\/api$/, "");
   return `${mediaBase}/media/employee/profile_picture/${profilePicture}`;
 }
@@ -123,8 +82,10 @@ function getWeekStart(baseDate, offset = 0) {
   const date = new Date(baseDate);
   const day = date.getDay();
   const mondayOffset = day === 0 ? -6 : 1 - day;
+
   date.setDate(date.getDate() + mondayOffset + offset * 7);
   date.setHours(0, 0, 0, 0);
+
   return date;
 }
 
@@ -132,6 +93,14 @@ function addDays(date, count) {
   const next = new Date(date);
   next.setDate(next.getDate() + count);
   return next;
+}
+
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 
 function formatWeekRange(baseDate, offset = 0) {
@@ -149,12 +118,9 @@ function formatWeekRange(baseDate, offset = 0) {
     : `${startMonth} ${startDay} - ${endMonth} ${endDay}, ${year}`;
 }
 
-function formatShortDate(date) {
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
 function normalizeDayLabel(day) {
   if (!day) return null;
+
   const value = String(day).trim().slice(0, 3).toLowerCase();
   const match = DAY_LABELS.find((label) => label.toLowerCase() === value);
   return match || null;
@@ -205,24 +171,6 @@ function formatTimeLabel(timeValue) {
   return `${displayHours}:${String(mins).padStart(2, "0")} ${suffix}`;
 }
 
-function getShiftHours(shift) {
-  const workingHours = shift?.working_hours;
-  if (workingHours && typeof workingHours === "string" && workingHours.includes(":")) {
-    const [hoursPart, minutesPart] = workingHours.split(":").map((chunk) => Number(chunk));
-    if (!Number.isNaN(hoursPart) && !Number.isNaN(minutesPart)) {
-      return Number((hoursPart + minutesPart / 60).toFixed(1));
-    }
-  }
-
-  const start = parseTimeToMinutes(shift?.on_duty_time);
-  const end = parseTimeToMinutes(shift?.off_duty_time);
-
-  if (start === null || end === null) return 8;
-
-  const duration = end >= start ? end - start : 24 * 60 - start + end;
-  return Number((duration / 60).toFixed(1));
-}
-
 function getShiftType(shift) {
   if (!shift) return "off";
 
@@ -240,12 +188,75 @@ function getShiftType(shift) {
   return "night";
 }
 
-function buildWeeklyShifts(shift, branchName, weekOffset) {
+function getShiftDisplayLabel(shift, shiftType) {
+  if (!shift?.name) return SHIFT_LABELS[shiftType] || "Shift";
+
+  return String(shift.name)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function formatBranchLocation(branch) {
+  const parts = [branch?.area, branch?.city, branch?.country].filter(Boolean);
+  return parts.length ? parts.join(", ") : branch?.branch_name || "---";
+}
+
+function resolveLocationValue(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object") {
+    return value.name || value.title || value.branch_name || value.city || value.area || "";
+  }
+  return "";
+}
+
+function parseCoordinate(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function parseRadiusValue(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 200;
+}
+
+function getGeoFenceConfig(branch, geoFenceBranch, employeeGeoFence, fallbackLocation) {
+  const hasEmployeeGeoFence = Boolean(employeeGeoFence?.geo_fencing_enabled);
+  const source = hasEmployeeGeoFence ? employeeGeoFence : geoFenceBranch || branch;
+  if (!source) return null;
+
+  const latitude = parseCoordinate(source?.lat ?? source?.latitude ?? source?.lat_dd);
+  const longitude = parseCoordinate(source?.lon ?? source?.lng ?? source?.long ?? source?.longitude ?? source?.lon_dd);
+  const isEnabled = hasEmployeeGeoFence ? true : geoFenceBranch ? true : Boolean(source?.geofence_enabled);
+
+  if (!isEnabled || latitude === null || longitude === null) {
+    return null;
+  }
+
+  return {
+    latitude,
+    longitude,
+    radius: parseRadiusValue(source?.geofence_radius_meter ?? source?.radius),
+    branchName: branch?.branch_name || geoFenceBranch?.branch_name || source?.branch_name || "---",
+    location:
+      source?.name ||
+      formatBranchLocation(geoFenceBranch || branch) ||
+      formatBranchLocation(source) ||
+      fallbackLocation ||
+      branch?.branch_name ||
+      "---",
+  };
+}
+
+function buildWeeklyShifts(shift, branchName, location, weekOffset) {
   const weekStart = getWeekStart(new Date(), weekOffset);
   const normalizedDays = (shift?.days || []).map(normalizeDayLabel).filter(Boolean);
   const activeDays = normalizedDays.length ? normalizedDays : shift ? DEFAULT_WORKING_DAYS : [];
   const shiftType = getShiftType(shift);
-  const hours = shift ? getShiftHours(shift) : 0;
+  const shiftLabel = getShiftDisplayLabel(shift, shiftType);
   const start = shift ? formatTimeLabel(shift.on_duty_time) : "-";
   const end = shift ? formatTimeLabel(shift.off_duty_time) : "-";
   const todayToken = new Date().toDateString();
@@ -257,33 +268,59 @@ function buildWeeklyShifts(shift, branchName, weekOffset) {
     const currentShiftType = isWorkingDay ? shiftType : "off";
 
     return {
-      key: `${currentDate.toISOString()}-${shortDay}`,
+      key: `${formatDateKey(currentDate)}-${shortDay}`,
+      dateKey: formatDateKey(currentDate),
       day: shortDay,
-      fullDay: FULL_DAY_LABELS[currentDate.getDay()],
-      dateLabel: formatShortDate(currentDate),
+      monthLabel: currentDate.toLocaleDateString("en-US", {
+        month: "short",
+      }),
+      weekdayYearLabel: `${shortDay} ${currentDate.getFullYear()}`,
       dateNumber: currentDate.getDate(),
       isToday: currentDate.toDateString() === todayToken,
       type: currentShiftType,
       shiftName: isWorkingDay ? shift?.name || SHIFT_LABELS[currentShiftType] : "Day Off",
+      shiftLabel: isWorkingDay ? shiftLabel : "Off Day",
       start,
       end,
-      hours: isWorkingDay ? hours : 0,
-      location: branchName || "---",
+      location: isWorkingDay ? location || branchName || "---" : "—",
+      branchName: branchName || "---",
     };
   });
 }
 
-function formatHours(value) {
-  if (!value) return "0h";
-  const hasDecimal = Math.abs(value % 1) > 0;
-  return `${hasDecimal ? value.toFixed(1) : value.toFixed(0)}h`;
+function getStatusMeta(shift) {
+  if (shift.isToday && shift.type === "off") {
+    return {
+      label: "Today · Off",
+      className: "border border-amber-400/20 bg-amber-400/10 text-amber-200",
+    };
+  }
+
+  if (shift.isToday) {
+    return {
+      label: "Today",
+      className: "border border-cyan-400/20 bg-cyan-400/10 text-cyan-200",
+    };
+  }
+
+  if (shift.type === "off") {
+    return {
+      label: "Off Day",
+      className: "border border-white/10 bg-white/[0.04] text-slate-400",
+    };
+  }
+
+  return {
+    label: "Scheduled",
+    className: "border border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
+  };
 }
 
 function ProfileAvatar({ name, imageUrl }) {
   const initials = getInitials(name);
 
   return (
-    <div className="h-12 w-12 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70 shadow-[0_10px_24px_rgba(0,0,0,0.22)] sm:h-14 sm:w-14">
+    <div className="h-12 w-12 overflow-hidden rounded-[20px] border border-white/10 bg-slate-900/70 shadow-[0_10px_24px_rgba(0,0,0,0.22)] sm:h-14 sm:w-14">
       {imageUrl ? (
         <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
       ) : (
@@ -295,228 +332,251 @@ function ProfileAvatar({ name, imageUrl }) {
   );
 }
 
-function ShiftBadge({ type, start, end, shiftName }) {
-  const config = SHIFT_STYLES[type];
-  const Icon = config.icon;
-
+function SummaryTile({ icon: Icon, label, value, helper }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div
-          className={cn(
-            "inline-flex cursor-default items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-transform duration-200 hover:scale-[1.02]",
-            config.pill
-          )}
-        >
-          <Icon className="h-3 w-3" />
-          <span>{SHIFT_LABELS[type]}</span>
+    <div className="rounded-[20px] border border-white/10 bg-black/10 px-3.5 py-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</span>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-1.5 text-cyan-200">
+          <Icon className="h-3.5 w-3.5" />
         </div>
-      </TooltipTrigger>
-      <TooltipContent className="border border-white/10 bg-[#0b1628] text-slate-100">
-        <p className="font-semibold text-slate-100">{shiftName}</p>
-        <p className="text-[11px] text-slate-400">
-          {type === "off" ? "No scheduled hours" : `${start} - ${end}`}
-        </p>
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
-function StatsCards({ items }) {
-  return (
-    <div className="grid shrink-0 grid-cols-2 gap-3 xl:grid-cols-4">
-      {items.map((item, index) => (
-        <motion.div
-          key={item.label}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.05, duration: 0.24 }}
-          className="staff-glass-card min-h-[92px] rounded-[22px] border border-white/10 p-3.5"
-        >
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              {item.label}
-            </span>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-1.5 text-cyan-200">
-              <item.icon className="h-3.5 w-3.5" />
-            </div>
-          </div>
-          <p className="font-headline text-[1.85rem] font-bold leading-none text-slate-50">{item.value}</p>
-          <p className="mt-1 text-[11px] text-slate-400">{item.subtext}</p>
-        </motion.div>
-      ))}
+      </div>
+      <p className="font-headline text-base font-semibold text-slate-100">{value}</p>
+      <p className="mt-0.5 text-[11px] leading-5 text-slate-400">{helper}</p>
     </div>
   );
 }
 
-function ChartTooltipContent({ active, payload, label }) {
-  if (!active || !payload?.length) return null;
-
-  const point = payload[0].payload;
-
+function ScheduleBoard({ weeklyShifts, weekLabel }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#091120] px-3 py-2 text-xs shadow-xl">
-      <p className="font-semibold text-slate-100">{point.fullDay || label}</p>
-      <p className="mt-1 text-slate-400">
-        {point.type === "off" ? "Off day" : `${point.shiftName} - ${formatHours(point.hours)}`}
-      </p>
-      {point.type !== "off" ? (
-        <p className="mt-1 text-[11px] text-slate-500">
-          {point.start} - {point.end}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function WeeklyChart({ weeklyShifts }) {
-  const chartData = weeklyShifts.map((shift) => ({
-    day: shift.day,
-    fullDay: shift.fullDay,
-    hours: shift.hours,
-    type: shift.type,
-    shiftName: shift.shiftName,
-    start: shift.start,
-    end: shift.end,
-  }));
-
-  const totalHours = weeklyShifts.reduce((sum, shift) => sum + shift.hours, 0);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 14 }}
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.18, duration: 0.28 }}
-      className="staff-glass-card flex h-full min-h-0 flex-col overflow-hidden rounded-[22px] border border-white/10"
+      transition={{ duration: 0.28 }}
+      className="staff-glass-card flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-white/10"
     >
-      <div className="shrink-0 border-b border-white/10 px-4 py-3">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h3 className="font-headline text-base font-semibold text-slate-100">Weekly Hours</h3>
-            <p className="mt-0.5 text-[11px] text-slate-400">Daily shift breakdown</p>
-          </div>
-          <div className="text-right">
-            <p className="font-headline text-xl font-bold text-slate-50">{formatHours(totalHours)}</p>
-            <p className="text-[10px] text-slate-500">Scheduled</p>
-          </div>
-        </div>
+      <div className="border-b border-white/10 px-4 py-3 sm:px-5">
+        <h2 className="font-headline text-base font-semibold text-slate-100">Weekly Schedule</h2>
+        <p className="mt-0.5 text-xs text-slate-400">{weekLabel}</p>
       </div>
 
-      <div className="min-h-0 flex-1 px-2 pb-1 pt-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }} barCategoryGap="24%">
-            <CartesianGrid vertical={false} stroke="rgba(148, 163, 184, 0.12)" strokeDasharray="4 4" />
-            <XAxis
-              dataKey="day"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 10, fill: "#94a3b8", fontWeight: 600 }}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 10, fill: "#64748b" }}
-              domain={[0, (dataMax) => Math.max(10, Math.ceil(dataMax + 1))]}
-              width={22}
-              ticks={[0, 3, 6, 9]}
-            />
-            <RechartsTooltip
-              content={<ChartTooltipContent />}
-              cursor={{ fill: "rgba(148, 163, 184, 0.08)", radius: 10 }}
-            />
-            <Bar dataKey="hours" radius={[7, 7, 0, 0]} maxBarSize={26}>
-              {chartData.map((entry) => (
-                <Cell key={`${entry.day}-${entry.type}`} fill={SHIFT_COLORS[entry.type]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="hidden border-b border-white/10 bg-white/[0.03] px-4 py-2.5 sm:px-5 lg:grid lg:grid-cols-[1.12fr_0.82fr_0.95fr_0.74fr_0.82fr_0.68fr] lg:gap-3 lg:text-[10px] lg:font-semibold lg:uppercase lg:tracking-[0.16em] lg:text-slate-500">
+        <span>Date</span>
+        <span>Shift</span>
+        <span>Time</span>
+        <span>Location</span>
+        <span>Branch</span>
+        <span>Status</span>
       </div>
 
-      <div className="shrink-0 flex flex-wrap items-center justify-center gap-3 px-4 pb-3 pt-1">
-        {Object.entries(SHIFT_LABELS).map(([type, label]) => (
-          <div key={type} className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: SHIFT_COLORS[type] }} />
-            <span className="text-[10px] text-slate-400">{label}</span>
-          </div>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
+      <div className="divide-y divide-white/5">
+        {weeklyShifts.map((shift, index) => {
+          const status = getStatusMeta(shift);
 
-function ScheduleList({ weeklyShifts }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.12, duration: 0.28 }}
-      className="staff-glass-card flex h-full min-h-0 flex-col overflow-hidden rounded-[22px] border border-white/10"
-    >
-      <div className="shrink-0 border-b border-white/10 px-4 py-3">
-        <h3 className="font-headline text-base font-semibold text-slate-100">This Week&apos;s Schedule</h3>
-        <p className="mt-0.5 text-[11px] text-slate-400">
-          {weeklyShifts[0]?.dateLabel} - {weeklyShifts[weeklyShifts.length - 1]?.dateLabel}
-        </p>
-      </div>
+          return (
+            <motion.article
+              key={shift.key}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.03, duration: 0.2 }}
+              className={cn("px-4 py-3 transition-colors sm:px-5", shift.isToday && "bg-cyan-400/[0.04]")}
+            >
+              <div className="grid gap-3 lg:grid-cols-[1.12fr_0.82fr_0.95fr_0.74fr_0.82fr_0.68fr]">
+                <div>
+                  <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 lg:hidden">Date</p>
+                  <div className="flex items-start gap-2.5">
+                    <div className="min-w-[44px] rounded-[18px] border border-white/10 bg-white/[0.03] px-2 py-1.5 text-center">
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">{shift.monthLabel}</p>
+                      <p className="font-headline text-lg font-semibold leading-none text-slate-100">{shift.dateNumber}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-[13px] font-semibold text-slate-100 sm:text-sm">{shift.weekdayYearLabel}</p>
+                        {shift.isToday ? (
+                          <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.12em] text-cyan-200">
+                            Today
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-      <div className="flex min-h-0 flex-1 flex-col divide-y divide-white/5">
-        {weeklyShifts.map((shift, index) => (
-          <motion.div
-            key={shift.key}
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.03, duration: 0.18 }}
-            className={cn(
-              "grid min-h-[56px] flex-1 grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 transition-colors",
-              shift.isToday && "bg-cyan-400/5"
-            )}
-          >
-            <div className="text-center">
-              <p className={cn("text-[10px] font-semibold uppercase tracking-[0.18em]", shift.isToday ? "text-cyan-300" : "text-slate-500")}>
-                {shift.day}
-              </p>
-              <p className={cn("font-headline text-xl font-bold leading-none", shift.isToday ? "text-cyan-200" : "text-slate-100")}>
-                {shift.dateNumber}
-              </p>
-            </div>
+                <div>
+                  <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 lg:hidden">Shift</p>
+                  <p className="text-[13px] font-medium text-slate-100 sm:text-sm">{shift.shiftLabel}</p>
+                </div>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="truncate text-sm font-semibold text-slate-100">{shift.fullDay}</p>
-                {shift.isToday ? (
-                  <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-cyan-200">
-                    Today
+                <div>
+                  <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 lg:hidden">Time</p>
+                  {shift.type === "off" ? (
+                    <p className="text-[13px] text-slate-400 sm:text-sm">Not scheduled</p>
+                  ) : (
+                    <p className="text-[13px] font-semibold text-slate-100 sm:text-sm">{shift.start} - {shift.end}</p>
+                  )}
+                </div>
+
+                <div>
+                  <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 lg:hidden">Location</p>
+                  <p className="text-[13px] text-slate-300 sm:text-sm">{shift.location}</p>
+                </div>
+
+                <div>
+                  <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 lg:hidden">Branch</p>
+                  <p className="text-[13px] text-slate-300 sm:text-sm">{shift.branchName}</p>
+                </div>
+
+                <div>
+                  <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 lg:hidden">Status</p>
+                  <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium", status.className)}>
+                    {status.label}
                   </span>
-                ) : null}
+                </div>
               </div>
-              <p className="truncate text-[11px] text-slate-400">
-                {shift.location} - {shift.shiftName}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 text-right">
-              <ShiftBadge
-                type={shift.type}
-                start={shift.start}
-                end={shift.end}
-                shiftName={shift.shiftName}
-              />
-              <div className="min-w-[110px]">
-                {shift.type === "off" ? (
-                  <p className="text-[11px] text-slate-400">Day Off</p>
-                ) : (
-                  <>
-                    <p className="text-sm font-semibold text-slate-100">{shift.start} - {shift.end}</p>
-                    <p className="text-[10px] text-slate-500">{formatHours(shift.hours)}</p>
-                  </>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.article>
+          );
+        })}
       </div>
-    </motion.div>
+    </motion.section>
+  );
+}
+
+function WorkPatternCard({ activeWorkingDays, activeShiftTime, shiftData }) {
+  const offDays = DAY_LABELS.filter((day) => !activeWorkingDays.includes(day));
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.08, duration: 0.28 }}
+      className="staff-glass-card rounded-[24px] border border-white/10 p-4"
+    >
+      <h3 className="font-headline text-base font-semibold text-slate-100">Work Pattern</h3>
+      <p className="mt-1 text-xs text-slate-400">Your default weekly shift coverage.</p>
+
+      <div className="mt-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Working Days</p>
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {activeWorkingDays.length > 0 ? (
+            activeWorkingDays.map((day) => (
+              <span key={day} className="rounded-full border border-cyan-400/15 bg-cyan-400/10 px-2.5 py-1 text-[11px] font-medium text-cyan-200">
+                {day}
+              </span>
+            ))
+          ) : (
+            <span className="text-sm text-slate-400">No assigned workdays</span>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 rounded-[18px] border border-white/10 bg-white/[0.03] p-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[13px] text-slate-400">Shift timing</span>
+          <span className="text-[13px] font-semibold text-slate-100">{activeShiftTime}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[13px] text-slate-400">Shift type</span>
+          <span className="text-[13px] font-semibold text-slate-100">
+            {shiftData ? getShiftDisplayLabel(shiftData, getShiftType(shiftData)) : "Not assigned"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[13px] text-slate-400">Off days</span>
+          <span className="text-right text-[13px] font-semibold text-slate-100">
+            {offDays.length > 0 ? offDays.join(", ") : "None"}
+          </span>
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
+function GeoFenceCard({ geoFenceConfig, profile }) {
+  const directionsUrl = geoFenceConfig
+    ? `https://www.google.com/maps/dir/?api=1&destination=${geoFenceConfig.latitude},${geoFenceConfig.longitude}`
+    : "";
+  const embedUrl = geoFenceConfig
+    ? `https://maps.google.com/maps?q=${geoFenceConfig.latitude},${geoFenceConfig.longitude}&z=16&output=embed`
+    : "";
+
+  const handleOpenDirections = () => {
+    if (!directionsUrl) return;
+    window.open(directionsUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const handleMapKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleOpenDirections();
+    }
+  };
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.14, duration: 0.28 }}
+      className="staff-glass-card rounded-[24px] border border-white/10 p-4"
+    >
+      <h3 className="font-headline text-base font-semibold text-slate-100">Geo-Fencing</h3>
+      <p className="mt-1 text-xs text-slate-400">
+        {geoFenceConfig
+          ? "Tap the map to open directions to your geo-fenced branch location."
+          : "No geo-fencing is configured for your branch right now."}
+      </p>
+
+      {geoFenceConfig ? (
+        <>
+          <a
+            href={directionsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onKeyDown={handleMapKeyDown}
+            className="mt-3 block h-[168px] w-full overflow-hidden rounded-[20px] border border-white/10 bg-slate-950/70 2xl:h-[184px]"
+            aria-label="Open geo-fence directions"
+          >
+            <iframe
+              title="Geo-fence branch map"
+              src={embedUrl}
+              className="h-full w-full pointer-events-none"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </a>
+
+          <div className="mt-3 space-y-2">
+            <div className="flex items-start justify-between gap-3 rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-2.5">
+              <span className="text-[13px] text-slate-400">Branch</span>
+              <span className="max-w-[62%] text-right text-[13px] font-medium text-slate-100">{geoFenceConfig.branchName}</span>
+            </div>
+            <div className="flex items-start justify-between gap-3 rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-2.5">
+              <span className="text-[13px] text-slate-400">Location</span>
+              <span className="max-w-[62%] text-right text-[13px] font-medium text-slate-100">{geoFenceConfig.location || profile.branchLocation}</span>
+            </div>
+            <div className="flex items-start justify-between gap-3 rounded-[18px] border border-white/8 bg-white/[0.03] px-3 py-2.5">
+              <span className="text-[13px] text-slate-400">Radius</span>
+              <span className="max-w-[62%] text-right text-[13px] font-medium text-slate-100">{geoFenceConfig.radius} m</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleOpenDirections}
+            className="mt-3 inline-flex items-center gap-2 rounded-[18px] border border-cyan-400/15 bg-cyan-400/10 px-3.5 py-2 text-[13px] font-medium text-cyan-200 transition-colors hover:bg-cyan-400/15"
+          >
+            <Navigation className="h-4 w-4" />
+            Open Directions
+          </button>
+        </>
+      ) : (
+        <div className="mt-3 rounded-[20px] border border-dashed border-white/10 bg-white/[0.03] px-4 py-6 text-center">
+          <p className="text-sm font-medium text-slate-200">{profile.branchName}</p>
+          <p className="mt-2 text-xs text-slate-400">
+            Ask your admin to enable geo-fencing for this branch if staff should navigate to a pinned location.
+          </p>
+        </div>
+      )}
+    </motion.section>
   );
 }
 
@@ -529,18 +589,11 @@ export default function StaffSchedulePage() {
     designation: "---",
     department: "---",
     branchName: "---",
+    branchLocation: "---",
     profilePicture: null,
   });
   const [shiftData, setShiftData] = useState(null);
-  const [stats, setStats] = useState({
-    present: 0,
-    absent: 0,
-    leave: 0,
-    weekOff: 0,
-    holiday: 0,
-    incomplete: 0,
-    overtime: "0:00",
-  });
+  const [geoFenceConfig, setGeoFenceConfig] = useState(null);
 
   useEffect(() => {
     let ignore = false;
@@ -549,18 +602,11 @@ export default function StaffSchedulePage() {
       try {
         const staffUser = await getStaffUser();
         const params = await buildQueryParams({});
-        const systemUserId = staffUser?.system_user_id || staffUser?.employee_id;
 
-        const [meResult, employeeResult, statsResult] = await Promise.allSettled([
+        const [meResult, employeeResult, geoFenceResult] = await Promise.allSettled([
           api.get("/me"),
           api.get("/employees_with_schedule_count", { params: { ...params, per_page: 500 } }),
-          api.get("/staff-stats", {
-            params: {
-              ...params,
-              system_user_id: systemUserId,
-              user_id: staffUser?.id,
-            },
-          }),
+          params.company_id ? api.get(`/branch-list-for-geofencing/${params.company_id}`) : Promise.resolve({ data: [] }),
         ]);
 
         if (ignore) return;
@@ -576,8 +622,26 @@ export default function StaffSchedulePage() {
           me?.system_user_id,
           me?.employee_code,
         ].filter((value) => value !== undefined && value !== null && value !== "");
+
         const employeeRecord = employees.find((employee) => matchesEmployeeRecord(employee, employeeIdentifiers)) || null;
         const scheduleRecord = getBestScheduleRecord(employeeRecord);
+        const branch = employeeRecord?.branch || me?.branch || null;
+        const resolvedEmployeeId = employeeRecord?.id || staffUser?.employee_id || me?.employee_id || null;
+        const branchId = branch?.id || employeeRecord?.branch_id || me?.branch_id || staffUser?.branch_id || null;
+        const geoFenceBranches =
+          geoFenceResult.status === "fulfilled" && Array.isArray(geoFenceResult.value?.data) ? geoFenceResult.value.data : [];
+        const activeGeoFenceBranch =
+          branchId !== null ? geoFenceBranches.find((item) => String(item.id) === String(branchId)) || null : null;
+        let employeeGeoFence = null;
+
+        if (resolvedEmployeeId) {
+          try {
+            const { data } = await api.get(`/employee-geofence/${resolvedEmployeeId}`, { params });
+            employeeGeoFence = data || null;
+          } catch (error) {
+            employeeGeoFence = null;
+          }
+        }
 
         const resolvedName =
           me?.employee_name ||
@@ -586,6 +650,8 @@ export default function StaffSchedulePage() {
           staffUser?.employee_name ||
           "Employee";
 
+        const resolvedBranchName = branch?.branch_name || staffUser?.branch_name || "---";
+        const resolvedBranchLocation = formatBranchLocation(branch) || resolvedBranchName;
         const resolvedProfilePicture =
           me?.employee_profile_picture ||
           employeeRecord?.profile_picture ||
@@ -597,39 +663,24 @@ export default function StaffSchedulePage() {
           employeeCode: employeeRecord?.employee_id || staffUser?.employee_id || "---",
           designation: employeeRecord?.designation?.name || staffUser?.designation_name || "---",
           department: employeeRecord?.department?.name || staffUser?.department_name || "---",
-          branchName:
-            employeeRecord?.branch?.branch_name ||
-            me?.branch?.branch_name ||
-            staffUser?.branch_name ||
-            "---",
+          branchName: resolvedBranchName,
+          branchLocation: resolvedBranchLocation,
           profilePicture: resolvedProfilePicture,
         });
+        setGeoFenceConfig(getGeoFenceConfig(branch, activeGeoFenceBranch, employeeGeoFence, resolvedBranchLocation));
 
         setShiftData(
           scheduleRecord?.shift
             ? {
                 ...scheduleRecord.shift,
-                branchName:
-                  employeeRecord?.branch?.branch_name ||
-                  me?.branch?.branch_name ||
-                  staffUser?.branch_name ||
-                  "---",
+                branchName: resolvedBranchName,
+                location:
+                  resolveLocationValue(scheduleRecord?.shift?.location) ||
+                  resolveLocationValue(scheduleRecord?.location) ||
+                  resolvedBranchLocation,
               }
             : null
         );
-
-        if (statsResult.status === "fulfilled") {
-          const data = statsResult.value?.data || {};
-          setStats({
-            present: Number(data.present || 0),
-            absent: Number(data.absent || 0),
-            leave: Number(data.leave || 0),
-            weekOff: Number(data.week_off || 0),
-            holiday: Number(data.holiday || 0),
-            incomplete: Number(data.incomplete || 0),
-            overtime: data.overtime || "0:00",
-          });
-        }
       } catch (error) {
         console.error("Failed to load staff schedule page", error);
       } finally {
@@ -646,44 +697,25 @@ export default function StaffSchedulePage() {
     };
   }, []);
 
-  const weeklyShifts = buildWeeklyShifts(shiftData, profile.branchName, weekOffset);
-  const totalHoursThisWeek = weeklyShifts.reduce((sum, shift) => sum + shift.hours, 0);
-  const workDays = weeklyShifts.filter((shift) => shift.type !== "off").length;
-  const trackedAttendanceDays = stats.present + stats.absent + stats.incomplete;
-  const attendanceRate = trackedAttendanceDays > 0 ? ((stats.present / trackedAttendanceDays) * 100).toFixed(1) : "0.0";
+  const activeWorkingDays = useMemo(() => {
+    const normalized = (shiftData?.days || []).map(normalizeDayLabel).filter(Boolean);
+    return normalized.length ? normalized : shiftData ? DEFAULT_WORKING_DAYS : [];
+  }, [shiftData]);
+
+  const weeklyShifts = useMemo(
+    () => buildWeeklyShifts(shiftData, profile.branchName, shiftData?.location || profile.branchLocation, weekOffset),
+    [profile.branchLocation, profile.branchName, shiftData, weekOffset]
+  );
+
   const firstName = profile.name.split(" ")[0] || "Employee";
+  const weekLabel = formatWeekRange(new Date(), weekOffset);
   const activeShiftLabel = shiftData?.name || "No active shift assigned";
   const activeShiftTime = shiftData
     ? `${formatTimeLabel(shiftData.on_duty_time)} - ${formatTimeLabel(shiftData.off_duty_time)}`
-    : "No scheduled hours";
+    : "No scheduled time";
   const profileImageUrl = getProfileImageUrl(profile.profilePicture);
-
-  const statItems = [
-    {
-      label: "Hours This Week",
-      value: formatHours(totalHoursThisWeek),
-      subtext: `${workDays} scheduled day${workDays === 1 ? "" : "s"}`,
-      icon: Clock,
-    },
-    {
-      label: "Attendance",
-      value: `${attendanceRate}%`,
-      subtext: `${stats.present} present / ${Math.max(trackedAttendanceDays, 0)} tracked`,
-      icon: CalendarCheck,
-    },
-    {
-      label: "Overtime",
-      value: stats.overtime || "0:00",
-      subtext: "Recorded this period",
-      icon: TrendingUp,
-    },
-    {
-      label: "Leave Days",
-      value: `${stats.leave}`,
-      subtext: `${stats.holiday} holiday / ${stats.weekOff} week off`,
-      icon: CalendarOff,
-    },
-  ];
+  const officeLocation = shiftData?.location || profile.branchLocation;
+  const profileMeta = [profile.designation, profile.department].filter((value) => value && value !== "---").join(" / ") || "Employee profile";
 
   if (loading) {
     return (
@@ -696,87 +728,117 @@ export default function StaffSchedulePage() {
   }
 
   return (
-    <div className="h-full overflow-hidden p-2 sm:p-3">
-      <div className="flex h-full w-full min-w-0 flex-col gap-3">
+    <div className="flex h-full min-h-full flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 flex-col gap-3">
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="staff-glass-card shrink-0 rounded-[22px] border border-white/10 p-4"
+          transition={{ duration: 0.3 }}
+          className="staff-glass-card overflow-hidden rounded-[28px] border border-white/10"
         >
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex items-start gap-3">
-              <ProfileAvatar name={profile.name} imageUrl={profileImageUrl} />
-              <div>
-                <h1 className="font-headline text-[1.9rem] font-bold tracking-tight text-slate-50">
-                  {firstName}&apos;s Schedule
-                </h1>
-                <p className="mt-0.5 text-sm text-slate-400">
-                  {profile.designation} - {profile.department} - {formatWeekRange(new Date(), weekOffset)}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-slate-300">
-                    {activeShiftLabel}
-                  </span>
-                  <span className="rounded-full border border-cyan-400/15 bg-cyan-400/10 px-3 py-1 text-[11px] font-medium text-cyan-200">
-                    {activeShiftTime}
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-slate-400">
-                    {profile.branchName}
-                  </span>
+          <div className="bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.15),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.08),transparent_34%)] px-4 py-4 sm:px-5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex items-start gap-3">
+                <ProfileAvatar name={profile.name} imageUrl={profileImageUrl} />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-cyan-400/15 bg-cyan-400/10 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-cyan-200">
+                      Staff Schedule
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      {weekLabel}
+                    </span>
+                  </div>
+
+                  <h1 className="mt-2 font-headline text-[28px] font-semibold tracking-tight text-slate-50 sm:text-[32px]">
+                    {firstName}&apos;s Shift Schedule
+                  </h1>
+                  <p className="mt-1.5 max-w-3xl text-[13px] text-slate-400 sm:text-sm">
+                    A focused weekly view of your assigned shift, duty time, office location, and branch.
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-medium text-slate-300">
+                      {profile.employeeCode}
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-medium text-slate-300">
+                      {profile.designation}
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-medium text-slate-300">
+                      {profile.department}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-2xl border-white/10 bg-white/5 px-3 text-xs text-slate-100 hover:bg-white/10 hover:text-white"
-              >
-                <Link href="/staff/leave/apply">
-                  <CalendarOff className="h-3.5 w-3.5" />
-                  Request Leave
-                </Link>
-              </Button>
-              <div className="ml-1 flex items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  className="rounded-2xl border-white/10 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white"
+              <div className="flex shrink-0 items-center gap-2 self-start rounded-[20px] border border-white/10 bg-black/10 p-1.5">
+                <button
+                  type="button"
                   onClick={() => setWeekOffset((value) => value - 1)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-[16px] border border-white/10 bg-white/5 text-slate-100 transition-colors hover:bg-white/10"
+                  aria-label="Previous week"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 rounded-2xl border-white/10 bg-white/5 px-3 text-xs text-slate-100 hover:bg-white/10 hover:text-white"
+                </button>
+                <button
+                  type="button"
                   onClick={() => setWeekOffset(0)}
+                  className="inline-flex h-9 items-center justify-center rounded-[16px] border border-cyan-400/15 bg-cyan-400/10 px-3.5 text-[13px] font-medium text-cyan-200 transition-colors hover:bg-cyan-400/15"
                 >
-                  Today
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  className="rounded-2xl border-white/10 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white"
+                  Current Week
+                </button>
+                <button
+                  type="button"
                   onClick={() => setWeekOffset((value) => value + 1)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-[16px] border border-white/10 bg-white/5 text-slate-100 transition-colors hover:bg-white/10"
+                  aria-label="Next week"
                 >
                   <ChevronRight className="h-4 w-4" />
-                </Button>
+                </button>
               </div>
             </div>
+          </div>
+
+          <div className="grid gap-2 border-t border-white/10 p-4 sm:grid-cols-2 xl:grid-cols-4">
+            <SummaryTile
+              icon={Briefcase}
+              label="Assigned Shift"
+              value={activeShiftLabel}
+              helper={shiftData ? "Primary shift assigned to this schedule." : "No shift assignment found."}
+            />
+            <SummaryTile
+              icon={Clock3}
+              label="Shift Time"
+              value={activeShiftTime}
+              helper={activeWorkingDays.length > 0 ? `${activeWorkingDays.length} scheduled workdays this week` : "No scheduled workdays"}
+            />
+            <SummaryTile
+              icon={MapPin}
+              label="Office Location"
+              value={officeLocation}
+              helper="Assigned work location for this shift."
+            />
+            <SummaryTile
+              icon={Building2}
+              label="Branch"
+              value={profile.branchName}
+              helper={profileMeta}
+            />
           </div>
         </motion.section>
 
-        <StatsCards items={statItems} />
-
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.72fr)_minmax(320px,0.92fr)]">
-          <div className="min-h-0">
-            <ScheduleList weeklyShifts={weeklyShifts} />
+        <div className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1.75fr)_300px]">
+          <div className="min-h-0 min-w-0">
+            <ScheduleBoard weeklyShifts={weeklyShifts} weekLabel={weekLabel} />
           </div>
-          <div className="min-h-0">
-            <WeeklyChart weeklyShifts={weeklyShifts} />
+
+          <div className="flex min-h-0 min-w-0 flex-col gap-3">
+            <WorkPatternCard
+              activeWorkingDays={activeWorkingDays}
+              activeShiftTime={activeShiftTime}
+              shiftData={shiftData}
+            />
+            <GeoFenceCard geoFenceConfig={geoFenceConfig} profile={profile} />
           </div>
         </div>
       </div>

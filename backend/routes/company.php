@@ -25,6 +25,7 @@ use App\Http\Controllers\EmployeeLeaveDocumentController;
 use App\Http\Controllers\EmployeeLeavesController;
 use App\Http\Controllers\ExperienceController;
 use App\Http\Controllers\GlobalSearchController;
+use App\Http\Controllers\GovernmentHolidaysController;
 use App\Http\Controllers\HolidaysController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\LeaveCountController;
@@ -291,6 +292,8 @@ Route::put('/schedule_update/{id}', [RosterController::class, 'scheduleUpdateByE
 
 // Holidays
 Route::apiResource('holidays', HolidaysController::class);
+Route::get('government-holidays', [GovernmentHolidaysController::class, 'index']);
+Route::get('government-holidays/countries', [GovernmentHolidaysController::class, 'countries']);
 //Route::get('holidays', [HolidaysController::class, 'list']);
 // Route::get('holidays/search/{key}', [HolidaysController::class, 'search']);
 // Route::post('holidays/delete/selected', [HolidaysController::class, 'deleteSelected']);

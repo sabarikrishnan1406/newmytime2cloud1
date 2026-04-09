@@ -5,7 +5,7 @@ import { GoogleMap, useJsApiLoader, Marker, Circle } from "@react-google-maps/ap
 
 const containerStyle = { width: "100%", height: "100%" };
 
-const GeoFenceMap = ({ latitude, longitude, radius, onMapClick }) => {
+const GeoFenceMap = ({ latitude, longitude, radius, onMapClick, markerDraggable = true }) => {
     const { isLoaded } = useJsApiLoader({
         id: "google-map-script",
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
@@ -68,8 +68,11 @@ const GeoFenceMap = ({ latitude, longitude, radius, onMapClick }) => {
                 ],
             }}
         >
-            <Marker position={center} draggable={true}
-                onDragEnd={(e) => { if (onMapClick) onMapClick(e.latLng.lat(), e.latLng.lng()); }} />
+            <Marker position={center}
+                draggable={markerDraggable}
+                onDragEnd={(e) => {
+                    if (markerDraggable && onMapClick) onMapClick(e.latLng.lat(), e.latLng.lng());
+                }} />
             <Circle
                 center={center}
                 radius={radius || 200}
