@@ -295,7 +295,7 @@ export default function StaffAttendancePage() {
         const systemUserId = staffUser.system_user_id || staffUser.employee_id;
 
         const { data } = await api.get("/attendance_logs", {
-          params: { ...params, from_date: from, to_date: to, system_user_id: systemUserId, per_page: 500 },
+          params: { ...params, from_date: from, to_date: to, system_user_id: systemUserId, per_page: 100 },
         });
 
         const logs = data?.data || [];

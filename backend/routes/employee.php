@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/employee-statistics', [EmployeeDashboard::class, 'statistics']);
 Route::get('/staff-stats', [\App\Http\Controllers\StaffStatsController::class, 'stats']);
+Route::get('/staff-monthly-trend', [\App\Http\Controllers\StaffStatsController::class, 'monthlyTrend']);
 Route::get('/clear-attendance-cache', [EmployeeDashboard::class, 'clearEmployeeCache']);
 
 Route::post('employee-store', [EmployeeController::class, 'employeeStore']);

@@ -298,6 +298,14 @@ Route::get('employee/{id}/government-holidays', [GovernmentHolidaysController::c
 Route::post('employee/{id}/government-holidays', [GovernmentHolidaysController::class, 'saveEmployeeHolidays']);
 Route::delete('employee/{id}/government-holidays', [GovernmentHolidaysController::class, 'resetEmployeeHolidays']);
 Route::get('employees/government-holidays-status', [GovernmentHolidaysController::class, 'employeesCustomStatus']);
+
+// Auto Regenerate Settings
+Route::get('auto-regenerate', [\App\Http\Controllers\AutoRegenerateController::class, 'index']);
+Route::post('auto-regenerate', [\App\Http\Controllers\AutoRegenerateController::class, 'store']);
+Route::put('auto-regenerate/{id}', [\App\Http\Controllers\AutoRegenerateController::class, 'update']);
+Route::delete('auto-regenerate/{id}', [\App\Http\Controllers\AutoRegenerateController::class, 'destroy']);
+Route::post('auto-regenerate/{id}/toggle', [\App\Http\Controllers\AutoRegenerateController::class, 'toggleActive']);
+
 //Route::get('holidays', [HolidaysController::class, 'list']);
 // Route::get('holidays/search/{key}', [HolidaysController::class, 'search']);
 // Route::post('holidays/delete/selected', [HolidaysController::class, 'deleteSelected']);

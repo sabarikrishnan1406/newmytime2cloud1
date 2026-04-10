@@ -204,7 +204,6 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-
         $user->load(["company", "role:id,name,role_type", "branches", "departments"]);
         $user->user_type = $this->getUserType($user);
         //$user->branch_array = [1,   5];
@@ -213,11 +212,25 @@ class AuthController extends Controller
 
         // Add employee details for staff dashboard
         if ($user->employee_id) {
-            $emp = Employee::find($user->employee_id);
+            $emp = Employee::withOut(['user'])
+                ->with([
+                    'branch:id,branch_name,country',
+                    'department:id,name',
+                    'designation:id,name',
+                    'schedule' => function ($q) {
+                        $q->select('id', 'employee_id', 'company_id', 'shift_id', 'shift_type_id')
+                          ->with('shift:id,name,shift_type_id,on_duty_time,off_duty_time,working_hours,late_time,days');
+                    },
+                ])
+                ->find($user->employee_id);
+
             if ($emp) {
                 $user->employee_name = trim($emp->first_name . ' ' . $emp->last_name);
                 $user->employee_profile_picture = $emp->profile_picture;
                 $user->system_user_id = $emp->system_user_id;
+                $user->branch_id = $emp->branch_id;
+                $user->branch = $emp->branch;
+                $user->employee_record = $emp;
             }
         }
 

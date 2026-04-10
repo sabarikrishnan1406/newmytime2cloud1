@@ -265,6 +265,43 @@ class StaffStatsController extends Controller
         ]);
     }
 
+    /**
+     * Return monthly present-day counts for the last N months (lightweight).
+     */
+    public function monthlyTrend(Request $request)
+    {
+        $companyId = $request->company_id;
+        $sysUserId = $request->system_user_id;
+        $months = (int) ($request->months ?? 6);
+
+        if (!$sysUserId) {
+            return response()->json([]);
+        }
+
+        $results = [];
+        $now = Carbon::now();
+
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $d = $now->copy()->subMonths($i)->startOfMonth();
+            $end = $d->copy()->endOfMonth();
+            if ($end->gt($now)) $end = $now->copy()->endOfDay();
+
+            $present = Attendance::where('company_id', $companyId)
+                ->where('employee_id', $sysUserId)
+                ->whereBetween('date', [$d->toDateString(), $end->toDateString()])
+                ->whereIn('status', ['P', 'LC', 'EG', 'ME'])
+                ->count();
+
+            $results[] = [
+                'month' => strtoupper($d->format('M')),
+                'present' => $present,
+                'total' => $d->daysInMonth,
+            ];
+        }
+
+        return response()->json($results);
+    }
+
     private function timeToMinutes($time): int
     {
         if (!$time || $time === '---') return 0;

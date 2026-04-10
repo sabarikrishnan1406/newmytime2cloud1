@@ -640,31 +640,20 @@ export default function StaffSchedulePage() {
         const staffUser = await getStaffUser();
         const params = await buildQueryParams({});
 
-        const [meResult, employeeResult, geoFenceResult] = await Promise.allSettled([
-          api.get("/me"),
-          api.get("/employees_with_schedule_count", { params: { ...params, per_page: 500 } }),
+        // Use employee record from /me (cached in getStaffUser) - no need to load all employees
+        const me = staffUser;
+        const employeeRecord = staffUser?.employee_record || null;
+
+        const [geoFenceResult] = await Promise.allSettled([
           params.company_id ? api.get(`/branch-list-for-geofencing/${params.company_id}`) : Promise.resolve({ data: [] }),
         ]);
 
         if (ignore) return;
 
-        const me = meResult.status === "fulfilled" ? meResult.value?.data?.user : null;
-        const employees = employeeResult.status === "fulfilled" ? employeeResult.value?.data?.data || [] : [];
-        const employeeIdentifiers = [
-          staffUser?.id,
-          staffUser?.employee_id,
-          staffUser?.system_user_id,
-          me?.id,
-          me?.employee_id,
-          me?.system_user_id,
-          me?.employee_code,
-        ].filter((value) => value !== undefined && value !== null && value !== "");
-
-        const employeeRecord = employees.find((employee) => matchesEmployeeRecord(employee, employeeIdentifiers)) || null;
         const scheduleRecord = getBestScheduleRecord(employeeRecord);
         const branch = employeeRecord?.branch || me?.branch || null;
-        const resolvedEmployeeId = employeeRecord?.id || staffUser?.employee_id || me?.employee_id || null;
-        const branchId = branch?.id || employeeRecord?.branch_id || me?.branch_id || staffUser?.branch_id || null;
+        const resolvedEmployeeId = employeeRecord?.id || staffUser?.employee_id || null;
+        const branchId = branch?.id || employeeRecord?.branch_id || staffUser?.branch_id || null;
         const geoFenceBranches =
           geoFenceResult.status === "fulfilled" && Array.isArray(geoFenceResult.value?.data) ? geoFenceResult.value.data : [];
         const activeGeoFenceBranch =

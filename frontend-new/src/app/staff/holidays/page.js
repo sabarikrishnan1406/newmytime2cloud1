@@ -384,59 +384,13 @@ export default function StaffHolidaysPage() {
     const fetchEmployeeBranch = async () => {
       try {
         const staffUser = await getStaffUser();
-        const params = await buildQueryParams({});
-        const result = await api.get("/employees_with_schedule_count", { params: { ...params, per_page: 500 } });
 
-        const employees = result?.data?.data || [];
-        const employeeIdentifiers = [
-          staffUser?.id,
-          staffUser?.employee_id,
-          staffUser?.system_user_id,
-        ].filter((value) => value !== undefined && value !== null && value !== "");
-
-        const employeeRecord = employees.find((employee) => matchesEmployeeRecord(employee, employeeIdentifiers));
-
-        if (employeeRecord?.branch_id) {
-          if (!ignore) {
-            setBranchId(employeeRecord.branch_id);
-            
-            let countryCode = null;
-
-            // Method 1: Fetch branches list with company_id + branch_id
-            try {
-              console.log("📍 Fetching branch country for branch_id:", employeeRecord.branch_id);
-              console.log("📍 Using company_id:", params.company_id);
-              
-              const branchesResult = await api.get("/branches_list", {
-                params: { 
-                  company_id: params.company_id,
-                  branch_id: employeeRecord.branch_id
-                }
-              });
-              
-              console.log("📍 Raw response:", branchesResult);
-              const branches = Array.isArray(branchesResult?.data) ? branchesResult.data : [];
-              console.log("📍 Parsed branches:", branches);
-              
-              if (branches.length > 0) {
-                const branch = branches[0];
-                console.log("📍 Branch object:", branch);
-                countryCode = branch?.country;
-                if (countryCode) {
-                  console.log("✅ SUCCESS - Found country code:", countryCode, "for branch:", branch?.id);
-                }
-              }
-            } catch (error) {
-              console.error("❌ Branches list error:", error?.response?.status, error?.response?.data || error.message);
-            }
-
-            if (countryCode) {
-              setBranchCountry(countryCode);
-              console.log("✅ Branch Country set to:", countryCode);
-            } else {
-              console.warn("❌ Could not determine branch country");
-            }
-          }
+        if (!ignore && staffUser?.branch_id) {
+          setBranchId(staffUser.branch_id);
+          setBranchCountry(staffUser.branch?.country || "AE");
+        } else if (!ignore) {
+          // No branch assigned - still load default country holidays
+          setBranchCountry("AE");
         }
       } catch (error) {
         console.warn("Failed to fetch employee branch", error);

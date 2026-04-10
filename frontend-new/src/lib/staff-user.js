@@ -30,6 +30,13 @@ export async function getStaffUser() {
         system_user_id: me?.system_user_id,
         employee_name: me?.employee_name,
         employee_profile_picture: me?.employee_profile_picture,
+        branch_id: me?.branch_id,
+        branch: me?.branch,
+        web_login_access: me?.web_login_access,
+        mobile_app_login_access: me?.mobile_app_login_access,
+        tracking_status: me?.tracking_status,
+        mobile_punch: me?.mobile_punch,
+        employee_record: me?.employee_record,
       };
     } catch (e) {
       _cachedMe = {};

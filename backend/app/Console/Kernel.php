@@ -56,6 +56,10 @@ class Kernel extends ConsoleKernel
             ->runInBackground();
 
         $schedule
+            ->command('attendance:auto-regenerate')
+            ->everyMinute()->runInBackground();
+
+        $schedule
             ->command('task:sync_attendance_logs')
             ->everyFifteenMinutes()->runInBackground();
 

@@ -15,6 +15,7 @@ import SchedulePage from "@/app/schedule/page";
 import EmployeesPage from "@/app/employees/page";
 import GeoFencingSetup from "@/components/Setup/GeoFencingSetup";
 import GovernmentHolidaysSetup from "@/components/Setup/GovernmentHolidaysSetup";
+import AutoRegenerateSetup from "@/components/Setup/AutoRegenerateSetup";
 
 export default function Index() {
     const [stepIndex, setStepIndex] = useState(0);
@@ -87,6 +88,14 @@ export default function Index() {
             title: "Government Holidays",
             subtitle: "Customize holidays per employee.",
             content: <GovernmentHolidaysSetup />,
+        },
+        {
+            id: 9,
+            label: "Step 9",
+            sidebarTitle: "Auto Regenerate",
+            title: "Auto Regenerate Attendance",
+            subtitle: "Schedule automatic regeneration.",
+            content: <AutoRegenerateSetup />,
         },
     ];
 

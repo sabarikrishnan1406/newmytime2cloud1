@@ -135,7 +135,7 @@ export default function StaffDashboard() {
           const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
           const today = now.toISOString().split("T")[0];
           const { data } = await api.get("/attendance_logs", {
-            params: { ...params, from_date: monthStart, to_date: today, system_user_id: sysUserId, per_page: 500 },
+            params: { ...params, from_date: monthStart, to_date: today, system_user_id: sysUserId, per_page: 100 },
           });
           const logs = data?.data || [];
 
@@ -189,7 +189,7 @@ export default function StaffDashboard() {
           let monthLogs = [];
           try {
             const { data: mData } = await api.get("/attendance_logs", {
-              params: { ...params, from_date: monthStart, to_date: todayStr, system_user_id: sysUserId, per_page: 500 },
+              params: { ...params, from_date: monthStart, to_date: todayStr, system_user_id: sysUserId, per_page: 100 },
             });
             monthLogs = mData?.data || [];
           } catch (e) {}

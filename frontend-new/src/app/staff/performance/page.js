@@ -66,35 +66,14 @@ export default function StaffPerformancePage() {
           }
         } catch (e) { console.warn("Stats error", e); }
 
-        // Fetch last 6 months attendance for trend
+        // Fetch last 6 months trend (single lightweight API call)
         try {
-          const now = new Date();
-          const monthData = [];
-          const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-
-          for (let i = 5; i >= 0; i--) {
-            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const from = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-            const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-            const to = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${lastDay}`;
-
-            try {
-              const { data } = await api.get("/attendance_logs", {
-                params: { ...params, from_date: from, to_date: to, system_user_id: sysUserId, per_page: 500 },
-              });
-              const logs = data?.data || [];
-              const byDate = {};
-              logs.forEach((log) => {
-                const date = log.LogTime?.split(" ")[0] || log.LogTime?.split("T")[0];
-                byDate[date] = true;
-              });
-              const daysPresent = Object.keys(byDate).length;
-              monthData.push({ month: monthNames[d.getMonth()], present: daysPresent, total: lastDay });
-            } catch (e) {
-              monthData.push({ month: monthNames[d.getMonth()], present: 0, total: lastDay });
-            }
+          const { data: trend } = await api.get("/staff-monthly-trend", {
+            params: { ...params, system_user_id: sysUserId, months: 6 },
+          });
+          if (Array.isArray(trend)) {
+            setMonthlyData(trend);
           }
-          setMonthlyData(monthData);
         } catch (e) {}
 
       } catch (err) {

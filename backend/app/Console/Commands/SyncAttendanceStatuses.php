@@ -56,11 +56,14 @@ class SyncAttendanceStatuses extends Command
 
         if ($companyArgument) {
             $employeeQuery->where('company_id', $companyArgument);
-
-            $employeeQuery->with(['schedule' => function ($q) use ($companyArgument) {
-                $q->where('company_id', $companyArgument);
-            }]);
         }
+
+        // Always eager load schedule relationship
+        $employeeQuery->with(['schedule' => function ($q) use ($companyArgument) {
+            if ($companyArgument) {
+                $q->where('company_id', $companyArgument);
+            }
+        }]);
 
         $totalEmployees = $employeeQuery->count();
         $this->info("Processing $totalEmployees employees.");
@@ -72,6 +75,9 @@ class SyncAttendanceStatuses extends Command
             foreach ($employees as $employee) {
                 $status = isset($holidayCompanyIds[$employee->company_id]) ? "H" : "A";
                 $counts[$status]++;
+
+                $shiftId = $employee->schedule?->shift?->id ?? null;
+                $shiftTypeId = $employee->schedule?->shift?->shift_type_id ?? null;
 
                 $payload = [
                     'employee_id'   => $employee->employee_id,
@@ -86,16 +92,11 @@ class SyncAttendanceStatuses extends Command
                     'ot'            => '---',
                     'device_id_in'  => '---',
                     'device_id_out' => '---',
-                    'shift_id'      => $employee->schedule->shift->id,
-                    'shift_type_id'      => $employee->schedule->shift->shift_type_id,
+                    'shift_id'      => $shiftId,
+                    'shift_type_id' => $shiftTypeId,
                     'created_at'    => now(),
                     'updated_at'    => now(),
                 ];
-
-                if ($employee->employee_id == 1068) {
-                    $this->info("Prepared: EmpID {$employee->employee_id} | Status: $status | shift_type_id: {$employee->schedule->shift->shift_type_id}");
-                }
-
 
                 $batch[] = $payload;
             }
