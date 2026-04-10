@@ -294,6 +294,10 @@ Route::put('/schedule_update/{id}', [RosterController::class, 'scheduleUpdateByE
 Route::apiResource('holidays', HolidaysController::class);
 Route::get('government-holidays', [GovernmentHolidaysController::class, 'index']);
 Route::get('government-holidays/countries', [GovernmentHolidaysController::class, 'countries']);
+Route::get('employee/{id}/government-holidays', [GovernmentHolidaysController::class, 'employeeHolidays']);
+Route::post('employee/{id}/government-holidays', [GovernmentHolidaysController::class, 'saveEmployeeHolidays']);
+Route::delete('employee/{id}/government-holidays', [GovernmentHolidaysController::class, 'resetEmployeeHolidays']);
+Route::get('employees/government-holidays-status', [GovernmentHolidaysController::class, 'employeesCustomStatus']);
 //Route::get('holidays', [HolidaysController::class, 'list']);
 // Route::get('holidays/search/{key}', [HolidaysController::class, 'search']);
 // Route::post('holidays/delete/selected', [HolidaysController::class, 'deleteSelected']);

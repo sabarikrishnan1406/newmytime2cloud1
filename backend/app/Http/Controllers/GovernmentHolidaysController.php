@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\EmployeeGovernmentHoliday;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -231,5 +232,167 @@ class GovernmentHolidaysController extends Controller
         }
 
         return $holidays;
+    }
+
+    /**
+     * Get government holidays for a specific employee.
+     * If custom holidays exist, return those (with is_enabled flags).
+     * If no custom holidays, return default government holidays (all enabled).
+     */
+    public function employeeHolidays(Request $request, $employeeId)
+    {
+        $countryCode = $request->get('country_code', 'AE');
+        $year = $request->get('year', date('Y'));
+        $companyId = $request->get('company_id');
+
+        // Check if employee has custom holidays saved
+        $query = EmployeeGovernmentHoliday::where('employee_id', $employeeId)
+            ->where('year', $year)
+            ->where('country_code', strtoupper($countryCode));
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        $customHolidays = $query->get();
+
+        if ($customHolidays->isNotEmpty()) {
+            return response()->json([
+                'success' => true,
+                'is_custom' => true,
+                'data' => $customHolidays,
+            ]);
+        }
+
+        // No custom holidays — fetch default government holidays directly
+        $countryCode = strtoupper(trim($countryCode));
+        $cacheKey = "government_holidays_{$countryCode}_{$year}";
+
+        $result = Cache::remember($cacheKey, now()->addDays(30), function () use ($countryCode, $year) {
+            $holidays = $this->fetchFromNagerDate($countryCode, $year);
+            if (!empty($holidays)) return $holidays;
+
+            if ($countryCode === 'AE') {
+                $holidays = $this->fetchFromGoogleCalendar($year);
+                if (!empty($holidays)) return $holidays;
+            }
+
+            return ['success' => true, 'data' => [], 'country' => $countryCode];
+        });
+
+        $holidays = $result['data'] ?? [];
+
+        // Mark all as enabled by default
+        $holidays = array_map(function ($h) {
+            $h['is_enabled'] = true;
+            return $h;
+        }, $holidays);
+
+        return response()->json([
+            'success' => true,
+            'is_custom' => false,
+            'data' => $holidays,
+        ]);
+    }
+
+    /**
+     * Save custom government holidays for an employee.
+     * Receives the full list of holidays with is_enabled flag per holiday.
+     */
+    public function saveEmployeeHolidays(Request $request, $employeeId)
+    {
+        $request->validate([
+            'company_id' => 'required',
+            'country_code' => 'required|string|size:2',
+            'year' => 'required|integer',
+            'holidays' => 'required|array',
+            'holidays.*.holiday_id' => 'required|string',
+            'holidays.*.name' => 'required|string',
+            'holidays.*.start_date' => 'required|date',
+            'holidays.*.end_date' => 'required|date',
+            'holidays.*.is_enabled' => 'required|boolean',
+        ]);
+
+        $companyId = $request->company_id;
+        $countryCode = strtoupper($request->country_code);
+        $year = $request->year;
+
+        // Delete existing custom holidays for this employee/year/country/company
+        EmployeeGovernmentHoliday::where('employee_id', $employeeId)
+            ->where('company_id', $companyId)
+            ->where('year', $year)
+            ->where('country_code', $countryCode)
+            ->delete();
+
+        // Insert all holidays with their enabled/disabled status
+        foreach ($request->holidays as $holiday) {
+            EmployeeGovernmentHoliday::create([
+                'employee_id' => $employeeId,
+                'company_id' => $companyId,
+                'country_code' => $countryCode,
+                'year' => $year,
+                'holiday_id' => $holiday['holiday_id'],
+                'name' => $holiday['name'],
+                'start_date' => $holiday['start_date'],
+                'end_date' => $holiday['end_date'],
+                'total_days' => $holiday['total_days'] ?? 1,
+                'is_enabled' => $holiday['is_enabled'],
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee government holidays saved successfully',
+        ]);
+    }
+
+    /**
+     * Reset employee to default government holidays (remove custom overrides).
+     */
+    public function resetEmployeeHolidays(Request $request, $employeeId)
+    {
+        $year = $request->get('year', date('Y'));
+        $countryCode = strtoupper($request->get('country_code', 'AE'));
+        $companyId = $request->get('company_id');
+
+        $query = EmployeeGovernmentHoliday::where('employee_id', $employeeId)
+            ->where('year', $year)
+            ->where('country_code', $countryCode);
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        $query->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reset to default government holidays',
+        ]);
+    }
+
+    /**
+     * Get which employees have custom government holidays.
+     * Returns employee_id => enabled count for the given year.
+     */
+    public function employeesCustomStatus(Request $request)
+    {
+        $year = $request->get('year', date('Y'));
+        $companyId = $request->get('company_id');
+
+        $query = EmployeeGovernmentHoliday::where('year', $year)
+            ->selectRaw('employee_id, count(*) as total, sum(case when is_enabled then 1 else 0 end) as enabled_count')
+            ->groupBy('employee_id');
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        $results = $query->get()->keyBy('employee_id');
+
+        return response()->json([
+            'success' => true,
+            'data' => $results,
+        ]);
     }
 }

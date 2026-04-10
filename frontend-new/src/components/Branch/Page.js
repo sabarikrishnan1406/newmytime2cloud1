@@ -108,15 +108,16 @@ export default function Branch() {
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-slate-500 tracking-[0.1em] uppercase">Short Name</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-slate-500 tracking-[0.1em] uppercase">Location</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-slate-500 tracking-[0.1em] uppercase">Lat / Lon</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-slate-500 tracking-[0.1em] uppercase">Country</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-slate-500 tracking-[0.1em] uppercase">Since</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 dark:text-slate-500 tracking-[0.1em] uppercase text-right">Options</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
               {isLoading ? (
-                <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-400 dark:text-slate-500 text-sm">Loading...</td></tr>
+                <tr><td colSpan="7" className="px-6 py-12 text-center text-gray-400 dark:text-slate-500 text-sm">Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-400 dark:text-slate-500 text-sm">No branches found</td></tr>
+                <tr><td colSpan="7" className="px-6 py-12 text-center text-gray-400 dark:text-slate-500 text-sm">No branches found</td></tr>
               ) : filtered.map((item, i) => (
                 <tr key={item.id || i} className="hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors group cursor-pointer"
                   onClick={() => handleRowClick(item)}>
@@ -124,6 +125,7 @@ export default function Branch() {
                   <td className="px-6 py-4 text-indigo-600 dark:text-indigo-400 font-mono text-xs">{item.branch_code || "—"}</td>
                   <td className="px-6 py-4 text-gray-500 dark:text-slate-400 text-sm">{item.address || "—"}</td>
                   <td className="px-6 py-4 text-gray-400 dark:text-slate-500 font-mono text-xs">{item.lat || "—"} / {item.lon || "—"}</td>
+                  <td className="px-6 py-4 text-gray-500 dark:text-slate-400 text-sm font-medium">{item.country || "—"}</td>
                   <td className="px-6 py-4 text-gray-500 dark:text-slate-400 text-sm">{item.created_date || "—"}</td>
                   <td className="px-6 py-4 text-right" onClick={e => e.stopPropagation()}>
                     {columns.find(c => c.key === "options")?.render(item)}

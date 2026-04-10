@@ -18,6 +18,7 @@ import Input from "../Theme/Input";
 import SearchableSelect from "../ui/SearchableSelect";
 import MapPicker from "../ui/MapPicker";
 import COUNTRIES from "@/lib/countries";
+import { api } from "@/lib/api-client";
 
 const Edit = ({
   initialData = {},
@@ -167,9 +168,16 @@ const Edit = ({
                   <MapPicker
                     lat={form.lat}
                     lon={form.lon}
-                    onChange={(lat, lon) => {
+                    onChange={async (lat, lon) => {
                       handleChange("lat", lat);
                       handleChange("lon", lon);
+                      // Auto-detect country from coordinates
+                      try {
+                        const { data } = await api.get("/reverse-geocode-country", { params: { lat, lon } });
+                        if (data?.country_code) {
+                          handleChange("country", data.country_code);
+                        }
+                      } catch {}
                     }}
                   />
                 </div>

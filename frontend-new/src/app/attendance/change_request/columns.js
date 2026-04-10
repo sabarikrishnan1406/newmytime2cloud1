@@ -57,10 +57,17 @@ export default (editItem) => [
 
   {
     key: "duration",
-    header: "Duration",
-    render: ({ from_date, to_date }) => (
+    header: "From / To",
+    render: ({ from_date, to_date, from_time, to_time }) => (
       <div className="text-sm text-slate-600 dark:text-slate-300 hidden xl:table-cell">
-        {from_date} - {to_date}
+        <div className="flex flex-col gap-1">
+          <span>
+            {from_date || "-"} {from_time ? `| ${from_time}` : ""}
+          </span>
+          <span>
+            {to_date || "-"} {to_time ? `| ${to_time}` : ""}
+          </span>
+        </div>
       </div>
     ),
   },

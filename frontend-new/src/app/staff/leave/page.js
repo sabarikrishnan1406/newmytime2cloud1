@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, buildQueryParams } from "@/lib/api-client";
 import { getStaffUser } from "@/lib/staff-user";
-import Link from "next/link";
+import LeaveRequestCreate from "@/components/LeaveRequest/Create";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const defaultLeaveBalances = [
   {
@@ -137,76 +143,85 @@ export default function StaffLeavePage() {
   const [leaveBalances, setLeaveBalances] = useState(defaultLeaveBalances);
   const [leaveRequests, setLeaveRequests] = useState(defaultLeaveRequests);
   const [activeTab, setActiveTab] = useState("active");
+  const [employeeId, setEmployeeId] = useState(null);
+  const [isApplyOpen, setIsApplyOpen] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const u = await getStaffUser();
+      const params = await buildQueryParams({});
+      setEmployeeId(u.employee_id || null);
+
+      // Fetch leave types first
+      let types = [];
+      try {
+        const ltRes = await api.get("/leave", { params });
+        types = ltRes.data?.data || (Array.isArray(ltRes.data) ? ltRes.data : []);
+      } catch (e) {}
+
+      // Fetch leave requests
+      try {
+        const { data } = await api.get("/employee_leaves", {
+          params: { ...params, employee_id: u.employee_id, per_page: 50 },
+        });
+        const items = data?.data || [];
+
+        // Build balance cards from leave types + used count
+        if (types.length > 0) {
+          const progressColors = ["bg-cyan-300", "bg-purple-300", "bg-emerald-300", "bg-red-300", "bg-amber-300"];
+          setLeaveBalances(types.map((lt, i) => {
+            const style = leaveIconMap[i % leaveIconMap.length];
+            const total = lt.total || lt.days || lt.allocated || lt.count || 0;
+            const used = items.filter((l) => l.leave_type_id === lt.id && (l.status === 1)).length;
+            const remaining = Math.max(0, total - used);
+            const pct = total > 0 ? Math.round((used / total) * 100) : 0;
+            return {
+              label: lt.name,
+              value: String(used),
+              total: String(total),
+              icon: style.icon,
+              iconClass: style.iconClass,
+              badge: remaining > 0 ? "Active" : "Used",
+              badgeClass: style.iconClass,
+              progress: `${pct}%`,
+              progressClass: progressColors[i % progressColors.length],
+              helper: `${remaining} days remaining`,
+            };
+          }));
+        }
+
+        if (items.length > 0) {
+
+          setLeaveRequests(items.map((l, i) => {
+            const lt = types.find((t) => t.id === l.leave_type_id);
+            const iconStyle = leaveIconMap[(types.indexOf(lt) >= 0 ? types.indexOf(lt) : i) % leaveIconMap.length];
+            const st = statusStyleMap[l.status] || statusStyleMap[0];
+            const start = new Date(l.start_date);
+            const end = new Date(l.end_date);
+            const days = Math.max(1, Math.ceil((end - start) / 86400000) + 1);
+            return {
+              type: lt?.name || "Leave",
+              icon: iconStyle.icon,
+              iconClass: iconStyle.iconClass,
+              dateRange: `${start.toLocaleDateString("en-US", { month: "short", day: "2-digit" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })}`,
+              days: String(days),
+              reason: l.reason || "---",
+              ...st,
+            };
+          }));
+        }
+      } catch (e) { console.warn("Leaves error", e); }
+    } catch (e) { console.error("Leave page error", e); }
+  }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const u = await getStaffUser();
-        const params = await buildQueryParams({});
-
-        // Fetch leave types first
-        let types = [];
-        try {
-          const ltRes = await api.get("/leave", { params });
-          types = ltRes.data?.data || (Array.isArray(ltRes.data) ? ltRes.data : []);
-        } catch (e) {}
-
-        // Fetch leave requests
-        try {
-          const { data } = await api.get("/employee_leaves", {
-            params: { ...params, employee_id: u.employee_id, per_page: 50 },
-          });
-          const items = data?.data || [];
-
-          // Build balance cards from leave types + used count
-          if (types.length > 0) {
-            const progressColors = ["bg-cyan-300", "bg-purple-300", "bg-emerald-300", "bg-red-300", "bg-amber-300"];
-            setLeaveBalances(types.map((lt, i) => {
-              const style = leaveIconMap[i % leaveIconMap.length];
-              const total = lt.total || lt.days || lt.allocated || lt.count || 0;
-              const used = items.filter((l) => l.leave_type_id === lt.id && (l.status === 1)).length;
-              const remaining = Math.max(0, total - used);
-              const pct = total > 0 ? Math.round((used / total) * 100) : 0;
-              return {
-                label: lt.name,
-                value: String(used),
-                total: String(total),
-                icon: style.icon,
-                iconClass: style.iconClass,
-                badge: remaining > 0 ? "Active" : "Used",
-                badgeClass: style.iconClass,
-                progress: `${pct}%`,
-                progressClass: progressColors[i % progressColors.length],
-                helper: `${remaining} days remaining`,
-              };
-            }));
-          }
-
-          if (items.length > 0) {
-
-            setLeaveRequests(items.map((l, i) => {
-              const lt = types.find((t) => t.id === l.leave_type_id);
-              const iconStyle = leaveIconMap[(types.indexOf(lt) >= 0 ? types.indexOf(lt) : i) % leaveIconMap.length];
-              const st = statusStyleMap[l.status] || statusStyleMap[0];
-              const start = new Date(l.start_date);
-              const end = new Date(l.end_date);
-              const days = Math.max(1, Math.ceil((end - start) / 86400000) + 1);
-              return {
-                type: lt?.name || "Leave",
-                icon: iconStyle.icon,
-                iconClass: iconStyle.iconClass,
-                dateRange: `${start.toLocaleDateString("en-US", { month: "short", day: "2-digit" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })}`,
-                days: String(days),
-                reason: l.reason || "---",
-                ...st,
-              };
-            }));
-          }
-        } catch (e) { console.warn("Leaves error", e); }
-      } catch (e) { console.error("Leave page error", e); }
-    };
     fetchData();
-  }, []);
+  }, [fetchData]);
+
+  const handleLeaveCreated = useCallback(async () => {
+    setIsApplyOpen(false);
+    await fetchData();
+  }, [fetchData]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
@@ -228,14 +243,34 @@ export default function StaffLeavePage() {
               <button onClick={() => setActiveTab("active")} className={`pb-4 font-headline font-bold transition ${activeTab === "active" ? "border-b-2 border-cyan-300 text-cyan-300" : "text-slate-400 hover:text-cyan-300"}`}>Active Requests</button>
               <button onClick={() => setActiveTab("history")} className={`pb-4 font-headline font-bold transition ${activeTab === "history" ? "border-b-2 border-cyan-300 text-cyan-300" : "text-slate-400 hover:text-cyan-300"}`}>Leave History</button>
             </div>
-            <Link
-              href="/staff/leave/apply"
+            <button
+              type="button"
+              onClick={() => setIsApplyOpen(true)}
               className="flex items-center justify-center gap-2 rounded-xl bg-cyan-400 px-6 py-3 font-headline font-bold text-[#004d57] shadow-[0_0_20px_rgba(0,227,253,0.3)] transition hover:scale-[1.02] active:scale-95"
             >
               <span className="material-symbols-outlined">add</span>
               Apply New Leave
-            </Link>
+            </button>
           </div>
+
+          <Dialog open={isApplyOpen} onOpenChange={setIsApplyOpen}>
+            <DialogContent className="max-h-[90vh] !w-[680px] !max-w-[94vw] overflow-hidden border-white/10 bg-[#0b1324] p-0 text-slate-100">
+              <DialogHeader className="border-b border-white/10 px-6 py-4">
+                <DialogTitle className="font-headline text-lg font-semibold text-slate-100">Apply New Leave</DialogTitle>
+              </DialogHeader>
+              <div className="px-6 py-5">
+                {employeeId ? (
+                  <LeaveRequestCreate
+                    setOpen={setIsApplyOpen}
+                    onSuccess={handleLeaveCreated}
+                    staffEmployeeId={employeeId}
+                  />
+                ) : (
+                  <div className="py-10 text-center text-sm text-slate-400">Loading leave form...</div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <div className="space-y-4 px-4 pb-4 lg:hidden">
             {leaveRequests.filter((r) => activeTab === "history" ? r.status === "Approved" : true).map((request) => (

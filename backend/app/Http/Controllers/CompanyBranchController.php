@@ -151,24 +151,29 @@ class CompanyBranchController extends Controller
         $data = $request->validated();
 
         // Auto-detect country and timezone from latitude/longitude
-        if (!empty($data['lat']) && !empty($data['lon'])) {
+        if (!empty($data['lat']) && !empty($data['lon']) && $data['lat'] !== 'undefined' && $data['lon'] !== 'undefined') {
+            $existing = CompanyBranch::find($id);
+            $latChanged = $existing && $existing->lat != $data['lat'];
+            $lonChanged = $existing && $existing->lon != $data['lon'];
+            $coordsChanged = $latChanged || $lonChanged;
+
             $geoService = new ReverseGeocodeService();
-            
-            // Auto-detect country if not provided
-            if (empty($data['country'])) {
+
+            // Auto-detect country if not provided or if coordinates changed
+            if (empty($data['country']) || $coordsChanged) {
                 $country = $geoService->getCountryCode($data['lat'], $data['lon']);
                 if ($country) {
                     $data['country'] = $country;
-                    \Log::info("✅ Auto-detected country: $country for branch: " . $data['branch_name']);
+                    \Log::info("Auto-detected country: $country for branch: " . $data['branch_name']);
                 }
             }
-            
-            // Auto-detect timezone if not provided
-            if (empty($data['timezone'])) {
+
+            // Auto-detect timezone if not provided or if coordinates changed
+            if (empty($data['timezone']) || $coordsChanged) {
                 $timezone = $geoService->getTimezone($data['lat'], $data['lon']);
                 if ($timezone) {
                     $data['timezone'] = $timezone;
-                    \Log::info("✅ Auto-detected timezone: $timezone for branch: " . $data['branch_name']);
+                    \Log::info("Auto-detected timezone: $timezone for branch: " . $data['branch_name']);
                 }
             }
         }

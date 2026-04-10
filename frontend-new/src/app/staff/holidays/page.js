@@ -469,43 +469,67 @@ export default function StaffHolidaysPage() {
 
         let allHolidays = Array.isArray(holidayData?.data) ? holidayData.data : Array.isArray(holidayData) ? holidayData : [];
 
-        // Fetch government holidays by country code if branch country is available
+        // Fetch government holidays — check for employee-specific custom holidays first
         if (branchCountry) {
           try {
-            // Country is already stored as code (e.g., "AE", "IN", "GB")
             const countryCode = branchCountry.toUpperCase().trim();
+            const staffUser = await getStaffUser();
+            const employeeId = staffUser?.employee_id || staffUser?.id;
 
-            console.log("Fetching government holidays for country code:", countryCode);
+            let govHolidays = [];
+            let hasCustom = false;
 
-            const { data: govData } = await api.get("/government-holidays", {
-              params: {
-                ...params,
-                country_code: countryCode,
-                year: selectedYear,
-              },
-            });
+            // Try employee-specific government holidays first
+            if (employeeId) {
+              try {
+                const { data: empGovData } = await api.get(`/employee/${employeeId}/government-holidays`, {
+                  params: { ...params, country_code: countryCode, year: selectedYear },
+                });
 
-            console.log("Government holidays response status:", govData?.success);
-            console.log("Government holidays response:", govData);
+                if (empGovData?.success) {
+                  hasCustom = empGovData.is_custom === true;
+                  if (hasCustom) {
+                    // Custom holidays — show only enabled ones
+                    govHolidays = (empGovData.data || [])
+                      .filter((h) => h.is_enabled)
+                      .map((h) => ({
+                        ...h,
+                        id: h.holiday_id || h.id,
+                        type: "government",
+                        country_code: countryCode,
+                      }));
+                  } else {
+                    // Default holidays — show all
+                    govHolidays = (empGovData.data || []).map((h) => ({
+                      ...h,
+                      id: h.holiday_id || h.id,
+                      type: "government",
+                      country_code: countryCode,
+                    }));
+                  }
+                }
+              } catch {
+                // Fallback to default government holidays below
+              }
+            }
 
-            if (govData?.success && govData?.data && govData.data.length > 0) {
-              // Combine government holidays with branch holidays
-              allHolidays = [...allHolidays, ...govData.data];
-              console.log("✅ Successfully added", govData.data.length, "government holidays");
-            } else if (!govData?.success) {
-              console.warn("⚠️ Government holidays API returned error:", govData?.message);
-            } else {
-              console.log("ℹ️ No government holidays returned for", countryCode);
+            // Fallback: fetch default government holidays if no employee data
+            if (!hasCustom && govHolidays.length === 0) {
+              const { data: govData } = await api.get("/government-holidays", {
+                params: { ...params, country_code: countryCode, year: selectedYear },
+              });
+
+              if (govData?.success && govData?.data?.length > 0) {
+                govHolidays = govData.data;
+              }
+            }
+
+            if (govHolidays.length > 0) {
+              allHolidays = [...allHolidays, ...govHolidays];
             }
           } catch (error) {
-            console.error("❌ Failed to fetch government holidays:", error.response?.status, error.message);
-            if (error.response?.data) {
-              console.error("Response data:", error.response.data);
-            }
-            // Continue with branch holidays only
+            console.error("Failed to fetch government holidays:", error.message);
           }
-        } else {
-          console.log("⚠️ No branch country available, skipping government holidays");
         }
 
         setHolidays(allHolidays);

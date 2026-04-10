@@ -24,7 +24,18 @@ class UpdateRequest extends FormRequest
     public function rules()
     {
         return [
+            'request_type' => "sometimes|required",
+            'from_date' => "sometimes|required",
+            'to_date' => 'sometimes|required',
+            'from_time' => 'nullable',
+            'to_time' => 'nullable',
+            'requested_at' => 'nullable',
+            'remarks' => "nullable|max:100",
             'status' => "nullable",
+            'attachment' => "nullable|file",
+            'employee_device_id' => "sometimes|required",
+            'branch_id' => "sometimes|required",
+            'company_id' => "sometimes|required",
         ];
     }
 }

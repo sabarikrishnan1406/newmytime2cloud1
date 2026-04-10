@@ -14,6 +14,7 @@ import ShiftPage from "@/app/shift/page";
 import SchedulePage from "@/app/schedule/page";
 import EmployeesPage from "@/app/employees/page";
 import GeoFencingSetup from "@/components/Setup/GeoFencingSetup";
+import GovernmentHolidaysSetup from "@/components/Setup/GovernmentHolidaysSetup";
 
 export default function Index() {
     const [stepIndex, setStepIndex] = useState(0);
@@ -78,6 +79,14 @@ export default function Index() {
             title: "Employee Geo-Fencing",
             subtitle: "Set custom locations for employees.",
             content: <GeoFencingSetup />,
+        },
+        {
+            id: 8,
+            label: "Step 8",
+            sidebarTitle: "Gov. Holidays",
+            title: "Government Holidays",
+            subtitle: "Customize holidays per employee.",
+            content: <GovernmentHolidaysSetup />,
         },
     ];
 

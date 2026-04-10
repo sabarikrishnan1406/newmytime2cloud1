@@ -27,6 +27,8 @@ class StoreRequest extends FormRequest
             'request_type' => "required",
             'from_date' => "required",
             'to_date' => 'required',
+            'from_time' => 'nullable',
+            'to_time' => 'nullable',
             'requested_at' => 'required',
             'remarks' => "nullable|max:100",
             'status' => "nullable",

@@ -82,7 +82,36 @@ class ChangeRequestController extends Controller
 
     public function show(ChangeRequest $ChangeRequest)
     {
-        return $ChangeRequest;
+        return $ChangeRequest->load(["branch", "employee"]);
+    }
+
+    public function update(ChangeRequest $ChangeRequest, UpdateRequest $request)
+    {
+        try {
+            if (in_array($ChangeRequest->status, ["A", "R", 1, 2, "approved", "rejected"], true)) {
+                return $this->response('Only pending change requests can be edited.', null, false);
+            }
+
+            $data = $request->validated();
+
+            if (isset($request->attachment) && $request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $ext = $file->getClientOriginalExtension();
+                $fileName = time() . '.' . $ext;
+                $request->file('attachment')->move(public_path('/ChangeRequest/attachments'), $fileName);
+                $data['attachment'] = $fileName;
+            }
+
+            $updated = $ChangeRequest->update($data);
+
+            if ($updated) {
+                return $this->response('ChangeRequest updated.', $ChangeRequest->fresh()->load(["branch", "employee"]), true);
+            }
+
+            return $this->response('ChangeRequest cannot update.', null, false);
+        } catch (\Throwable $th) {
+            return $this->response('An error occurred while updating the ChangeRequest.', null, false);
+        }
     }
 
     public function updateChangeRequest($id, UpdateRequest $request)

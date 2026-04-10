@@ -33,3 +33,18 @@ export const deleteHolidays = async (id) => {
     await api.delete(`${baseURL}/holidays/${id}`);
     return true;
 };
+
+export const getEmployeeGovernmentHolidays = async (employeeId, params = {}) => {
+    const { data } = await api.get(`${API_BASE}/employee/${employeeId}/government-holidays`, { params });
+    return data;
+};
+
+export const saveEmployeeGovernmentHolidays = async (employeeId, payload) => {
+    const { data } = await api.post(`${API_BASE}/employee/${employeeId}/government-holidays`, payload);
+    return data;
+};
+
+export const resetEmployeeGovernmentHolidays = async (employeeId, params = {}) => {
+    const { data } = await api.delete(`${API_BASE}/employee/${employeeId}/government-holidays`, { params });
+    return data;
+};
