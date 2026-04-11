@@ -52,9 +52,13 @@ export const downloadPDF = async (endpoint, params = {}, fileName = "Report.pdf"
         // Start smooth progress during server wait
         startProgressSimulation();
 
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
         const response = await fetch(url, {
             method: 'GET',
-            headers: { 'Accept': 'application/pdf' },
+            headers: {
+                'Accept': 'application/pdf',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+            },
         });
 
         if (!response.ok) {
@@ -180,9 +184,38 @@ export const downloadSummaryPDF = async ({ from_date, to_date, branch_ids, depar
 
 export const downloadReport = async (reportUrl, fileName = "Daily-Summary-Report.pdf", onProgress = null) => {
     let objectUrl = null;
+    let progressTimer = null;
+    let currentProgress = 0;
+
+    const startProgressSimulation = () => {
+        if (!onProgress) return;
+        currentProgress = 2;
+        onProgress(currentProgress);
+
+        progressTimer = setInterval(() => {
+            if (currentProgress < 30) {
+                currentProgress += 2;
+            } else if (currentProgress < 50) {
+                currentProgress += 1.5;
+            } else if (currentProgress < 70) {
+                currentProgress += 0.8;
+            } else if (currentProgress < 85) {
+                currentProgress += 0.3;
+            }
+            currentProgress = Math.min(currentProgress, 85);
+            onProgress(Math.round(currentProgress));
+        }, 500);
+    };
+
+    const stopProgressSimulation = () => {
+        if (progressTimer) {
+            clearInterval(progressTimer);
+            progressTimer = null;
+        }
+    };
 
     try {
-        if (onProgress) onProgress(5);
+        startProgressSimulation();
 
         const response = await fetch(`${PDF_SERVICE_BASE}/pdf`, {
             method: "POST",
@@ -190,18 +223,17 @@ export const downloadReport = async (reportUrl, fileName = "Daily-Summary-Report
             body: JSON.stringify({ url: reportUrl })
         });
 
-        if (onProgress) onProgress(30);
+        stopProgressSimulation();
+        if (onProgress) onProgress(88);
 
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(`Server responded with ${response.status}: ${errorText || 'Failed to generate PDF'}`);
         }
 
-        if (onProgress) onProgress(60);
-
         const blob = await response.blob();
 
-        if (onProgress) onProgress(90);
+        if (onProgress) onProgress(95);
 
         objectUrl = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -213,6 +245,7 @@ export const downloadReport = async (reportUrl, fileName = "Daily-Summary-Report
 
         if (onProgress) onProgress(100);
     } catch (err) {
+        stopProgressSimulation();
         console.error("Report Download Error:", err);
         throw err;
     } finally {

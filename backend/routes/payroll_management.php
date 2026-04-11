@@ -74,6 +74,7 @@ Route::get('payroll-management/staff-payslips', function (\Illuminate\Http\Reque
 
 // Payslip
 Route::get('payroll-management/payslip/{recordId}', [PayrollManagementController::class, 'downloadPayslip']);
+Route::get('payroll-management/payslips-bulk', [PayrollManagementController::class, 'bulkPayslips']);
 
 // Geo-Fence Locations (Setup)
 Route::get('geofence-locations', function (\Illuminate\Http\Request $request) {

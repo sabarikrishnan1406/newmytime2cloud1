@@ -7,9 +7,12 @@ const app = express();
 app.use(cors({ origin: "*", methods: ["GET", "POST", "OPTIONS"], allowedHeaders: ["Content-Type"] }));
 app.use(express.json({ limit: "10mb" }));
 app.use("/templates", express.static(path.resolve(__dirname, "..", "summary-report")));
+app.use("/attendance-report", express.static(path.resolve(__dirname, "..", "summary-report", "attendance-report")));
 
 app.post("/pdf", async (req, res) => {
-  const { url } = req.body;
+  req.setTimeout(300000); // 5 minute timeout
+  res.setTimeout(300000);
+  const { url, landscape, format } = req.body;
   if (!url) return res.status(400).json({ error: "url is required" });
 
   console.log("Generating PDF for:", url);
@@ -17,18 +20,25 @@ app.post("/pdf", async (req, res) => {
   try {
     browser = await puppeteer.launch({
       headless: "new",
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-web-security"],
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-web-security", "--disable-dev-shm-usage"],
+      protocolTimeout: 300000,
     });
     const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 900 });
+    const isLandscapeView = landscape === true || url.includes('attendance-report');
+    await page.setViewport({ width: isLandscapeView ? 1400 : 1280, height: 900 });
 
     // Log errors for debugging
     page.on("pageerror", (err) => console.log("PAGE ERROR:", err.message));
     page.on("requestfailed", (req) => console.log("FAILED REQUEST:", req.url()));
 
     console.log("Loading page...");
-    await page.goto(url, { waitUntil: "networkidle0", timeout: 120000 });
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 300000 });
     console.log("Page loaded (networkidle0)");
+
+    // Override CSS for attendance reports - landscape
+    if (isLandscapeView) {
+      await page.addStyleTag({ content: '@page { size: A4 landscape !important; }' });
+    }
 
     // Wait for table to appear (means data has loaded and rendered)
     try {
@@ -57,8 +67,11 @@ app.post("/pdf", async (req, res) => {
     });
     console.log("Page info:", JSON.stringify(info));
 
+    // Auto-detect landscape for attendance reports, or use request param
+    const isLandscape = landscape === true || url.includes('attendance-report');
     const pdf = await page.pdf({
-      format: "A4",
+      format: format || "A4",
+      landscape: isLandscape,
       printBackground: true,
       margin: { top: "5mm", bottom: "5mm", left: "5mm", right: "5mm" },
     });

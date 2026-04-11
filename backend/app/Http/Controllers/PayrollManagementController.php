@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AttendanceLog;
 use App\Models\Employee;
 use App\Models\EmployeeAdvance;
+use App\Models\EmployeeLeaves;
 use App\Models\EmployeeLoan;
 use App\Models\PayrollAdjustment;
 use App\Models\PayrollBatch;
@@ -345,8 +346,8 @@ class PayrollManagementController extends Controller
             $daysDivisor = $daysMode === 'fixed_30' ? 30 : $totalDaysInMonth;
 
             foreach ($structures as $ss) {
-                $emp = Employee::find($ss->employee_id);
-                if (!$emp) continue;
+                $emp = Employee::where('company_id', $companyId)->find($ss->employee_id);
+                if (!$emp || !$emp->system_user_id) continue;
 
                 // Get attendance logs
                 $logs = AttendanceLog::where('UserID', $emp->system_user_id)
@@ -365,7 +366,11 @@ class PayrollManagementController extends Controller
                 $absentDays = max(0, $daysDivisor - $presentDays);
 
                 // Get shift for OT/late calculation
-                $schedule = ScheduleEmployee::where('employee_id', $emp->system_user_id)->whereHas('shift')->latest('updated_at')->first();
+                $schedule = ScheduleEmployee::where('employee_id', $emp->system_user_id)
+                    ->where('company_id', $companyId)
+                    ->whereHas('shift')
+                    ->latest('updated_at')
+                    ->first();
                 $shift = $schedule?->shift;
                 $shiftWorkingHours = $this->timeToMinutes($shift?->working_hours ?? '08:00') / 60;
                 $shiftStartTime = $shift?->on_duty_time; // e.g. "09:00"
@@ -427,7 +432,7 @@ class PayrollManagementController extends Controller
                 }
 
                 // OT amount with separate multipliers from settings
-                $baseOtRate = $ss->basic_salary / $daysDivisor / $workingHrsPerDay;
+                $baseOtRate = ($daysDivisor > 0 && $workingHrsPerDay > 0) ? $ss->basic_salary / $daysDivisor / $workingHrsPerDay : 0;
                 $otAmount = round(
                     ($normalOtHours * $baseOtRate * $normalOtMultiplier) +
                     ($weekendOtHours * $baseOtRate * $weekendOtMultiplier) +
@@ -438,27 +443,29 @@ class PayrollManagementController extends Controller
 
                 // Late deduction based on settings
                 $lateDeduction = 0;
-                if ($lateDeductionMode === 'slab_based' && !empty($lateSlabs)) {
-                    $dailyRate = $ss->basic_salary / $daysDivisor;
-                    foreach ($lateSlabs as $slab) {
-                        $from = $slab['fromMinutes'] ?? 0;
-                        $to = $slab['toMinutes'] ?? 999999;
-                        if ($totalLateMinutes >= $from && $totalLateMinutes <= $to) {
-                            $type = $slab['deductionType'] ?? 'no_deduction';
-                            if ($type === 'half_day') $lateDeduction = round($dailyRate * 0.5, 2);
-                            elseif ($type === 'full_day') $lateDeduction = round($dailyRate, 2);
-                            elseif ($type === 'two_days') $lateDeduction = round($dailyRate * 2, 2);
-                            elseif ($type === 'percentage') $lateDeduction = round($ss->basic_salary * ($slab['value'] ?? 0) / 100, 2);
-                            elseif ($type === 'fixed_amount') $lateDeduction = round($slab['value'] ?? 0, 2);
-                            break;
+                if ($daysDivisor > 0 && $workingHrsPerDay > 0 && $totalLateMinutes > 0) {
+                    if ($lateDeductionMode === 'slab_based' && !empty($lateSlabs)) {
+                        $lateDailyRate = $ss->basic_salary / $daysDivisor;
+                        foreach ($lateSlabs as $slab) {
+                            $from = $slab['fromMinutes'] ?? 0;
+                            $to = $slab['toMinutes'] ?? 999999;
+                            if ($totalLateMinutes >= $from && $totalLateMinutes <= $to) {
+                                $type = $slab['deductionType'] ?? 'no_deduction';
+                                if ($type === 'half_day') $lateDeduction = round($lateDailyRate * 0.5, 2);
+                                elseif ($type === 'full_day') $lateDeduction = round($lateDailyRate, 2);
+                                elseif ($type === 'two_days') $lateDeduction = round($lateDailyRate * 2, 2);
+                                elseif ($type === 'percentage') $lateDeduction = round($ss->basic_salary * ($slab['value'] ?? 0) / 100, 2);
+                                elseif ($type === 'fixed_amount') $lateDeduction = round($slab['value'] ?? 0, 2);
+                                break;
+                            }
                         }
+                    } elseif ($lateDeductionMode === 'per_minute') {
+                        $perMinuteRate = $ss->basic_salary / $daysDivisor / $workingHrsPerDay / 60;
+                        $lateDeduction = round($totalLateMinutes * $perMinuteRate, 2);
+                    } elseif ($lateDeductionMode === 'per_hour') {
+                        $perHourRate = $ss->basic_salary / $daysDivisor / $workingHrsPerDay;
+                        $lateDeduction = round(($totalLateMinutes / 60) * $perHourRate, 2);
                     }
-                } elseif ($lateDeductionMode === 'per_minute') {
-                    $perMinuteRate = $ss->basic_salary / $daysDivisor / $workingHrsPerDay / 60;
-                    $lateDeduction = round($totalLateMinutes * $perMinuteRate, 2);
-                } elseif ($lateDeductionMode === 'per_hour') {
-                    $perHourRate = $ss->basic_salary / $daysDivisor / $workingHrsPerDay;
-                    $lateDeduction = round(($totalLateMinutes / 60) * $perHourRate, 2);
                 }
 
                 // Adjustments
@@ -474,8 +481,52 @@ class PayrollManagementController extends Controller
                 $fineAmount = $adjustments->where('type', 'fine')->sum('amount');
                 $otherDed = $adjustments->where('type', 'other_deduction')->sum('amount');
 
-                // Absence deduction
-                $absenceDeduction = round(($ss->basic_salary / $daysDivisor) * $absentDays, 2);
+                // Leave-aware absence deduction
+                // Get approved leaves for this month and check paid/unpaid
+                $approvedLeaves = EmployeeLeaves::where('employee_id', $ss->employee_id)
+                    ->where('company_id', $companyId)
+                    ->where('status', 1) // approved
+                    ->where(function ($q) use ($monthStart, $monthEnd) {
+                        $q->where('start_date', '<=', $monthEnd)
+                          ->where('end_date', '>=', $monthStart);
+                    })
+                    ->with('leave_type')
+                    ->get();
+
+                $paidLeaveDays = 0;
+                $unpaidLeaveDays = 0;
+
+                foreach ($approvedLeaves as $leave) {
+                    $leaveStart = Carbon::parse($leave->start_date)->max(Carbon::parse($monthStart));
+                    $leaveEnd = Carbon::parse($leave->end_date)->min(Carbon::parse($monthEnd));
+                    $leaveDaysCount = $leaveStart->diffInDays($leaveEnd) + 1;
+
+                    $isPaid = $leave->leave_type?->paid ?? false;
+
+                    if ($isPaid) {
+                        $paidLeaveDays += $leaveDaysCount;
+                    } else {
+                        $unpaidLeaveDays += $leaveDaysCount;
+                    }
+                }
+
+                // Split: absence (no leave) vs unpaid leave deduction
+                $totalLeaveDays = $paidLeaveDays + $unpaidLeaveDays;
+                // Ensure leave days don't exceed total absent days
+                if ($totalLeaveDays > $absentDays) {
+                    // More leave days than absent days (employee was present on some leave days)
+                    // Adjust: paid leave takes priority, then unpaid
+                    $paidLeaveDays = min($paidLeaveDays, $absentDays);
+                    $unpaidLeaveDays = min($unpaidLeaveDays, max(0, $absentDays - $paidLeaveDays));
+                    $totalLeaveDays = $paidLeaveDays + $unpaidLeaveDays;
+                }
+                $pureAbsentDays = max(0, $absentDays - $totalLeaveDays);
+                $dailyRate = $daysDivisor > 0 ? $ss->basic_salary / $daysDivisor : 0;
+
+                // Absence deduction = only days with NO leave applied
+                $absenceDeduction = round($dailyRate * $pureAbsentDays, 2);
+                // Leave deduction = only UNPAID leave days
+                $leaveDeduction = round($dailyRate * $unpaidLeaveDays, 2);
 
                 // Loan deduction
                 $loanDed = 0;
@@ -505,7 +556,7 @@ class PayrollManagementController extends Controller
 
                 $totalAllowances = $ss->house_allowance + $ss->transport_allowance + $ss->food_allowance + $ss->medical_allowance + $ss->other_allowance;
                 $grossEarned = $ss->basic_salary + $totalAllowances + $otAmount + $bonus + $incentive + $arrears + $reimbursement;
-                $totalDeduction = $absenceDeduction + $lateDeduction + $loanDed + $advanceDed + $fineAmount + $otherDed;
+                $totalDeduction = $absenceDeduction + $leaveDeduction + $lateDeduction + $loanDed + $advanceDed + $fineAmount + $otherDed;
                 $netSalary = $grossEarned - $totalDeduction;
 
                 // Apply rounding rule from settings
@@ -520,7 +571,9 @@ class PayrollManagementController extends Controller
                     'employee_id' => $ss->employee_id,
                     'month' => $month,
                     'present_days' => $presentDays,
-                    'absent_days' => $absentDays,
+                    'absent_days' => $pureAbsentDays,
+                    'paid_leave_days' => $paidLeaveDays,
+                    'unpaid_leave_days' => $unpaidLeaveDays,
                     'late_days' => $lateDays,
                     'late_minutes' => $totalLateMinutes,
                     'ot_hours' => round($otHours, 2),
@@ -538,6 +591,7 @@ class PayrollManagementController extends Controller
                     'reimbursement' => $reimbursement,
                     'gross_earned' => $grossEarned,
                     'absence_deduction' => $absenceDeduction,
+                    'leave_deduction' => $leaveDeduction,
                     'late_deduction' => $lateDeduction,
                     'loan_deduction' => $loanDed,
                     'advance_deduction' => $advanceDed,
@@ -603,6 +657,71 @@ class PayrollManagementController extends Controller
         $html = view('pdf.payslip-new', ['record' => $record])->render();
 
         return response($html)->header('Content-Type', 'text/html');
+    }
+
+    // ── Bulk Download All Payslips ──
+    public function bulkPayslips(Request $request)
+    {
+        $companyId = $request->company_id;
+        $month = $request->month;
+        $batchId = $request->batch_id;
+
+        $query = PayrollRecord::where('company_id', $companyId)
+            ->with('employee', 'employee.branch', 'employee.department', 'employee.designation', 'employee.bank');
+
+        if ($batchId) {
+            $query->where('batch_id', $batchId);
+        } elseif ($month) {
+            $batch = \App\Models\PayrollBatch::where('company_id', $companyId)
+                ->where('month', $month)
+                ->latest('id')
+                ->first();
+            if ($batch) {
+                $query->where('batch_id', $batch->id);
+            }
+        }
+
+        if ($request->filled('record_ids')) {
+            $query->whereIn('id', explode(',', $request->record_ids));
+        }
+
+        $records = $query->orderBy('id')->get();
+
+        if ($records->isEmpty()) {
+            return response('<h1>No payslip records found</h1>', 404)->header('Content-Type', 'text/html');
+        }
+
+        // Render first payslip to get full HTML with styles
+        $firstHtml = view('pdf.payslip-new', ['record' => $records[0]])->render();
+
+        // Extract styles from the first payslip
+        $styles = '';
+        if (preg_match('/<style>(.*?)<\/style>/is', $firstHtml, $styleMatch)) {
+            $styles = $styleMatch[1];
+        }
+
+        // Build combined HTML with all payslips
+        $combined = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
+            . $styles
+            . ' .page-break { page-break-after: always; break-after: page; margin-bottom: 0; }'
+            . ' .page-break:last-child { page-break-after: avoid; }'
+            . '</style></head><body>';
+
+        foreach ($records as $i => $record) {
+            $html = view('pdf.payslip-new', ['record' => $record])->render();
+
+            // Extract body content
+            $bodyContent = $html;
+            if (preg_match('/<body[^>]*>(.*)<\/body>/is', $html, $matches)) {
+                $bodyContent = $matches[1];
+            }
+
+            $combined .= '<div class="page-break">' . $bodyContent . '</div>';
+        }
+
+        $combined .= '</body></html>';
+
+        return response($combined)->header('Content-Type', 'text/html');
     }
 
     // ── Report Export ──

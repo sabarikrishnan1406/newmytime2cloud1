@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { StatusBadge } from "@/components/payroll/StatusBadge";
 import { api, buildQueryParams } from "@/lib/api-client";
-import { Search, Download, Eye, FileText, X } from "lucide-react";
+import { Search, Download, Eye, FileText, X, Loader2 } from "lucide-react";
+import PDFProgressOverlay from "@/components/Report/PDFProgressOverlay";
+
+const PDF_SERVICE_BASE = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://localhost:3002';
 
 export default function PayrollRegister() {
   const searchParams = useSearchParams();
@@ -16,6 +19,8 @@ export default function PayrollRegister() {
   const [records, setRecords] = useState([]);
   const [batchInfo, setBatchInfo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isBulkDownloading, setIsBulkDownloading] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -84,6 +89,7 @@ export default function PayrollRegister() {
 
   return (
     <div className="space-y-5">
+      <PDFProgressOverlay isOpen={isBulkDownloading} progress={bulkProgress} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -153,6 +159,51 @@ export default function PayrollRegister() {
           }}
             className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
             <Download className="h-3.5 w-3.5" /> Export PDF
+          </button>
+          <button
+            disabled={isBulkDownloading || filtered.length === 0}
+            onClick={async () => {
+              if (!batchInfo?.id || filtered.length === 0) return;
+              setIsBulkDownloading(true);
+              setBulkProgress(0);
+
+              try {
+                const params = await buildQueryParams({});
+                const recordIds = filtered.map(e => e.id).join(",");
+                const bulkUrl = `${api.defaults.baseURL}/payroll-management/payslips-bulk?company_id=${params.company_id}&batch_id=${batchInfo.id}&record_ids=${recordIds}`;
+
+                setBulkProgress(10);
+
+                const response = await fetch(`${PDF_SERVICE_BASE}/pdf`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ url: bulkUrl }),
+                });
+
+                setBulkProgress(60);
+
+                if (!response.ok) throw new Error("PDF generation failed");
+
+                const blob = await response.blob();
+                setBulkProgress(90);
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `All_Payslips_${batchInfo?.month || "export"}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+                setBulkProgress(100);
+              } catch (err) {
+                alert("Failed to download payslips: " + err.message);
+              } finally {
+                setTimeout(() => { setIsBulkDownloading(false); setBulkProgress(0); }, 1000);
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700 transition shadow-sm disabled:opacity-50"
+          >
+            {isBulkDownloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            All Payslips PDF
           </button>
           <button onClick={() => {
             if (filtered.length === 0) return;

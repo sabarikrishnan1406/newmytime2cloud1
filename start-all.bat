@@ -16,8 +16,11 @@ start "Camera-Service" cmd /k "cd /d D:\newmytime2cloud\camera-service && python
 echo [5/6] Starting Queue Worker...
 start "Queue-Worker" cmd /k "cd /d D:\newmytime2cloud\backend && D:\php\php.exe artisan queue:work --tries=3 --timeout=60"
 
-echo [6/6] Starting Scheduler...
+echo [6/7] Starting Scheduler...
 start "Scheduler" cmd /k "cd /d D:\newmytime2cloud\backend && D:\php\php.exe artisan schedule:work"
+
+echo [7/7] Starting PDF Service (port 3002)...
+start "PDF-Service" cmd /k "cd /d D:\newmytime2cloud\pdf-service && node index.js"
 
 echo.
 echo All services started!
@@ -25,5 +28,6 @@ echo   API:      http://localhost:8000
 echo   Frontend: http://localhost:3001
 echo   Camera:   http://localhost:8500
 echo   Proxy:    ws://localhost:8501
+echo   PDF:      http://localhost:3002
 echo   Queue:    Processing emails/notifications
 echo   Scheduler: Running scheduled tasks

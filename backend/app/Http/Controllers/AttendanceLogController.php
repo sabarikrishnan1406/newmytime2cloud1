@@ -497,9 +497,10 @@ class AttendanceLogController extends Controller
             ];
         } catch (\Throwable $th) {
             $this->devLog("generate-manual-log", $th);
+            \Log::error("GenerateManualLog error: " . $th->getMessage());
             return [
                 'status'  => false,
-                'message' => 'Unable to create log entry. Please try again.',
+                'message' => 'Unable to create log entry: ' . $th->getMessage(),
             ];
         }
     }

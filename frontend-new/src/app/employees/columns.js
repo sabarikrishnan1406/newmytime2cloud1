@@ -21,14 +21,13 @@ export default (deleteEmployee, editEmployee) => [
   {
     key: "employee",
     header: "Personnel",
+    align: "left",
     render: (e) => (
       <div className="flex items-center space-x-3">
-
         <ProfilePicture src={e.profile_picture} />
-
         <div>
-          <p className="font-medium text-sm text-slate-600 dark:text-slate-300 hidden xl:table-cell ">{e?.first_name}</p>
-          <p className="text-sm text-gray-500">
+          <p className="font-medium text-sm text-slate-600 dark:text-slate-300">{e?.first_name}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
             ID: {e.employee_id}
           </p>
         </div>
@@ -38,8 +37,9 @@ export default (deleteEmployee, editEmployee) => [
   {
     key: "branch",
     header: "Branch / Department",
+    align: "left",
     render: (employee) => (
-      <div className="text-sm text-slate-600 dark:text-slate-300 hidden xl:table-cell ">
+      <div className="text-sm text-slate-600 dark:text-slate-300">
         {employee.branch?.branch_name || "N/A"} / {employee.department?.name || "N/A"}
       </div>
     ),
@@ -48,7 +48,7 @@ export default (deleteEmployee, editEmployee) => [
     key: "position",
     header: "Position",
     render: (employee) => (
-      <div className="text-sm text-slate-600 dark:text-slate-300 hidden xl:table-cell ">
+      <div className="text-sm text-slate-600 dark:text-slate-300 text-center">
         {employee.designation?.name || "N/A"}
       </div>
     ),
@@ -57,10 +57,9 @@ export default (deleteEmployee, editEmployee) => [
     key: "mobile_email",
     header: "Mobile / Email",
     render: (employee) => (
-      <div className="text-sm text-slate-600 dark:text-slate-300 hidden xl:table-cell ">
-        <p className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">{employee.user?.email || "—"}</p>
-        <br />
-        <p className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">{employee.phone_number || "—"}</p>
+      <div className="text-sm text-center">
+        <p className="text-slate-600 dark:text-slate-300">{employee.user?.email || "—"}</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500">{employee.phone_number || "—"}</p>
       </div>
     ),
   },
@@ -68,7 +67,7 @@ export default (deleteEmployee, editEmployee) => [
     key: "timezone",
     header: "Join Date",
     render: (employee) => (
-      <div className="text-sm text-slate-600 dark:text-slate-300 hidden xl:table-cell ">
+      <div className="text-sm text-slate-600 dark:text-slate-300 text-center">
         {employee.show_joining_date || "N/A"}
       </div>
     ),
@@ -88,7 +87,7 @@ export default (deleteEmployee, editEmployee) => [
       const isFace = profile_picture;
 
       return (
-        <div className="flex items-center space-x-2 text-green-500 dark:text-slate-600">
+        <div className="flex items-center justify-center space-x-2 text-green-500 dark:text-slate-600">
           {isFace && <ScanFace className="w-5 h-5 hover:text-indigo-600 transition-colors" title="Face" />}
           {isCardNumberSet && <QrCode className="w-5 h-5 hover:text-indigo-600 transition-colors" title="Card" />}
           {isFingerPrint && <Fingerprint className="w-5 h-5 hover:text-indigo-600 transition-colors" title="Fingerprint" />}
@@ -102,46 +101,46 @@ export default (deleteEmployee, editEmployee) => [
     key: "actions",
     header: "Actions",
     render: (employee) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          asChild
-          /* This prevents the dropdown trigger itself from triggering the row click */
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="p-2 rounded-full cursor-pointer w-fit">
-            <MoreVertical className="w-5 h-5 text-gray-400" />
-          </div>
-        </DropdownMenuTrigger>
-
-        <DropdownMenuContent
-          align="end"
-          className="w-32 bg-white dark:bg-gray-900 shadow-md rounded-md py-1"
-          /* This prevents clicking inside the menu from triggering the row click */
-          onClick={(e) => e.stopPropagation()}
-        >
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation(); // Stop row redirect
-              editEmployee(employee.id)
-            }}
-            className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+      <div className="flex justify-center">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            asChild
+            onClick={(e) => e.stopPropagation()}
           >
-            <Pencil className="w-4 h-4 text-primary" />
-            <span className="text-primary font-medium">Edit</span>
-          </DropdownMenuItem>
+            <div className="p-2 rounded-full cursor-pointer w-fit">
+              <MoreVertical className="w-5 h-5 text-gray-400" />
+            </div>
+          </DropdownMenuTrigger>
 
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation(); // Stop row redirect
-              deleteEmployee(employee.id);
-            }}
-            className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+          <DropdownMenuContent
+            align="end"
+            className="w-32 bg-white dark:bg-gray-900 shadow-md rounded-md py-1"
+            onClick={(e) => e.stopPropagation()}
           >
-            <Trash className="w-4 h-4 text-red-500" />
-            <span className="text-red-500 font-medium">Delete</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                editEmployee(employee.id)
+              }}
+              className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            >
+              <Pencil className="w-4 h-4 text-primary" />
+              <span className="text-primary font-medium">Edit</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteEmployee(employee.id);
+              }}
+              className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            >
+              <Trash className="w-4 h-4 text-red-500" />
+              <span className="text-red-500 font-medium">Delete</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     ),
   },
 ];

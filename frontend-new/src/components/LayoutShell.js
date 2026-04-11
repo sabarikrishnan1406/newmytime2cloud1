@@ -4,6 +4,9 @@ import { usePathname } from "next/navigation";
 import LeftMenu from "@/components/leftMenu";
 import Header from "@/components/Header";
 import MainContentWrapper from "@/components/MainContentWrapper";
+import dynamic from "next/dynamic";
+
+const VoiceButton = dynamic(() => import("@/components/Voice/VoiceButton"), { ssr: false });
 
 export default function LayoutShell({ children }) {
   const pathname = usePathname();
@@ -23,6 +26,7 @@ export default function LayoutShell({ children }) {
         <LeftMenu />
         <MainContentWrapper>{children}</MainContentWrapper>
       </div>
+      <VoiceButton />
     </>
   );
 }

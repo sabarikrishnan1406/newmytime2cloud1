@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatDateDubai, getBgColor, getMonthBounds, getSelectedMonthLabel, setStatusLabel } from '@/lib/utils';
 import { downloadSummaryPDF } from '@/lib/endpoint/report';
+import PDFProgressOverlay from './PDFProgressOverlay';
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { getAttendanceTabs } from '@/lib/endpoint/attendance';
@@ -54,6 +55,7 @@ export default function ExecutiveAttendanceDashboardPage() {
   const [selectedBranchIds, setSelectedBranchIds] = useState([]);
   const [selectedDepartmentIds, setSelectedDepartmentIds] = useState([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState(0);
   const [selectedMonthRange, setSelectedMonthRange] = useState(() => {
     const now = new Date();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -362,6 +364,7 @@ export default function ExecutiveAttendanceDashboardPage() {
   const handleExportPdf = async () => {
     try {
       setIsExporting(true);
+      setPdfProgress(0);
 
       let isDaily = reportType === 'daily';
       let dateRange = getMonthBounds(selectedMonthRange?.from, selectedMonthRange?.to || selectedMonthRange?.from);
@@ -380,12 +383,13 @@ export default function ExecutiveAttendanceDashboardPage() {
         department_ids: selectedDepartmentIds,
         shift_type_id: shiftTypeId,
         report_type: reportType,
+        onProgress: (p) => setPdfProgress(p),
       });
 
     } catch (error) {
       console.error('Failed to export PDF:', error);
     } finally {
-      setIsExporting(false);
+      setTimeout(() => { setIsExporting(false); setPdfProgress(0); }, 1000);
     }
   };
 
@@ -443,7 +447,7 @@ export default function ExecutiveAttendanceDashboardPage() {
 
   return (
     <div className="bg-background-light dark:bg-background-dark text-slate-800 dark:text-white  min-h-screen flex flex-col antialiased selection:bg-accent/20 overflow-y-auto ">
-      {/* Hidden PDF Template Container */}
+      <PDFProgressOverlay isOpen={isExporting} progress={pdfProgress} />
       <main className="relative z-10 flex-1 w-full  mx-auto px-6 py-8 flex flex-col gap-8 max-h-[calc(100vh-100px)]">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="flex flex-col gap-1">

@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(curl -s http://localhost:8000/test82.php)"
+      "Bash(curl -s http://localhost:8000/test82.php)",
+      "Bash(D:/php/php.exe artisan tinker '--execute=:*)"
     ]
   }
 }

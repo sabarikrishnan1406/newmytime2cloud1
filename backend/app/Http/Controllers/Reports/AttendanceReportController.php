@@ -17,73 +17,13 @@ class AttendanceReportController extends Controller
      */
     public function dailyPDF(Request $request)
     {
-        set_time_limit(120);
-        ini_set('memory_limit', '512M');
+        $request->merge([
+            'from_date' => $request->date ?? date('Y-m-d'),
+            'to_date' => $request->date ?? date('Y-m-d'),
+            'report_mode' => 'daily',
+        ]);
 
-        $companyId = $request->company_id;
-        $date = $request->date ?? date('Y-m-d');
-
-        $company = Company::select('id', 'name')->find($companyId);
-
-        $query = Attendance::select([
-                'id', 'employee_id', 'company_id', 'date', 'shift_id',
-                'in', 'out', 'total_hrs', 'ot', 'late_coming', 'early_going', 'status'
-            ])
-            ->where('company_id', $companyId)
-            ->whereDate('date', $date)
-            ->with([
-                'employee:system_user_id,first_name,last_name,employee_id,department_id,branch_id',
-                'employee.department:id,name',
-                'employee.branch:id,branch_name',
-                'shift:id,name',
-            ]);
-
-        if ($request->filled('branch_ids')) {
-            $branchIds = is_array($request->branch_ids) ? $request->branch_ids : explode(',', $request->branch_ids);
-            $query->whereHas('employee', fn($q) => $q->whereIn('branch_id', $branchIds));
-        }
-
-        if ($request->filled('department_ids')) {
-            $deptIds = is_array($request->department_ids) ? $request->department_ids : explode(',', $request->department_ids);
-            $query->whereHas('employee', fn($q) => $q->whereIn('department_id', $deptIds));
-        }
-
-        if ($request->filled('employee_ids')) {
-            $empIds = is_array($request->employee_ids) ? $request->employee_ids : explode(',', $request->employee_ids);
-            $query->whereIn('employee_id', $empIds);
-        }
-
-        $records = $query->orderBy('employee_id')->get();
-
-        $stats = [
-            'total' => $records->count(),
-            'present' => $records->whereIn('status', ['P', 'LC', 'EG'])->count(),
-            'absent' => $records->where('status', 'A')->count(),
-            'late' => $records->where('status', 'LC')->count(),
-            'early_out' => $records->where('status', 'EG')->count(),
-            'leave' => $records->where('status', 'L')->count(),
-            'holiday' => $records->where('status', 'H')->count(),
-            'week_off' => $records->where('status', 'O')->count(),
-            'missing' => $records->where('status', 'M')->count(),
-        ];
-
-        $filters = $this->buildFilterLabels($request, $date);
-
-        $pdf = Pdf::loadView('pdf.reports.daily-attendance', compact(
-            'company', 'records', 'stats', 'date', 'filters'
-        ));
-
-        $pdf->setPaper('a4', 'landscape');
-        $pdf->setOption('isPhpEnabled', true);
-        $pdf->setOption('isRemoteEnabled', false);
-
-        $filename = 'Daily_Attendance_' . $date . '.pdf';
-
-        if ($request->input('action') === 'download') {
-            return $pdf->download($filename);
-        }
-
-        return $pdf->stream($filename);
+        return $this->monthlyDetailPDF($request);
     }
 
     /**
@@ -118,7 +58,11 @@ class AttendanceReportController extends Controller
             ->where('company_id', $companyId)
             ->whereBetween('date', [$fromDate, $toDate])
             ->with([
-                'employee:system_user_id,first_name,last_name,employee_id,department_id,branch_id,profile_picture',
+                'employee' => function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId)
+                      ->select('system_user_id', 'first_name', 'last_name', 'employee_id', 'department_id', 'branch_id', 'profile_picture', 'company_id')
+                      ->withOut('schedule');
+                },
                 'employee.department:id,name',
                 'employee.branch:id,branch_name',
                 'employee.schedule' => function ($q) use ($companyId) {
@@ -189,7 +133,9 @@ class AttendanceReportController extends Controller
                     'status' => $status,
                     'device_in' => $record->device_in->name ?? '',
                     'device_out' => $record->device_out->name ?? '',
-                    'is_manual' => $record->is_manual_entry ? true : false,
+                    'is_manual' => $record->is_manual_entry
+                        || str_contains(strtolower($record->device_id_in ?? ''), 'manual')
+                        || str_contains(strtolower($record->device_id_out ?? ''), 'manual'),
                 ];
 
                 if ($isMultiShift || $isSplitShift) {
@@ -226,7 +172,11 @@ class AttendanceReportController extends Controller
                 'holiday' => $statuses->filter(fn($s) => $s === 'H')->count(),
                 'week_off' => $statuses->filter(fn($s) => $s === 'O')->count(),
                 'missing' => $statuses->filter(fn($s) => $s === 'M')->count(),
-                'manual' => $records->filter(fn($r) => $r->is_manual_entry)->count(),
+                'manual' => $records->filter(fn($r) =>
+                    $r->is_manual_entry
+                    || str_contains(strtolower($r->device_id_in ?? ''), 'manual')
+                    || str_contains(strtolower($r->device_id_out ?? ''), 'manual')
+                )->count(),
                 'total_hours' => $records->sum(fn($r) => $this->timeToMinutes($r->total_hrs)),
                 'total_ot' => $records->sum(fn($r) => $this->timeToMinutes($r->ot)),
                 'total_late' => $records->sum(fn($r) => $this->timeToMinutes($r->late_coming)),
@@ -241,8 +191,10 @@ class AttendanceReportController extends Controller
 
         $filters = $this->buildFilterLabels($request, null, $fromDate, $toDate);
 
+        $reportMode = $request->input('report_mode', 'monthly');
+
         $pdf = Pdf::loadView('pdf.reports.monthly-detail', compact(
-            'company', 'employees', 'fromDate', 'toDate', 'filters', 'isMultiShift', 'isSplitShift'
+            'company', 'employees', 'fromDate', 'toDate', 'filters', 'isMultiShift', 'isSplitShift', 'reportMode'
         ));
 
         $pdf->setPaper('a4', 'landscape');
@@ -297,7 +249,10 @@ class AttendanceReportController extends Controller
             ->where('company_id', $companyId)
             ->whereBetween('date', [$fromDate, $toDate])
             ->with([
-                'employee:system_user_id,first_name,last_name,employee_id,department_id',
+                'employee' => function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId)
+                      ->select('system_user_id', 'first_name', 'last_name', 'employee_id', 'department_id', 'company_id');
+                },
                 'employee.department:id,name',
             ]);
 

@@ -724,7 +724,7 @@ export const branchListGeoFencing = async () => {
 // companyId will be passed dynamically
 export const openDoor = async (params = {}) => {
     let baseURL = API_BASE;
-    baseURL = `https://backend.mytime2cloud.com/api`;
+    // baseURL = `https://backend.mytime2cloud.com/api`;
     const { data } = await axios.get(`${baseURL}/open_door`, {
         params: await buildQueryParams(params),
     });
@@ -733,7 +733,7 @@ export const openDoor = async (params = {}) => {
 
 export const closeDoor = async (params = {}) => {
     let baseURL = API_BASE;
-    baseURL = `https://backend.mytime2cloud.com/api`;
+    // baseURL = `https://backend.mytime2cloud.com/api`;
     const { data } = await axios.get(`${baseURL}/close_door`, {
         params: await buildQueryParams(params),
     });
@@ -744,7 +744,7 @@ export const closeDoor = async (params = {}) => {
 export const checkPin = async (params = {}) => {
 
     let baseURL = API_BASE;
-    baseURL = `https://backend.mytime2cloud.com/api`;
+    // baseURL = `https://backend.mytime2cloud.com/api`;
     const { data } = await axios.get(`${baseURL}/check-pin`, {
         params: await buildQueryParams(params),
     });
@@ -755,7 +755,7 @@ export const checkPin = async (params = {}) => {
 export const getDeviceSettginsFromSDK = async (params = {}) => {
 
     let baseURL = API_BASE;
-    baseURL = `https://backend.mytime2cloud.com/api`;
+    // baseURL = `https://backend.mytime2cloud.com/api`;
     const { data } = await axios.get(`${baseURL}/get-device-settings-from-sdk`, {
         params: await buildQueryParams(params),
     });
@@ -765,7 +765,7 @@ export const getDeviceSettginsFromSDK = async (params = {}) => {
 
 export const addPerson = async (payload) => {
     let baseURL = API_BASE;
-    baseURL = `https://backend.mytime2cloud.com/api`;
+    // baseURL = `https://backend.mytime2cloud.com/api`;
     const { data } = await axios.post(`${baseURL}/SDK/AddPerson`, payload);
     return data;
 };
@@ -776,7 +776,7 @@ export const addPerson = async (payload) => {
 export const updateDeviceSettings = async (payload) => {
 
     let baseURL = API_BASE;
-    baseURL = `https://backend.mytime2cloud.com/api`;
+    // baseURL = `https://backend.mytime2cloud.com/api`;
     const { data } = await axios.post(`${baseURL}/update-device-sdk-settings`, payload);
     return data;
 };

@@ -19,7 +19,7 @@ export default function DataTable({
               {(columns || []).map((col, index) => (
                 <th
                   key={index}
-                  className="py-4 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap"
+                  className={`py-4 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap ${col.align === 'left' ? 'text-left' : 'text-center'}`}
                 >
                   {col.header}
                 </th>
@@ -35,7 +35,7 @@ export default function DataTable({
                   onClick={() => onRowClick(item)}
                 >
                   {columns.map((col) => (
-                    <td key={col.key} className="py-4 px-3 whitespace-nowrap">
+                    <td key={col.key} className={`py-4 px-3 whitespace-nowrap ${col.align === 'left' ? 'text-left' : 'text-center'}`}>
                       {col.render ? col.render(item) : item[col.key] || "—"}
                     </td>
                   ))}

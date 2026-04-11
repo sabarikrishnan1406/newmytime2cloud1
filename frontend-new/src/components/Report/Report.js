@@ -338,16 +338,20 @@ export default function AttendanceTable() {
 
       // 1. Handle Template4 (Format A - Puppeteer PDF)
       if (selectedReportTemplate === "Template4" && actionType !== "EXCEL") {
+        const PDF_SERVICE = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://localhost:3002';
+        const user = getUser();
         const t4Params = new URLSearchParams({
           employee_ids: selectedEmployeeIds.join(","),
           company_id: company_id,
           from_date: fromDate,
           to_date: toDate,
           shift_type_id: shiftTypeId,
-          company_name: "Hilal & Co",
+          api_base: API_BASE_URL,
+          company_name: user?.company_name || user?.company?.name || 'Company',
         });
 
-        let templateUrl = `http://localhost:5555/attendance-report/?${t4Params.toString()}`;
+        // Template URL must use localhost for Puppeteer (runs on same machine as PDF service)
+        let templateUrl = `http://localhost:3002/attendance-report/?${t4Params.toString()}`;
 
         setIsPdfDownloading(true);
         setPdfProgress(0);

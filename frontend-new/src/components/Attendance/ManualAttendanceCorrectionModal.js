@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import DropDown from "@/components/ui/DropDown";
 import DatePicker from "@/components/ui/DatePicker";
 import TimePicker from "@/components/ui/TimePicker";
-import { getDeviceLogs, getScheduledEmployeeList, regenerateReport } from "@/lib/api";
+import { getBranches, getDepartments, getDeviceLogs, getScheduledEmployeeList, regenerateReport } from "@/lib/api";
 import { generateManualLog, getEmployeeRelatedShift } from "@/lib/endpoint/attendance";
 import { notify, parseApiError } from "@/lib/utils";
 import { getUser } from "@/config";
@@ -104,15 +104,38 @@ export default function ManualAttendanceCorrectionModal({
     const [missingFieldKey, setMissingFieldKey] = useState(null);
     const [employees, setEmployees] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [branches, setBranches] = useState([]);
+    const [departments, setDepartments] = useState([]);
+    const [selectedBranch, setSelectedBranch] = useState("");
+    const [selectedDepartment, setSelectedDepartment] = useState("");
 
+    // Fetch branches and departments
+    useEffect(() => {
+        if (!open) return;
+        const fetchFilters = async () => {
+            try {
+                const [branchData, deptData] = await Promise.all([getBranches(), getDepartments()]);
+                setBranches((branchData || []).map((b) => ({ id: b.id, name: b.branch_name || b.name })));
+                setDepartments((deptData || []).map((d) => ({ id: d.id, name: d.name })));
+            } catch (_) {}
+        };
+        fetchFilters();
+    }, [open]);
+
+    // Fetch employees (filtered by branch/department)
     useEffect(() => {
         if (!open) return;
         let cancelled = false;
         const fetchEmployees = async () => {
             try {
-                const result = await getScheduledEmployeeList([]);
+                const departmentIds = selectedDepartment ? [selectedDepartment] : [];
+                const result = await getScheduledEmployeeList(departmentIds);
                 if (!cancelled) {
-                    const data = (result || []).map((e) => ({ ...e, name: e.full_name || e.name }));
+                    let data = (result || []).map((e) => ({ ...e, name: e.full_name || e.name }));
+                    // Filter by branch if selected
+                    if (selectedBranch) {
+                        data = data.filter((e) => String(e.branch_id) === String(selectedBranch));
+                    }
                     setEmployees(data);
                 }
             } catch (_) {
@@ -121,7 +144,7 @@ export default function ManualAttendanceCorrectionModal({
         };
         fetchEmployees();
         return () => { cancelled = true; };
-    }, [open]);
+    }, [open, selectedBranch, selectedDepartment]);
 
     const employeeOptions = useMemo(() => {
         if (!Array.isArray(employees) || employees.length === 0) return [];
@@ -448,6 +471,28 @@ export default function ManualAttendanceCorrectionModal({
                 </div>
 
                 <div className="p-6 space-y-8 max-h-[70vh] overflow-y-auto">
+                    {/* Branch & Department Filters */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 block">Branch</label>
+                            <DropDown
+                                items={[{ id: "", name: "All Branches" }, ...branches]}
+                                value={selectedBranch}
+                                onChange={(value) => { setSelectedBranch(value || ""); setSelectedEmployeeId(""); }}
+                                placeholder="All Branches"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 block">Department</label>
+                            <DropDown
+                                items={[{ id: "", name: "All Departments" }, ...departments]}
+                                value={selectedDepartment}
+                                onChange={(value) => { setSelectedDepartment(value || ""); setSelectedEmployeeId(""); }}
+                                placeholder="All Departments"
+                            />
+                        </div>
+                    </div>
+
                     <div>
                         <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 block">Employee</label>
                         <DropDown
@@ -458,7 +503,7 @@ export default function ManualAttendanceCorrectionModal({
                             value={String(selectedEmployeeId)}
                             onChange={(value) => setSelectedEmployeeId(String(value || ""))}
                             placeholder="Select Employee"
-                            width="w-[520px]"
+                            width="w-full"
                         />
                     </div>
 

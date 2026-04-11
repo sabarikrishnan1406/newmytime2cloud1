@@ -61,14 +61,15 @@ class RenderController extends Controller
         }
 
         $exemptCompanies = [60, 65];
+        $maxEmployees = 100;
 
         if (
             !in_array($request->company_id, $exemptCompanies) &&
             isset($request->employee_ids) &&
-            count($request->employee_ids) > 20
+            count($request->employee_ids) > $maxEmployees
         ) {
 
-            return ["Limit 20 Employees only"];
+            return ["Limit {$maxEmployees} Employees only"];
         }
 
 
@@ -80,32 +81,32 @@ class RenderController extends Controller
             return (new SplitShiftController)->renderData($request);
         }
 
-        if ($request->channel == "kernel") {
-            if ($request->shift_type_id == 0) {
-                return array_merge(
-                    // 1,6
-                    (new FiloShiftController)->renderData($request),
-                    (new SingleShiftController)->renderData($request),
-                );
-            }
-
-            if ($request->shift_type_id == 3) {
-                return array_merge(
-                    (new AutoShiftController)->renderData($request),
-                    (new SingleShiftController)->renderData($request),
-                    (new NightShiftController)->renderData($request),
-                );
-            } else if ($request->shift_type_id == 4) {
-                return (new NightShiftController)->renderData($request);
-            }
+        if ($request->shift_type_id == 4) {
+            return (new NightShiftController)->renderData($request);
         }
 
-        return array_merge(
-            (new AutoShiftController)->renderData($request),
-            (new FiloShiftController)->renderData($request),
-            (new SingleShiftController)->renderData($request),
-            (new NightShiftController)->renderData($request),
-        );
+        if ($request->shift_type_id == 3) {
+            $results = [];
+            try { $results = array_merge($results, (new AutoShiftController)->renderData($request)); } catch (\Exception $e) {}
+            try { $results = array_merge($results, (new SingleShiftController)->renderData($request)); } catch (\Exception $e) {}
+            try { $results = array_merge($results, (new NightShiftController)->renderData($request)); } catch (\Exception $e) {}
+            return $results;
+        }
+
+        if ($request->shift_type_id == 1 || $request->shift_type_id == 6) {
+            $results = [];
+            try { $results = array_merge($results, (new FiloShiftController)->renderData($request)); } catch (\Exception $e) {}
+            try { $results = array_merge($results, (new SingleShiftController)->renderData($request)); } catch (\Exception $e) {}
+            return $results;
+        }
+
+        // shift_type_id = 0 or unknown: try all, skip failures
+        $results = [];
+        try { $results = array_merge($results, (new AutoShiftController)->renderData($request)); } catch (\Exception $e) {}
+        try { $results = array_merge($results, (new FiloShiftController)->renderData($request)); } catch (\Exception $e) {}
+        try { $results = array_merge($results, (new SingleShiftController)->renderData($request)); } catch (\Exception $e) {}
+        try { $results = array_merge($results, (new NightShiftController)->renderData($request)); } catch (\Exception $e) {}
+        return $results;
     }
 
     public function renderMultiInOut(Request $request)

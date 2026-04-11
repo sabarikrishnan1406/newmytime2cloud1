@@ -308,7 +308,7 @@
         .st-leave { font-weight: bold; font-size: 7pt; color: #7c3aed; }
         .st-missing { font-weight: bold; font-size: 7pt; color: #f97316; }
         .st-missing { font-weight: bold; color: #f97316; }
-        .st-manual { font-size: 5pt; color: #d97706; }
+        .st-manual { font-size: 6pt; color: #dc2626; font-weight: bold; display: block; margin-top: 1px; }
 
         /* Row highlights */
         .row-absent td { background: #fff5f5 !important; }
@@ -366,11 +366,16 @@
             <table class="header-row">
                 <tr>
                     <td style="width: 65%;">
-                        <div class="report-title">Monthly Attendance Report{{ $isSplitShift ? ' - Split Duty' : ($isMultiShift ? ' - Multi Shift' : '') }}</div>
+                        @php $isDaily = ($reportMode ?? 'monthly') === 'daily'; @endphp
+                        <div class="report-title">{{ $isDaily ? 'Daily' : 'Monthly' }} Attendance Report{{ $isSplitShift ? ' - Split Duty' : ($isMultiShift ? ' - Multi Shift' : '') }}</div>
                         <div class="report-meta">
                             <span class="report-meta-icon"></span>
-                            {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }} - {{ \Carbon\Carbon::parse($toDate)->format('d M Y') }}
-                            &nbsp;&bull;&nbsp; {{ $isMultiShift ? 'Multi Shift' : ($isSplitShift ? 'Split Duty' : 'Monthly Exact') }}
+                            @if($isDaily)
+                                {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }} &nbsp;&bull;&nbsp; {{ \Carbon\Carbon::parse($fromDate)->format('l') }}
+                            @else
+                                {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }} - {{ \Carbon\Carbon::parse($toDate)->format('d M Y') }}
+                            @endif
+                            &nbsp;&bull;&nbsp; {{ $isDaily ? 'Daily Report' : ($isMultiShift ? 'Multi Shift' : ($isSplitShift ? 'Split Duty' : 'Monthly Exact')) }}
                         </div>
                     </td>
                     <td style="text-align: right;">
@@ -568,7 +573,10 @@
                                     <td class="{{ $hasOt ? 'td-ot' : 'td-zero' }}">{{ $hasOt ? $day['ot'] : '00:00' }}</td>
                                     <td class="{{ $hasHrs ? 'td-hrs' : 'td-zero' }}">{{ $hasHrs ? $day['total_hrs'] : '00:00' }}</td>
                                 @endif
-                                <td style="text-align: right;"><span class="{{ $stClass }}">{{ $stText }}</span></td>
+                                <td style="text-align: right;">
+                                    <span class="{{ $stClass }}">{{ $stText }}</span>
+                                    @if($day['is_manual'] ?? false)<span class="st-manual">MANUAL</span>@endif
+                                </td>
                             </tr>
 
                         @elseif($isSplitShift)
@@ -602,7 +610,10 @@
                                         </td>
                                         <td class="td-zero">-</td><td class="td-zero">-</td><td class="td-zero">00:00</td>
                                     @endif
-                                    <td style="text-align: right;"><span class="{{ $stClass }}">{{ $stText }}</span></td>
+                                    <td style="text-align: right;">
+                                        <span class="{{ $stClass }}">{{ $stText }}</span>
+                                        @if($day['is_manual'] ?? false)<span class="st-manual">MANUAL</span>@endif
+                                    </td>
                                 </tr>
                             @else
                                 @php
@@ -648,7 +659,10 @@
                                     <td>{{ $hasLate ? $day['late_coming'] : '-' }}</td>
                                     <td class="{{ $hasOt ? 'td-ot' : 'td-zero' }}">{{ $hasOt ? $day['ot'] : '-' }}</td>
                                     <td class="{{ $hasHrs ? 'td-hrs' : 'td-zero' }}">{{ $hasHrs ? $day['total_hrs'] : '00:00' }}</td>
-                                    <td style="text-align: right;"><span class="{{ $stClass }}">{{ $stText }}</span></td>
+                                    <td style="text-align: right;">
+                                        <span class="{{ $stClass }}">{{ $stText }}</span>
+                                        @if($day['is_manual'] ?? false)<span class="st-manual">MANUAL</span>@endif
+                                    </td>
                                 </tr>
                             @endif
 

@@ -180,6 +180,7 @@ class AuthController extends Controller
 
 
 
+        $user->company_name = $user->company->name ?? null;
         unset($user->company);
         unset($user->employee);
         unset($user->assigned_permissions);

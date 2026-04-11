@@ -39,6 +39,7 @@ class Attendance extends Model
         'date' => 'date',
         'logs' => 'array',
         'shift_type_id' => 'integer',
+        'is_manual_entry' => 'boolean',
     ];
 
     protected $hidden = ["branch_id", "created_at", "updated_at"];
@@ -107,9 +108,7 @@ class Attendance extends Model
     {
         return $this->belongsTo(Employee::class, "employee_id", "system_user_id")->withOut("schedule")->withDefault([
             'first_name' => '---',
-            "department" => [
-                "name" => "---",
-            ],
+            "department" => ["name" => "---"],
         ]);
     }
 
@@ -117,9 +116,7 @@ class Attendance extends Model
     {
         return $this->belongsTo(EmployeeReportOnly::class, "employee_id", "system_user_id")->withOut("schedule")->withDefault([
             'first_name' => '---',
-            "department" => [
-                "name" => "---",
-            ],
+            "department" => ["name" => "---"],
         ]);
     }
 
