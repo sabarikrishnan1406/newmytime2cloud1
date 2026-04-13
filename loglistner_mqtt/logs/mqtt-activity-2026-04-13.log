@@ -1777,3 +1777,375 @@ Title        : MQTT IN (non-pending)
 Details      : {"topic":"mqtt/face/OX-8862021010072/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010072"}
 --------------------------------------------------
 
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:12:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010050/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010050"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:13:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010076/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010076"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:13:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010070/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010070"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:13:41.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8662022010267/event","operator":"RecPush","messageId":null,"deviceId":"OX-8662022010267"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:14:31.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010050/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010050"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:14:46.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-9452025011023/event","operator":"RecPush","messageId":null,"deviceId":"OX-9452025011023"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:14:46.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-9452025011023/event","operator":"RecPush","messageId":null,"deviceId":"OX-9452025011023"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:15:01.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010064/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010064"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:15:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010074/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010074"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:15:41.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8662022010295/event","operator":"RecPush","messageId":null,"deviceId":"OX-8662022010295"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:15:47.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-9452025011023/event","operator":"RecPush","messageId":null,"deviceId":"OX-9452025011023"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:16:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010076/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010076"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:16:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010076/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010076"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:16:31.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010013/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010013"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:17:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010032/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010032"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:17:31.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010094/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010094"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:17:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010090/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010090"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:18:11.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010041/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010041"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:18:31.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010076/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010076"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:19:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010012/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010012"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:21:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010028/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010028"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:21:31.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010013/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010013"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:21:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010015/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010015"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:22:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010012/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010012"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:22:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8662022010271/event","operator":"RecPush","messageId":null,"deviceId":"OX-8662022010271"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:22:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/FC-8300T23012000/event","operator":"RecPush","messageId":null,"deviceId":"FC-8300T23012000"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:23:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010092/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010092"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:24:01.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-9662210080029/event","operator":"RecPush","messageId":null,"deviceId":"OX-9662210080029"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:24:32.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/FC-8300T23012008/event","operator":"RecPush","messageId":null,"deviceId":"FC-8300T23012008"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:24:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8662022010295/event","operator":"RecPush","messageId":null,"deviceId":"OX-8662022010295"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:25:01.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010015/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010015"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:25:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8662022010295/event","operator":"RecPush","messageId":null,"deviceId":"OX-8662022010295"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:25:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010050/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010050"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:26:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010074/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010074"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:26:31.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/FC-8300T23012008/event","operator":"RecPush","messageId":null,"deviceId":"FC-8300T23012008"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:27:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8662022010271/event","operator":"RecPush","messageId":null,"deviceId":"OX-8662022010271"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:27:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8662022010267/event","operator":"RecPush","messageId":null,"deviceId":"OX-8662022010267"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:27:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010050/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010050"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:27:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010050/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010050"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:27:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010074/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010074"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:27:31.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010050/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010050"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:27:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010050/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010050"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:27:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010050/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010050"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:27:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010050/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010050"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:28:01.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010050/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010050"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:28:01.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010050/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010050"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:28:01.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010050/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010050"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:28:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-9662210080029/event","operator":"RecPush","messageId":null,"deviceId":"OX-9662210080029"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:28:34.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8662022010295/event","operator":"RecPush","messageId":null,"deviceId":"OX-8662022010295"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:28:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010093/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010093"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:28:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010074/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010074"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:29:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010030/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010030"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:29:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8662022010295/event","operator":"RecPush","messageId":null,"deviceId":"OX-8662022010295"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:30:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010050/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010050"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:30:21.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010041/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010041"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:30:22.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010015/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010015"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:30:22.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010070/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010070"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:31:01.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-9452025011039/event","operator":"RecPush","messageId":null,"deviceId":"OX-9452025011039"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:31:31.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-9452025011039/event","operator":"RecPush","messageId":null,"deviceId":"OX-9452025011039"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:31:51.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010012/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010012"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:32:01.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010082/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010082"}
+--------------------------------------------------
+
+---- ACTIVITY ------------------------------------
+Time         : 2026-04-13T13:32:32.000Z
+Title        : MQTT IN (non-pending)
+Details      : {"topic":"mqtt/face/OX-8862021010056/event","operator":"RecPush","messageId":null,"deviceId":"OX-8862021010056"}
+--------------------------------------------------
+

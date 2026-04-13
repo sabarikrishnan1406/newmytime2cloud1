@@ -1,7 +1,6 @@
 const WebSocket = require("ws");
 const fs = require("fs");
 const path = require("path");
-const http = require("http");
 const { Pool } = require("pg");
 require("dotenv").config();
 
@@ -191,33 +190,6 @@ async function flushAttendanceQueue() {
     }
 
     console.log(`✅ Flushed ${batch.length} rows | inserted: ${inserted} | skipped: ${skipped}`);
-
-    // Notify Live Feed subscribers via MQTT broker HTTP relay (best-effort)
-    if (inserted > 0) {
-      batch.forEach(r => {
-        const body = JSON.stringify({
-          topic: `mqtt/face/${r.DeviceID}/event`,
-          payload: {
-            operator: 'RecPush',
-            info: {
-              customId: r.UserID,
-              personName: r.UserID,
-              facesluiceId: r.DeviceID,
-              time: r.LogTime,
-              VerifyStatus: '1',
-            },
-          },
-        });
-        const req = http.request({
-          hostname: 'localhost', port: 8083, path: '/publish', method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-          timeout: 2000,
-        }, () => {});
-        req.on('error', () => {});
-        req.write(body);
-        req.end();
-      });
-    }
   } catch (err) {
     logError("Bulk attendance insert failed: " + err.message);
     try {
