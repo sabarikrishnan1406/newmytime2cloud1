@@ -5,6 +5,8 @@ import {
   Settings,
   Trash,
 } from "lucide-react";
+import { syncDeviceDateTime } from "@/lib/api";
+import { notify, parseApiError } from "@/lib/utils";
 
 import {
   DropdownMenu,
@@ -184,8 +186,18 @@ export default function Columns(
       render: (device) => (
         <span
           className="text-slate-600 dark:text-slate-300 cursor-pointer block max-w-[150px] truncate"
-          title={device.sync_date_time || "—"}
-          onClick={() => console.log(device.id)}
+          title={`Sync time to ${device.utc_time_zone || ''}`}
+          onClick={async (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            if (!confirm(`Sync device time to ${device.utc_time_zone || 'system'}?`)) return;
+            try {
+              const data = await syncDeviceDateTime(device.device_id, device.company_id);
+              notify("Time Sync", data?.message || "Device time synced", "success");
+            } catch (err) {
+              notify("Time Sync Failed", parseApiError(err), "error");
+            }
+          }}
         >
           <img
             src="/icons/sync_date_time.png"

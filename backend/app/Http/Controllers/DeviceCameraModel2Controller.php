@@ -21,7 +21,10 @@ class DeviceCameraModel2Controller extends Controller
     public  $session_id_local = '';
 
 
-    public function __construct($camera_sdk_url, $sxdmSn = '')
+    public $adminUsername = null;
+    public $adminPassword = null;
+
+    public function __construct($camera_sdk_url, $sxdmSn = '', $adminUsername = null, $adminPassword = null)
     {
         $url = $camera_sdk_url ?: (gethostbyname(gethostname()) . ':8888');
         if (!preg_match('#^https?://#', $url)) {
@@ -30,6 +33,8 @@ class DeviceCameraModel2Controller extends Controller
         $this->camera_sdk_url = rtrim($url, '/');
         if ($sxdmSn != '')
             $this->sxdmSn = $sxdmSn;
+        $this->adminUsername = $adminUsername;
+        $this->adminPassword = $adminPassword;
     }
 
     public function getAllPersons($limit)
@@ -696,8 +701,8 @@ class DeviceCameraModel2Controller extends Controller
     {
         set_time_limit(120);
 
-        $username = env('OX900_USERNAME', 'admin');
-        $password = env('OX900_PASSWORD', 'admin1234');
+        $username = $this->adminUsername ?: env('OX900_USERNAME', 'admin');
+        $password = $this->adminPassword ?: env('OX900_PASSWORD', 'admin1234');
         $baseUrl = rtrim($this->camera_sdk_url, '/');
         if (!preg_match('#^https?://#', $baseUrl)) {
             $baseUrl = 'http://' . $baseUrl;

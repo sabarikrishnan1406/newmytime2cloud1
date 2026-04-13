@@ -47,6 +47,7 @@ export default (deleteEmployee, editEmployee) => [
   {
     key: "position",
     header: "Position",
+    align: "center",
     render: (employee) => (
       <div className="text-sm text-slate-600 dark:text-slate-300 text-center">
         {employee.designation?.name || "N/A"}
@@ -56,6 +57,7 @@ export default (deleteEmployee, editEmployee) => [
   {
     key: "mobile_email",
     header: "Mobile / Email",
+    align: "center",
     render: (employee) => (
       <div className="text-sm text-center">
         <p className="text-slate-600 dark:text-slate-300">{employee.user?.email || "—"}</p>
@@ -66,6 +68,7 @@ export default (deleteEmployee, editEmployee) => [
   {
     key: "timezone",
     header: "Join Date",
+    align: "center",
     render: (employee) => (
       <div className="text-sm text-slate-600 dark:text-slate-300 text-center">
         {employee.show_joining_date || "N/A"}
@@ -75,6 +78,7 @@ export default (deleteEmployee, editEmployee) => [
   {
     key: "access",
     header: "Access",
+    align: "center",
     render: (employee) => {
       const { rfid_card_number, finger_prints, rfid_card_password, palms, profile_picture } = employee;
 
@@ -100,6 +104,7 @@ export default (deleteEmployee, editEmployee) => [
   {
     key: "actions",
     header: "Actions",
+    align: "center",
     render: (employee) => (
       <div className="flex justify-center">
         <DropdownMenu>

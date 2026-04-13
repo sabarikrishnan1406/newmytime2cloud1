@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { AlarmClock, MoreVertical, PenBox, Trash2 } from "lucide-react";
-import { deleteDevice } from "@/lib/api";
-import { parseApiError } from "@/lib/utils";
+import { deleteDevice, syncDeviceDateTime } from "@/lib/api";
+import { parseApiError, notify } from "@/lib/utils";
 
 
 export default function Columns({ pageTitle, handleRowClick, onSuccess = (e) => { e } } = {}) {
@@ -129,11 +129,19 @@ export default function Columns({ pageTitle, handleRowClick, onSuccess = (e) => 
       render: (device) => (
         <span
           className="text-gray-800 cursor-pointer block max-w-[150px] truncate"
-          title={device.sync_date_time || "—"}
-          onClick={() => console.log(device.id)}
+          title={`Sync time to ${device.utc_time_zone || ''}`}
+          onClick={async (e) => {
+            e.stopPropagation();
+            if (!confirm(`Sync device time to ${device.utc_time_zone || 'system'}?`)) return;
+            try {
+              const data = await syncDeviceDateTime(device.device_id, device.company_id);
+              notify("Time Sync", data?.message || "Device time synced", "success");
+            } catch (err) {
+              notify("Time Sync Failed", parseApiError(err), "error");
+            }
+          }}
         >
           <img src="/icons/sync_date_time.png" className="w-7" />
-
         </span>
       ),
     },

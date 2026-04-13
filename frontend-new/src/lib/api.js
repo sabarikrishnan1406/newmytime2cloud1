@@ -775,6 +775,16 @@ export const updateDeviceSettings = async (payload) => {
     return data;
 };
 
+export const syncDeviceDateTime = async (device_id, company_id) => {
+    const dt = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const sync_able_date_time = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
+    const { data } = await axios.get(`${API_BASE}/sync_device_date_time/${device_id}/${company_id}`, {
+        params: { sync_able_date_time },
+    });
+    return data;
+};
+
 
 
 

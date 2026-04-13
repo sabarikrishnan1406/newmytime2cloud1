@@ -317,6 +317,42 @@ const DeviceEdit = ({ open, setOpen, defaultPayload, onSuccess = () => { } }) =>
                                 </div>
                             )}
 
+                            {(form.model_number || "").startsWith("OX-") && (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-sm font-medium text-slate-400">
+                                            Device URL <span className="text-red-400">*</span>
+                                        </label>
+                                        <Input
+                                            placeholder="http://192.168.1.100"
+                                            value={form.camera_sdk_url || ""}
+                                            onChange={(e) => handleChange("camera_sdk_url", e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-sm font-medium text-slate-400">
+                                            Admin Username
+                                        </label>
+                                        <Input
+                                            placeholder="admin"
+                                            value={form.admin_username || ""}
+                                            onChange={(e) => handleChange("admin_username", e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-sm font-medium text-slate-400">
+                                            Admin Password
+                                        </label>
+                                        <Input
+                                            type="text"
+                                            placeholder="admin1234"
+                                            value={form.admin_password || ""}
+                                            onChange={(e) => handleChange("admin_password", e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-1.5">
                                     <label className="block text-sm font-medium text-slate-400">

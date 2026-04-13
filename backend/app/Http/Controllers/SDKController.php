@@ -657,7 +657,12 @@ class SDKController extends Controller
         foreach ($filteredCameraArray as  $value) {
 
 
-            $camera2Object = new DeviceCameraModel2Controller($value['camera_sdk_url']);
+            $camera2Object = new DeviceCameraModel2Controller(
+                $value['camera_sdk_url'],
+                '',
+                $value['admin_username'] ?? null,
+                $value['admin_password'] ?? null
+            );
 
             if ($camera2Object->sxdmSn == '')
                 $camera2Object->sxdmSn = $value['device_id'];
@@ -697,7 +702,12 @@ class SDKController extends Controller
                             continue;
                         }
                         $md5string = base64_encode($imageData);;
-                        $response = (new DeviceCameraModel2Controller($value['camera_sdk_url']))->pushUserToCameraDevice($persons['name'],  $persons['userCode'], $md5string, $value['device_id'], $persons, $sessionId);
+                        $response = (new DeviceCameraModel2Controller(
+                            $value['camera_sdk_url'],
+                            '',
+                            $value['admin_username'] ?? null,
+                            $value['admin_password'] ?? null
+                        ))->pushUserToCameraDevice($persons['name'],  $persons['userCode'], $md5string, $value['device_id'], $persons, $sessionId);
 
 
 
@@ -734,7 +744,12 @@ class SDKController extends Controller
                                         $camera2Object->sxdmSn = $value['device_id'];
                                     // $sessionId = $camera2Object->getActiveSessionId();
 
-                                    $response = (new DeviceCameraModel2Controller($value['camera_sdk_url']))->pushUserToCameraDevice($persons['name'],  $persons['userCode'], $md5string, $value['device_id'], $persons, $sessionId);
+                                    $response = (new DeviceCameraModel2Controller(
+                            $value['camera_sdk_url'],
+                            '',
+                            $value['admin_username'] ?? null,
+                            $value['admin_password'] ?? null
+                        ))->pushUserToCameraDevice($persons['name'],  $persons['userCode'], $md5string, $value['device_id'], $persons, $sessionId);
                                 }
                             }
                         } catch (Exception $e) {
@@ -742,7 +757,12 @@ class SDKController extends Controller
                                 $camera2Object->sxdmSn = $value['device_id'];
                             //$sessionId = $camera2Object->getActiveSessionId();
 
-                            $response = (new DeviceCameraModel2Controller($value['camera_sdk_url']))->pushUserToCameraDevice($persons['name'],  $persons['userCode'], $md5string, $value['device_id'], $persons, $sessionId);
+                            $response = (new DeviceCameraModel2Controller(
+                            $value['camera_sdk_url'],
+                            '',
+                            $value['admin_username'] ?? null,
+                            $value['admin_password'] ?? null
+                        ))->pushUserToCameraDevice($persons['name'],  $persons['userCode'], $md5string, $value['device_id'], $persons, $sessionId);
                             //sleep(10);
                         }
                         //sleep(10);
