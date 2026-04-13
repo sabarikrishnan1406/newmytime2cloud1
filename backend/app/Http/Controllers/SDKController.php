@@ -252,7 +252,7 @@ class SDKController extends Controller
 
     public function AddPerson(Request $request)
     {
-
+        \Log::info('AddPerson payload', ['company_id' => $request->company_id, 'snList' => $request->snList, 'personList' => $request->personList]);
 
         $cameraResponse1 = "";
         $cameraResponse2 = "";
@@ -385,7 +385,19 @@ class SDKController extends Controller
     public function processUploadPersons($url, $device_id, $person)
     {
         $image = public_path() . "/media/employee/profile_picture/" . $person["profile_picture_raw"];
-        $imageData = file_get_contents($image);
+        if (!file_exists($image)) {
+            $image = 'https://backend.mytime2cloud.com/media/employee/profile_picture/' . $person["profile_picture_raw"];
+        }
+        $imageData = @file_get_contents($image);
+        if ($imageData === false) {
+            return [
+                "name" => $person["name"],
+                "userCode" => $person["userCode"],
+                "device_id" => $device_id,
+                'status' => 'Image not found',
+                'sdk_response' => ["message" => "Image not found at {$image}"],
+            ];
+        }
         $person["faceImage"] = base64_encode($imageData);
         // return AddPerson::dispatch($url, $person);
 
@@ -667,31 +679,47 @@ class SDKController extends Controller
 
                     //$personProfilePic = $persons['faceImage'];
                     $personProfilePic = public_path('media/employee/profile_picture/' . $persons['profile_picture_raw']);
-                    //$personProfilePic = public_path('media/employee/profile_picture/' .  "1666962517.jpg");
+
+                    if (!file_exists($personProfilePic)) {
+                        $personProfilePic = 'https://backend.mytime2cloud.com/media/employee/profile_picture/' . $persons['profile_picture_raw'];
+                    }
 
                     if ($personProfilePic != '') {
-                        //$imageData = file_get_contents($personProfilePic);
-                        $imageData = file_get_contents($personProfilePic);
+                        $imageData = @file_get_contents($personProfilePic);
+                        if ($imageData === false) {
+                            $message[] = [
+                                "name" => $persons['name'],
+                                "userCode" => $persons['userCode'],
+                                "device_id" => $value['device_id'],
+                                'status' => 'Image not found',
+                                'sdk_response' => ["message" => "Image not found at {$personProfilePic}"],
+                            ];
+                            continue;
+                        }
                         $md5string = base64_encode($imageData);;
                         $response = (new DeviceCameraModel2Controller($value['camera_sdk_url']))->pushUserToCameraDevice($persons['name'],  $persons['userCode'], $md5string, $value['device_id'], $persons, $sessionId);
 
 
 
-                        //$responseArray = $response != '' ? json_decode($response) : '';
+                        $statusOut = 200;
+                        $msgOut = 'OK';
                         if ($response != '') {
-                            $response = json_decode($response);
-                            // $response = $response->errors[0]?->error_code == 33 ? 'Duplicate Image' : 'Try Again.';
-                            $response = $response->errors[0]->detail;
-                        } else {
-                            $response = 200;
+                            $decoded = json_decode($response);
+                            if (isset($decoded->errors[0]->detail)) {
+                                $statusOut = $decoded->errors[0]->detail;
+                                $msgOut = $decoded->errors[0]->detail;
+                            } elseif (isset($decoded->id) || isset($decoded->person_name) || isset($decoded->status)) {
+                                $statusOut = 200;
+                                $msgOut = 'Person added';
+                            }
                         }
 
                         $message[] =  [
                             "name" => $persons['name'],
                             "userCode" => $persons['userCode'],
                             "device_id" => $value['device_id'],
-                            'status' => $response == '' ? '200' : $response,
-                            'sdk_response' => ["message" => $response == '' ? '200' : $response],
+                            'status' => $statusOut,
+                            'sdk_response' => ["message" => $msgOut],
                         ];
 
 

@@ -146,7 +146,9 @@ class RenderController extends Controller
             "is_manual_entry" => false,
         ];
 
-        $logs = $this->processLogs($data, $schedule);
+        $logs = in_array($shift_type_id, [4, 5, 6])
+            ? $this->processWindowLogs($data, $schedule)
+            : $this->processLogs($data, $schedule);
 
         $items = $AttendancePayload + $logs;
 
@@ -515,7 +517,7 @@ class RenderController extends Controller
         }
     }
 
-    public function getLogs($currentDate, $company_id, $UserID)
+    public function getLogs($currentDate, $company_id, $UserID, $shift_type_id = null)
     {
         $model = AttendanceLog::query();
 
@@ -523,10 +525,75 @@ class RenderController extends Controller
         $model->where("company_id", $company_id);
         $model->where("UserID", $UserID);
         $model->whereDate("LogTime", $currentDate);
+
+        // Flexible shift types (FILO=1, Multi=2, Auto=3) exclude camera-channel logs
+        if (in_array($shift_type_id, [1, 2, 3])) {
+            $model->where(function ($q) {
+                $q->where('channel', '!=', 'camera')->orWhereNull('channel');
+            });
+        }
+
         $model->distinct("LogTime");
         $model->orderBy("LogTime");
 
-        return $model->get(["LogTime", "DeviceID", "UserID", "company_id", "gps_location"])->toArray();
+        return $model->get(["LogTime", "DeviceID", "UserID", "company_id", "gps_location", "channel"])->toArray();
+    }
+
+    public function processWindowLogs($data, $schedule)
+    {
+        $logs = [];
+        $totalMinutes = 0;
+        $ot = 0;
+
+        if (empty($data) || empty($schedule['on_duty_time']) || empty($schedule['off_duty_time'])) {
+            return ["logs" => [], "total_hrs" => "00:00", "ot" => 0];
+        }
+
+        $date = date('Y-m-d', strtotime($data[0]['LogTime']));
+        $startTs = strtotime($date . ' ' . $schedule['on_duty_time']);
+        $endTs = strtotime($date . ' ' . $schedule['off_duty_time']);
+        if ($endTs <= $startTs) $endTs += 86400;
+
+        $startMin = $startTs - 3600;
+        $startMax = $startTs + 3600;
+        $endMin = $endTs - 3600;
+        $endMax = $endTs + 3600;
+
+        $inLog = null;
+        $outLog = null;
+
+        foreach ($data as $log) {
+            $ts = strtotime($log['LogTime']);
+            if ($ts >= $startMin && $ts <= $startMax) {
+                if (!$inLog || $ts < strtotime($inLog['LogTime'])) $inLog = $log;
+            }
+            if ($ts >= $endMin && $ts <= $endMax) {
+                if (!$outLog || $ts > strtotime($outLog['LogTime'])) $outLog = $log;
+            }
+        }
+
+        $inTime = $inLog ? date('H:i:s', strtotime($inLog['LogTime'])) : "---";
+        $outTime = $outLog ? date('H:i:s', strtotime($outLog['LogTime'])) : "---";
+
+        $logs[] = [
+            "in" => $inTime,
+            "out" => $outTime,
+            "gps_location_in" => $inLog['gps_location'] ?? ($inLog['device']['name'] ?? null),
+            "gps_location_out" => $outLog['gps_location'] ?? ($outLog['device']['name'] ?? null),
+        ];
+
+        if ($inLog && $outLog) {
+            $diff = strtotime($outLog['LogTime']) - strtotime($inLog['LogTime']);
+            $totalMinutes = max(0, floor($diff / 60));
+        }
+
+        $total_hrs = $this->minutesToHours($totalMinutes);
+
+        if (!empty($schedule['isOverTime'])) {
+            $ot = $this->calculatedOT($total_hrs, $schedule['working_hours'], $schedule['overtime_interval']);
+        }
+
+        return ["logs" => $logs, "total_hrs" => $total_hrs, "ot" => $ot];
     }
 
     public function getScheduleMultiInOut($currentDate, $companyId, $UserID, $shift_type_id)

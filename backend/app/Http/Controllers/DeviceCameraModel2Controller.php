@@ -23,10 +23,11 @@ class DeviceCameraModel2Controller extends Controller
 
     public function __construct($camera_sdk_url, $sxdmSn = '')
     {
-        $this->camera_sdk_url = $camera_sdk_url;
-
-        $url = $this->camera_sdk_url ?? gethostbyname(gethostname()) . ':8888';
-        $this->camera_sdk_url = "$url";
+        $url = $camera_sdk_url ?: (gethostbyname(gethostname()) . ':8888');
+        if (!preg_match('#^https?://#', $url)) {
+            $url = 'http://' . $url;
+        }
+        $this->camera_sdk_url = rtrim($url, '/');
         if ($sxdmSn != '')
             $this->sxdmSn = $sxdmSn;
     }
@@ -693,43 +694,56 @@ class DeviceCameraModel2Controller extends Controller
 
     public function getActiveSessionId()
     {
-
-
         set_time_limit(120);
-        // return array(
-        //     'sxdmToken: ' . $this->sxdmToken, //get from Device manufacturer
-        //     'sxdmSn:  ' . $this->sxdmSn //get from Device serial number
-        // );
 
-        // if ($this->sxdmSn == '') {
-        //     return "Device Serial Number is empty";
-        // }
+        $username = env('OX900_USERNAME', 'admin');
+        $password = env('OX900_PASSWORD', 'admin1234');
+        $baseUrl = rtrim($this->camera_sdk_url, '/');
+        if (!preg_match('#^https?://#', $baseUrl)) {
+            $baseUrl = 'http://' . $baseUrl;
+        }
+
+        // Step 1: GET challenge
         $curl = curl_init();
-
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => $this->camera_sdk_url . '/api/auth/login/challenge?username=admin',
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $baseUrl . '/api/auth/login/challenge?username=' . urlencode($username),
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 1,
-            CURLOPT_TIMEOUT => 120,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'GET',
-            CURLOPT_HTTPHEADER => array(
-                'sxdmToken:' . $this->sxdmToken, //get from Device manufacturer
-                'sxdmSn:' . $this->sxdmSn //get from Device serial number
-            ),
-        ));
-
-        $response = curl_exec($curl);
-
+            CURLOPT_TIMEOUT => 15,
+        ]);
+        $chResp = curl_exec($curl);
         curl_close($curl);
 
-        $response = json_decode($response, true);
-        if (isset($response["session_id"])) {
-            return $response["session_id"];
-        } else {
+        $chResp = json_decode($chResp, true);
+        if (!isset($chResp['session_id'], $chResp['challenge'], $chResp['salt'])) {
             return '';
         }
+
+        // Step 2: compute hash = sha256(password + salt + challenge)
+        $hashed = hash('sha256', $password . $chResp['salt'] . $chResp['challenge']);
+
+        // Step 3: POST login
+        $body = json_encode([
+            'session_id' => $chResp['session_id'],
+            'username' => $username,
+            'password' => $hashed,
+        ]);
+
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $baseUrl . '/api/auth/login',
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+            CURLOPT_TIMEOUT => 15,
+        ]);
+        $loginResp = curl_exec($curl);
+        curl_close($curl);
+
+        $loginResp = json_decode($loginResp, true);
+        if (isset($loginResp['status']) && $loginResp['status'] == 200 && isset($loginResp['session_id'])) {
+            return $loginResp['session_id'];
+        }
+        return '';
     }
 }

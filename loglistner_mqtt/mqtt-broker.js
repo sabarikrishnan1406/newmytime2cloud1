@@ -66,9 +66,28 @@ function forwardToAPI(path, data) {
     console.log(`[MQTT] Forwarding face events to Laravel API`);
   });
 
-  const httpServer = http.createServer();
+  const httpServer = http.createServer((req, res) => {
+    if (req.method === 'POST' && req.url === '/publish') {
+      let body = '';
+      req.on('data', (c) => { body += c; });
+      req.on('end', () => {
+        try {
+          const { topic, payload } = JSON.parse(body);
+          aedes.publish({ topic, payload: typeof payload === 'string' ? payload : JSON.stringify(payload), qos: 0 });
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true }));
+        } catch (e) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: e.message }));
+        }
+      });
+      return;
+    }
+    res.writeHead(404);
+    res.end();
+  });
   websocketStream.createServer({ server: httpServer }, aedes.handle);
   httpServer.listen(WS_PORT, () => {
-    console.log(`[MQTT] WebSocket broker running on ws://0.0.0.0:${WS_PORT}`);
+    console.log(`[MQTT] WebSocket broker + HTTP relay running on port ${WS_PORT}`);
   });
 })();

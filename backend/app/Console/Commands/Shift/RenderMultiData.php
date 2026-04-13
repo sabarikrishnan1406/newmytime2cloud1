@@ -66,6 +66,9 @@ class RenderMultiData extends Command
             // ->where('al.UserID', 619)
             ->where('al.company_id', $id)
             ->whereDate('al.log_date', $date)
+            ->where(function ($q) {
+                $q->where('al.channel', '!=', 'camera')->orWhereNull('al.channel');
+            })
             ->orderBy("al.LogTime")
             // ->take(50)
             ->pluck("al.UserID")
@@ -120,6 +123,9 @@ class RenderMultiData extends Command
             ->where('e.company_id', $id)
             ->whereIn('al.UserID', $filtered_all_new_employee_ids)
             ->whereBetween('al.log_date', [$date, date("Y-m-d", strtotime($date . "+1 day"))])
+            ->where(function ($q) {
+                $q->where('al.channel', '!=', 'camera')->orWhereNull('al.channel');
+            })
             ->distinct('al.LogTime', 'al.UserID', 'e.company_id')
             ->orderBy("al.LogTime")
             ->get()

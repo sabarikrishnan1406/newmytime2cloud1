@@ -59,22 +59,21 @@ const SyncStatusModal = ({ results, total, currentCount, isOpen, onClose, isLoad
                   <td className="p-3 font-medium text-slate-700 dark:text-slate-200">{res.name}</td>
                   <td className="p-3 text-slate-500 text-xs">{res.device_id}</td>
                   <td className="p-3">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${res.status == 200
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                      }`}>
-                      {res.status == 200 ? (
-                        <>
-                          <CheckCircle2 size={20} />
-                          SUCCESS
-                        </>
-                      ) : (
-                        <>
-                          <XCircle size={20} />
-                          FAILED
-                        </>
-                      )}
-                    </span>
+                    {(() => {
+                      const isSuccess = res.status == 200;
+                      const isDuplicate = typeof res.status === 'string' && /duplicate/i.test(res.status);
+                      const cls = isSuccess
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : isDuplicate
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+                      return (
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-colors ${cls}`}>
+                          {isSuccess ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
+                          {isSuccess ? 'SUCCESS' : isDuplicate ? 'ALREADY EXISTS' : (res.status || 'FAILED')}
+                        </span>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}

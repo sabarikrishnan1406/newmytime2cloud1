@@ -72,6 +72,17 @@ return [
             'path'   => storage_path('logs/camerasdk_' . date("Y-m-d") . '.log'),
             'level'  => env('LOG_LEVEL', 'debug'),
         ],
+        'camera_OX_900'      => [
+            'driver' => 'single',
+            'path'   => storage_path('logs/camera_OX_900_' . date("Y-m-d") . '.log'),
+            'level'  => env('LOG_LEVEL', 'debug'),
+        ],
+        'device_employee_upload' => [
+            'driver' => 'daily',
+            'path'   => storage_path('logs/device-employee-upload.log'),
+            'level'  => env('LOG_LEVEL', 'debug'),
+            'days'   => 30,
+        ],
         'jobs'               => [
             'driver' => 'single',
             'path'   => storage_path('logs/jobs_' . date("Y-m-d") . '.log'),

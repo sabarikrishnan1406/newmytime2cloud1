@@ -1,3 +1,8 @@
 {"level":"ERROR","timestamp":"2026-04-13T07:53:18.000Z","message":"MQTT error","error":"read ECONNRESET"}
 {"level":"ERROR","timestamp":"2026-04-13T07:53:21.000Z","message":"MQTT error","error":"connect ECONNREFUSED 192.168.1.116:1883"}
 {"level":"ERROR","timestamp":"2026-04-13T07:53:24.000Z","message":"MQTT error","error":"connect ECONNREFUSED 192.168.1.116:1883"}
+{"level":"ERROR","timestamp":"2026-04-13T09:20:01.000Z","message":"MQTT error","error":"read ECONNRESET"}
+{"level":"ERROR","timestamp":"2026-04-13T09:20:04.000Z","message":"MQTT error","error":"connect ECONNREFUSED 192.168.1.116:1883"}
+{"level":"ERROR","timestamp":"2026-04-13T09:20:07.000Z","message":"MQTT error","error":"connect ECONNREFUSED 192.168.1.116:1883"}
+{"level":"ERROR","timestamp":"2026-04-13T09:20:10.000Z","message":"MQTT error","error":"connect ECONNREFUSED 192.168.1.116:1883"}
+{"level":"ERROR","timestamp":"2026-04-13T09:20:13.000Z","message":"MQTT error","error":"connect ECONNREFUSED 192.168.1.116:1883"}
