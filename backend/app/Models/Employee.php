@@ -191,19 +191,11 @@ class Employee extends Model
             return null;
         }
 
-        $driver = DB::connection()->getDriverName(); // Get the database driver
-
-        if ($driver === 'sqlite') {
+        if (file_exists(public_path('media/employee/profile_picture/' . $value))) {
             return asset('media/employee/profile_picture/' . $value);
         }
 
-
-        if (env("APP_ENV") == "local") {
-            return "https://backend.mytime2cloud.com/media/employee/profile_picture/$value";
-        }
-
-        return asset('media/employee/profile_picture/' . $value);
-
+        return "https://backend.mytime2cloud.com/media/employee/profile_picture/$value";
     }
 
     public function getProfilePictureBase64Attribute()

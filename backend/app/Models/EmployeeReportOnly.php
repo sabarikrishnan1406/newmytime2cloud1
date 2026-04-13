@@ -175,11 +175,11 @@ class EmployeeReportOnly extends Model
             return null;
         }
 
-        if (env("APP_ENV") == "local") {
-            return "https://backend.mytime2cloud.com/media/employee/profile_picture/$value";
+        if (file_exists(public_path('media/employee/profile_picture/' . $value))) {
+            return asset('media/employee/profile_picture/' . $value);
         }
 
-        return asset('media/employee/profile_picture/' . $value);
+        return "https://backend.mytime2cloud.com/media/employee/profile_picture/$value";
         // return asset(env('BUCKET_URL') . '/' . $value);
 
     }
