@@ -24,7 +24,10 @@ Route::any('Subscribe/Verify', function (\Illuminate\Http\Request $request) {
         ?? $info['customId'] ?? $info['personId'] ?? null;
     $deviceId = $info['DeviceID'] ?? $info['facesluiceId'] ?? null;
     $rawTime = $info['CreateTime'] ?? $info['time'] ?? now()->format('Y-m-d H:i:s');
-    $logTime = str_replace('T', ' ', $rawTime);
+    $logTime = str_replace('T', ' ', trim($rawTime));
+    if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $logTime)) {
+        $logTime .= ':00';
+    }
     $personName = $info['Name'] ?? $info['personName'] ?? $info['persionName'] ?? '';
 
     if (!$userId || !$deviceId) return response()->json(['result' => 1]);

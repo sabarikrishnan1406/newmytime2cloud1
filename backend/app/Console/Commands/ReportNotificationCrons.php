@@ -68,6 +68,16 @@ class ReportNotificationCrons extends Command
 
             foreach ($models as $model) {
 
+                // Day-of-week filter (days stored as ["1","2",...] where 1=Mon..7=Sun, matches ISO-8601)
+                $days = is_array($model->days) ? $model->days : (json_decode($model->days ?? '[]', true) ?: []);
+                if (!empty($days)) {
+                    $todayIso = (int) date('N'); // 1=Mon .. 7=Sun
+                    if (!in_array((string) $todayIso, array_map('strval', $days), true)) {
+                        $this->info("Skipping notification {$model->id} (today={$todayIso} not in configured days)");
+                        continue;
+                    }
+                }
+
                 $company_id = $model->company->id;
                 $branchId = $model->branch_id;
 

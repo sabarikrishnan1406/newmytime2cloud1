@@ -253,21 +253,26 @@ function connectWebSocket() {
       const status = RecordCode > 15 ? "Access Denied" : "Allowed";
       const mode = verification_methods[RecordCode] ?? "---";
       const reason = reasons[RecordCode] ?? "---";
-      const logDate = RecordDate.split(" ")[0];
+      // Normalize LogTime: ensure HH:MM:SS format (pad with :00 if missing seconds)
+      let normalizedTime = String(RecordDate || "").trim();
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(normalizedTime)) {
+        normalizedTime += ":00";
+      }
+      const logDate = normalizedTime.split(" ")[0];
       const companyId = await getCompanyIdForDevice(SN);
 
-      console.log(`📥 Received: ${UserCode}_${SN}_${RecordDate} for ${companyId}`);
+      console.log(`📥 Received: ${UserCode}_${SN}_${normalizedTime} for ${companyId}`);
 
       const row = {
         UserID: UserCode,
         DeviceID: String(SN),
         company_id: companyId,
-        LogTime: RecordDate,
+        LogTime: normalizedTime,
         SerialNumber: RecordNumber || null,
         status,
         mode,
         reason,
-        log_date_time: RecordDate,
+        log_date_time: normalizedTime,
         index_serial_number: RecordNumber || null,
         log_date: logDate,
         created_at: nowGMT4(),

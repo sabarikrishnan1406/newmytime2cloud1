@@ -252,6 +252,12 @@ class SDKController extends Controller
 
     public function AddPerson(Request $request)
     {
+        if (!$request->company_id || empty($request->snList) || empty($request->personList)) {
+            return response()->json([
+                'message' => 'company_id, snList and personList are required',
+                'cameraResponse' => [], 'cameraResponse2' => [], 'deviceResponse' => [],
+            ], 400);
+        }
         \Log::info('AddPerson payload', ['company_id' => $request->company_id, 'snList' => $request->snList, 'personList' => $request->personList]);
 
         $cameraResponse1 = "";

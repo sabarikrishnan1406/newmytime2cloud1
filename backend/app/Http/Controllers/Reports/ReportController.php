@@ -55,10 +55,10 @@ class ReportController extends Controller
         $items = collect($data->items());
         \App\Services\Attendance\AttendanceWeekOffService::recalculateForReport($items, (int) $request->company_id);
 
-        $showTabs = json_decode($request->showTabs, true);
+        $showTabs = json_decode($request->showTabs, true) ?: [];
 
         // only for multi in/out
-        if ($showTabs['multi'] == true || $showTabs['double'] == true) {
+        if (($showTabs['multi'] ?? false) || ($showTabs['double'] ?? false)) {
             foreach ($data as $value) {
 
                 $logs = $value->logs ?? [];

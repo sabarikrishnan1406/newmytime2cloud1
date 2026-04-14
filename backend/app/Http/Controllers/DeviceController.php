@@ -1463,8 +1463,11 @@ class DeviceController extends Controller
     }
     public function checkDeviceHealth(Request $request)
     {
-
-        return $this->checkDevicesHealthCompanyId($request->company_id);
+        $companyId = (int) $request->company_id;
+        if ($companyId <= 0) {
+            return response()->json(['message' => 'company_id is required', 'status' => false], 400);
+        }
+        return $this->checkDevicesHealthCompanyId($companyId);
     }
 
     public function checkDevicesHealthCompanyId($company_id = 0)

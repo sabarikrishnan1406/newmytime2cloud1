@@ -2,10 +2,12 @@
 
 namespace App\Mail;
 
+use App\Http\Controllers\Reports\AttendanceReportController;
 use App\Models\Attendance;
 use App\Models\Employee;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
+use Illuminate\Http\Request;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,41 +24,56 @@ class ReportNotificationMail extends Mailable implements ShouldQueue
 
         $companyId = $this->model->company_id;
         $branchId = $this->model->branch_id;
-        $date = date("Y-m-d", strtotime("-1 day"));
-        $dateDisplay = date("D, F j, Y", strtotime("-1 day"));
 
-        // Try to attach pre-generated PDFs first
-        $hasAttachment = false;
-        foreach ($this->files as $file) {
-            $fullPath = storage_path("app/public/pdf/$date/{$companyId}/summary_report_{$branchId}_$file.pdf");
-            if (file_exists($fullPath)) {
-                $this->attach($fullPath);
-                $hasAttachment = true;
-            }
+        // Pick date range based on notification frequency
+        $freq = strtolower($this->model->frequency ?? 'daily');
+        if ($freq === 'weekly') {
+            $fromDate = date('Y-m-d', strtotime('-7 days'));
+            $toDate   = date('Y-m-d', strtotime('-1 day'));
+        } elseif ($freq === 'monthly') {
+            $fromDate = date('Y-m-01', strtotime('first day of last month'));
+            $toDate   = date('Y-m-t', strtotime('last day of last month'));
+        } else {
+            $fromDate = $toDate = date('Y-m-d', strtotime('-1 day'));
         }
+        $date = $toDate;
+        $dateDisplay = ($fromDate === $toDate)
+            ? date('D, F j, Y', strtotime($fromDate))
+            : date('M j', strtotime($fromDate)) . ' – ' . date('M j, Y', strtotime($toDate));
 
-        // If no pre-generated PDF, generate one on-the-fly
-        if (!$hasAttachment) {
+        // Generate Format B (monthly detail) PDF via AttendanceReportController
+        try {
+            $req = Request::create('/api/report/monthly_detail_pdf', 'GET', [
+                'company_id'    => $companyId,
+                'from_date'     => $fromDate,
+                'to_date'       => $toDate,
+                'branch_ids'    => $branchId ? (string) $branchId : null,
+                'shift_type_id' => $this->model->shift_type_id ?? null,
+            ]);
+            $response = (new AttendanceReportController())->monthlyDetailPDF($req);
+            $pdfContent = $response->getContent();
+            $pdfPath = storage_path("app/report_b_{$companyId}_{$branchId}_{$date}.pdf");
+            file_put_contents($pdfPath, $pdfContent);
+            $this->attach($pdfPath, [
+                'as' => "Attendance_Report_{$date}.pdf",
+                'mime' => 'application/pdf',
+            ]);
+        } catch (\Exception $e) {
+            \Log::warning("Format B PDF failed, falling back: " . $e->getMessage());
+            // Fallback: simple HTML PDF
             try {
                 $employees = Employee::where('company_id', $companyId)
                     ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
                     ->with('branch:id,branch_name', 'department:id,name')
                     ->get(['id', 'first_name', 'last_name', 'employee_id', 'system_user_id', 'branch_id', 'department_id']);
-
                 $branchName = $employees->first()?->branch?->branch_name ?? 'All Branches';
-
                 $html = $this->generateReportHtml($employees, $companyId, $branchName, $dateDisplay);
-
                 $pdf = Pdf::loadHTML($html)->setPaper('a4', 'landscape');
                 $pdfPath = storage_path("app/attendance_report_{$companyId}_{$date}.pdf");
                 $pdf->save($pdfPath);
-
-                $this->attach($pdfPath, [
-                    'as' => "Attendance_Report_{$date}.pdf",
-                    'mime' => 'application/pdf',
-                ]);
-            } catch (\Exception $e) {
-                \Log::warning("Failed to generate PDF for report notification: " . $e->getMessage());
+                $this->attach($pdfPath, ['as' => "Attendance_Report_{$date}.pdf", 'mime' => 'application/pdf']);
+            } catch (\Exception $e2) {
+                \Log::warning("Fallback PDF also failed: " . $e2->getMessage());
             }
         }
 

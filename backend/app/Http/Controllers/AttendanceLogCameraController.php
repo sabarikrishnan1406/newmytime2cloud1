@@ -16,6 +16,15 @@ use Illuminate\Support\Facades\Storage;
 
 class AttendanceLogCameraController extends Controller
 {
+    public static function normalizeLogTime($value)
+    {
+        $v = trim((string) $value);
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $v)) {
+            $v .= ':00';
+        }
+        return $v;
+    }
+
     public function index(AttendanceLog $model, Request $request)
     {
         return $model->filter($request)->paginate($request->per_page);
@@ -89,7 +98,7 @@ class AttendanceLogCameraController extends Controller
             $baseRecord = [
                 "UserID" => $columns[0],
                 "DeviceID" => $columns[1],
-                "LogTime" => str_replace("T", " ", $columns[2]),
+                "LogTime" => self::normalizeLogTime(str_replace("T", " ", $columns[2])),
                 "SerialNumber" => $columns[3],
                 "log_date_time" => str_replace("T", " ", $columns[2]),
                 "index_serial_number" => $columns[3],
@@ -207,7 +216,7 @@ class AttendanceLogCameraController extends Controller
                     $baseRecord = [
                         "UserID" => $columns[0],
                         "DeviceID" => $columns[1],
-                        "LogTime" => str_replace("T", " ", $columns[2]),
+                        "LogTime" => self::normalizeLogTime(str_replace("T", " ", $columns[2])),
                         "SerialNumber" => $columns[3],
                         "log_date_time" => str_replace("T", " ", $columns[2]),
                         "index_serial_number" => $columns[3],
