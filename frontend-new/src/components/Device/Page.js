@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { closeDoor, deleteDevice, getBranches, getDevices, openDoor, removeEmployee } from '@/lib/api';
+import { closeDoor, deleteDevice, getBranches, getDevices, openDoor, removeEmployee, checkDeviceHealth } from '@/lib/api';
+import { getUser } from '@/config';
+import { Activity } from 'lucide-react';
 
 import Columns from "./columns";
 import DataTable from '@/components/ui/DataTable';
@@ -86,6 +88,21 @@ export default function EmployeeDataTable() {
 
   const handleRefresh = () => {
     fetchRecords(currentPage, perPage);
+  }
+
+  const [checkingHealth, setCheckingHealth] = useState(false);
+  const handleCheckHealth = async () => {
+    try {
+      setCheckingHealth(true);
+      const user = await getUser();
+      const res = await checkDeviceHealth(user?.company_id);
+      notify("Device Health", typeof res === 'string' ? res : (res?.message || "Health check complete"), "success");
+      fetchRecords(currentPage, perPage);
+    } catch (err) {
+      notify("Health Check Failed", parseApiError(err), "error");
+    } finally {
+      setCheckingHealth(false);
+    }
   }
 
   const handlePin = async (pin) => {
@@ -177,6 +194,24 @@ export default function EmployeeDataTable() {
               width='w-[220px]'
             />
           </div>
+
+          <button
+            onClick={handleRefresh}
+            title="Reload"
+            className="p-2 rounded-lg border border-gray-200 dark:border-white/10 text-slate-600 dark:text-gray-300 hover:bg-white/5 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={handleCheckHealth}
+            disabled={checkingHealth}
+            title="Check device online/offline status"
+            className="px-3 py-2 rounded-lg border border-gray-200 dark:border-white/10 text-slate-600 dark:text-gray-300 hover:bg-white/5 transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
+          >
+            <Activity className="w-4 h-4" />
+            {checkingHealth ? 'Checking...' : 'Online Devices'}
+          </button>
 
           <DeviceCreate onSuccess={handleRefresh} />
 

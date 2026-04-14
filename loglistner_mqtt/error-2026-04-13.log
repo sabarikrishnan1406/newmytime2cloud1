@@ -109,3 +109,6 @@
 [2026-04-13T14:06:52.000Z] NULL company_id → UserID: 61 | DeviceID: FC-8300T20094123 | LogTime: 2026-04-13 18:06:36
 [2026-04-13T14:06:52.000Z] NULL company_id → UserID: 61 | DeviceID: FC-8300T20094123 | LogTime: 2026-04-13 18:06:40
 [2026-04-13T14:06:52.000Z] Bulk attendance insert failed: null value in column "company_id" of relation "attendance_logs" violates not-null constraint
+[2026-04-13T14:46:32.000Z] Device not registered in devices table → DeviceID: OX-7452025100028
+[2026-04-13T14:46:33.000Z] NULL company_id → UserID: 6 | DeviceID: OX-7452025100028 | LogTime: 2026-04-13 18:46:29
+[2026-04-13T14:46:33.000Z] Bulk attendance insert failed: null value in column "company_id" of relation "attendance_logs" violates not-null constraint

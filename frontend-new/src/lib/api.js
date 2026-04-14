@@ -775,6 +775,13 @@ export const updateDeviceSettings = async (payload) => {
     return data;
 };
 
+export const checkDeviceHealth = async (company_id) => {
+    const { data } = await axios.get(`${API_BASE}/check_device_health`, {
+        params: { company_id },
+    });
+    return data;
+};
+
 export const syncDeviceDateTime = async (device_id, company_id) => {
     const dt = new Date();
     const pad = (n) => String(n).padStart(2, "0");
