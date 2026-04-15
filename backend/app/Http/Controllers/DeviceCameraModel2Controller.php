@@ -410,7 +410,8 @@ class DeviceCameraModel2Controller extends Controller
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_ENCODING => '',
                     CURLOPT_MAXREDIRS => 1,
-                    CURLOPT_TIMEOUT => 0,
+                    CURLOPT_TIMEOUT => 30,
+                    CURLOPT_CONNECTTIMEOUT => 5,
                     CURLOPT_FOLLOWLOCATION => true,
                     CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
                     CURLOPT_CUSTOMREQUEST => 'POST',
@@ -708,47 +709,63 @@ class DeviceCameraModel2Controller extends Controller
             $baseUrl = 'http://' . $baseUrl;
         }
 
-        // Step 1: GET challenge
+        // Try challenge-response auth (direct-to-device)
         $curl = curl_init();
         curl_setopt_array($curl, [
             CURLOPT_URL => $baseUrl . '/api/auth/login/challenge?username=' . urlencode($username),
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 15,
+            CURLOPT_TIMEOUT => 8,
+            CURLOPT_CONNECTTIMEOUT => 5,
         ]);
         $chResp = curl_exec($curl);
         curl_close($curl);
 
         $chResp = json_decode($chResp, true);
-        if (!isset($chResp['session_id'], $chResp['challenge'], $chResp['salt'])) {
-            return '';
+        if (isset($chResp['session_id'], $chResp['challenge'], $chResp['salt'])) {
+            $hashed = hash('sha256', $password . $chResp['salt'] . $chResp['challenge']);
+            $body = json_encode([
+                'session_id' => $chResp['session_id'],
+                'username' => $username,
+                'password' => $hashed,
+            ]);
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => $baseUrl . '/api/auth/login',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                CURLOPT_TIMEOUT => 8,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            ]);
+            $loginResp = curl_exec($curl);
+            curl_close($curl);
+            $loginResp = json_decode($loginResp, true);
+            if (isset($loginResp['status']) && $loginResp['status'] == 200 && isset($loginResp['session_id'])) {
+                return $loginResp['session_id'];
+            }
         }
 
-        // Step 2: compute hash = sha256(password + salt + challenge)
-        $hashed = hash('sha256', $password . $chResp['salt'] . $chResp['challenge']);
-
-        // Step 3: POST login
-        $body = json_encode([
-            'session_id' => $chResp['session_id'],
-            'username' => $username,
-            'password' => $hashed,
-        ]);
-
+        // Fallback: legacy gateway auth (sxdmToken header)
         $curl = curl_init();
         curl_setopt_array($curl, [
-            CURLOPT_URL => $baseUrl . '/api/auth/login',
+            CURLOPT_URL => $baseUrl . '/api/auth/login/challenge?username=admin',
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $body,
-            CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-            CURLOPT_TIMEOUT => 15,
+            CURLOPT_TIMEOUT => 8,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_CUSTOMREQUEST => 'GET',
+            CURLOPT_HTTPHEADER => [
+                'sxdmToken:' . $this->sxdmToken,
+                'sxdmSn:' . $this->sxdmSn,
+            ],
         ]);
-        $loginResp = curl_exec($curl);
+        $gwResp = curl_exec($curl);
         curl_close($curl);
-
-        $loginResp = json_decode($loginResp, true);
-        if (isset($loginResp['status']) && $loginResp['status'] == 200 && isset($loginResp['session_id'])) {
-            return $loginResp['session_id'];
+        $gwResp = json_decode($gwResp, true);
+        if (isset($gwResp['session_id'])) {
+            return $gwResp['session_id'];
         }
+
         return '';
     }
 }

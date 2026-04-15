@@ -201,39 +201,105 @@ class AttendanceLogCameraController extends Controller
 
         $result["data"] = array_values(array_unique($result["data"]));
 
+        // ✅ Build a lookup map: serial_number => company_id (single query)
+        $serialNumbers = collect($result["data"])
+            ->map(fn($row) => explode(',', $row)[1] ?? null)
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $companyMap = Device::whereIn("serial_number", $serialNumbers)
+            ->pluck("company_id", "serial_number"); // ['SN123' => 1, 'SN456' => 2]
+
+        $records = [];
+
+        foreach ($result["data"] as $row) {
+            $columns = explode(',', $row);
+
+            $datetime = substr(str_replace("T", " ", $columns[2]), 0, 16);
+
+            // ✅ O(1) lookup, no DB call
+            $company_id = $companyMap[$columns[1]] ?? 0;
+
+            if ($datetime != 'undefined') {
+                $baseRecord = [
+                    "UserID"               => $columns[0],
+                    "company_id"           => $company_id,
+                    "DeviceID"             => $columns[1],
+                    "LogTime"              => str_replace("T", " ", $columns[2]),
+                    "SerialNumber"         => $columns[3],
+                    "log_date_time"        => str_replace("T", " ", $columns[2]),
+                    "index_serial_number"  => $columns[3],
+                    "log_date"             => explode('T', $columns[2])[0] ?? date("Y-m-d"),
+                    "source_info"          => "Attendanc Log Camerea -> store",
+                    "log_type"             => "Auto",
+                ];
+
+                if (trim($columns[4]) == "Out" || trim($columns[4]) == "In") {
+                    $baseRecord["log_type"] = $columns[4];
+                }
+
+                $records[] = $baseRecord;
+            }
+        }
+
+        Logger::channel("custom")->info(count($records) . ' new logs has been inserted.');
+
+        try {
+            DB::table('attendance_logs')->insertOrIgnore($records);
+            Storage::put("camera/camera-logs-count-" . $result['date'] . ".txt", $result['totalLines']);
+            return $this->getMeta("Sync Attenance Camera Logs", count($records) . " new logs has been inserted.\n");
+        } catch (\Throwable $th) {
+            Logger::channel("custom")->error('Error occured while inserting logs.');
+            Logger::channel("custom")->error('Error Details: ' . $th);
+            return $this->getMeta("Sync Attenance Camera Logs", " Error occured.\n");
+        }
+    }
+
+    public function store_old()
+    {
+        $result = $this->handleFile();
+
+        if (array_key_exists("error", $result)) {
+            return $this->getMeta("Sync Attenance Camera Logs", $result["message"] . "\n");
+        }
+
+        $result["data"] = array_values(array_unique($result["data"]));
+
         $records = [];
 
         foreach ($result["data"] as $row) {
             $columns = explode(',', $row);
 
             // $isDuplicateLogTime = $this->verifyDuplicateLog($columns);
-           // $isDuplicateLogTime = false;
+            // $isDuplicateLogTime = false;
             // if (!$isDuplicateLogTime) {
-                $datetime = substr(str_replace("T", " ", $columns[2]), 0, 16);
+            $datetime = substr(str_replace("T", " ", $columns[2]), 0, 16);
 
 
-                if ($datetime != 'undefined') {
-                    $baseRecord = [
-                        "UserID" => $columns[0],
-                        "DeviceID" => $columns[1],
-                        "LogTime" => self::normalizeLogTime(str_replace("T", " ", $columns[2])),
-                        "SerialNumber" => $columns[3],
-                        "log_date_time" => str_replace("T", " ", $columns[2]),
-                        "index_serial_number" => $columns[3],
-                        "log_date" =>  explode('T', $columns[2])[0] ?? date("Y-m-d"),
+            if ($datetime != 'undefined') {
+                $baseRecord = [
+                    "UserID" => $columns[0],
+                    "DeviceID" => $columns[1],
+                    "LogTime" => self::normalizeLogTime(str_replace("T", " ", $columns[2])),
+                    "SerialNumber" => $columns[3],
+                    "log_date_time" => str_replace("T", " ", $columns[2]),
+                    "index_serial_number" => $columns[3],
+                    "log_date" =>  explode('T', $columns[2])[0] ?? date("Y-m-d"),
 
-                        "source_info" => "Attendanc Log Camerea -> store",
-                        "log_type" => null,
-                    ];
+                    "source_info" => "Attendanc Log Camerea -> store",
+                    "log_type" => null,
+                ];
 
 
-                    if (trim($columns[4])  == "Out" || trim($columns[4])  == "In") {
-                        $baseRecord["log_type"] = $columns[4];
-                    }
-
-                    // Add the record to the $records array
-                    $records[] = $baseRecord;
+                if (trim($columns[4])  == "Out" || trim($columns[4])  == "In") {
+                    $baseRecord["log_type"] = $columns[4];
                 }
+
+                // Add the record to the $records array
+                $records[] = $baseRecord;
+            }
             // }
         }
 

@@ -44,7 +44,7 @@ const EmployeeTabs = ({ selectedEmployee }) => {
                 );
             case 'leaves':
                 return (
-                    <Leaves employee_id={id} />
+                    <Leaves employee_id={id} payload={payload} />
                 );
             case 'documents':
                 return <Document employee_id={id} />;

@@ -109,19 +109,19 @@ export default (handleRowClick, handleEdit, handleDelete, handleView) => {
                             onClick={() => handleView(record)}
                             className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100"
                         >
-                            <Eye className="w-4 h-4 text-indigo-500" /> <span className="text-indigo-500">View</span>
+                            <Eye className="w-4 h-4 text-slate-700 dark:text-slate-200" /> <span className="text-indigo-500">View</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             onClick={() => handleEdit(record)}
                             className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100"
                         >
-                            <Pencil className="w-4 h-4 text-primary" /> <span className="text-primary">Edit</span>
+                            <Pencil className="w-4 h-4 text-slate-700 dark:text-slate-200" /> <span className="text-primary">Edit</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             onClick={() => handleDelete(record)}
                             className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-red-50"
                         >
-                            <Trash2 className="w-4 h-4 text-red-500" /> <span className="text-red-500">Delete</span>
+                            <Trash2 className="w-4 h-4 text-slate-700 dark:text-slate-200" /> <span className="text-red-500">Delete</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

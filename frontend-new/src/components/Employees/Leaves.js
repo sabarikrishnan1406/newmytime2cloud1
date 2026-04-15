@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { getLeavesRequest } from "@/lib/endpoint/leaves";
 import { useForm } from "react-hook-form";
 import { SuccessDialog } from "@/components/SuccessDialog";
 import { Button } from "@/components/ui/button";
@@ -18,10 +19,39 @@ import { Banknote } from "lucide-react";
 import { updateBank } from "@/lib/api";
 import { parseApiError } from "@/lib/utils";
 
-const Bank = ({ employee_id, bank }) => {
+const Bank = ({ employee_id, bank, payload }) => {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const [globalError, setGlobalError] = useState(null);
+    const [leaves, setLeaves] = useState([]);
+
+    useEffect(() => {
+        if (!employee_id) return;
+        getLeavesRequest({ employee_id, per_page: 100 })
+            .then(r => setLeaves(Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : []))
+            .catch(() => setLeaves([]));
+    }, [employee_id]);
+
+    // Totals from leave_group on payload
+    const totals = {
+        annual: Number(payload?.leave_group?.annual_leaves ?? payload?.annual_leaves ?? 0),
+        sick: Number(payload?.leave_group?.sick_leaves ?? payload?.sick_leaves ?? 0),
+        casual: Number(payload?.leave_group?.casual_leaves ?? payload?.casual_leaves ?? 0),
+    };
+    const used = leaves.filter(l => l.status === 1).reduce((acc, l) => {
+        const t = (l.leave_type?.name || l.leave_group_type?.leave_type?.name || '').toLowerCase();
+        const days = Number(l.total_days || l.days || 0);
+        if (t.includes('annual')) acc.annual += days;
+        else if (t.includes('sick')) acc.sick += days;
+        else if (t.includes('casual')) acc.casual += days;
+        return acc;
+    }, { annual: 0, sick: 0, casual: 0 });
+    const left = {
+        annual: Math.max(0, totals.annual - used.annual),
+        sick: Math.max(0, totals.sick - used.sick),
+        casual: Math.max(0, totals.casual - used.casual),
+    };
+    const deg = (l, t) => t > 0 ? Math.round((l / t) * 360) : 0;
 
     const form = useForm({
         defaultValues: {
@@ -88,18 +118,15 @@ const Bank = ({ employee_id, bank }) => {
                 </div>
                 <div className="relative size-24 mt-4">
                     <div className="size-full rounded-full"
-                        style={{
-                            background: "conic-gradient(#13a4ec 270deg, #283339 0deg)",
-                        }}
+                        style={{ background: `conic-gradient(#13a4ec ${deg(left.annual, totals.annual)}deg, #283339 0deg)` }}
                     ></div>
-                    <div
-                        className="absolute inset-2 bg-[#141d22] rounded-full flex flex-col items-center justify-center">
-                        <span className="text-2xl font-bold text-white">15</span>
+                    <div className="absolute inset-2 bg-[#141d22] rounded-full flex flex-col items-center justify-center">
+                        <span className="text-2xl font-bold text-white">{left.annual}</span>
                         <span className="text-[10px] text-[#9db0b9] uppercase">Left</span>
                     </div>
                 </div>
                 <div className="mt-4 text-center">
-                    <span className="text-sm text-[#9db0b9]">of 20 Days</span>
+                    <span className="text-sm text-[#9db0b9]">of {totals.annual} Days</span>
                 </div>
             </div>
             <div
@@ -110,18 +137,15 @@ const Bank = ({ employee_id, bank }) => {
                 </div>
                 <div className="relative size-24 mt-4">
                     <div className="size-full rounded-full"
-                        style={{
-                            background: "conic-gradient(#ec4899 180deg, #283339 0deg)",
-                        }}
+                        style={{ background: `conic-gradient(#ec4899 ${deg(left.sick, totals.sick)}deg, #283339 0deg)` }}
                     ></div>
-                    <div
-                        className="absolute inset-2 bg-[#141d22] rounded-full flex flex-col items-center justify-center">
-                        <span className="text-2xl font-bold text-white">5</span>
+                    <div className="absolute inset-2 bg-[#141d22] rounded-full flex flex-col items-center justify-center">
+                        <span className="text-2xl font-bold text-white">{left.sick}</span>
                         <span className="text-[10px] text-[#9db0b9] uppercase">Left</span>
                     </div>
                 </div>
                 <div className="mt-4 text-center">
-                    <span className="text-sm text-[#9db0b9]">of 10 Days</span>
+                    <span className="text-sm text-[#9db0b9]">of {totals.sick} Days</span>
                 </div>
             </div>
             <div
@@ -133,19 +157,15 @@ const Bank = ({ employee_id, bank }) => {
                 <div className="relative size-24 mt-4">
                     <div className="size-full rounded-full"
 
-                        style={{
-                            background: "conic-gradient(#f59e0b 90deg, #283339 0deg)",
-                        }}
-
+                        style={{ background: `conic-gradient(#f59e0b ${deg(left.casual, totals.casual)}deg, #283339 0deg)` }}
                     ></div>
-                    <div
-                        className="absolute inset-2 bg-[#141d22] rounded-full flex flex-col items-center justify-center">
-                        <span className="text-2xl font-bold text-white">2</span>
+                    <div className="absolute inset-2 bg-[#141d22] rounded-full flex flex-col items-center justify-center">
+                        <span className="text-2xl font-bold text-white">{left.casual}</span>
                         <span className="text-[10px] text-[#9db0b9] uppercase">Left</span>
                     </div>
                 </div>
                 <div className="mt-4 text-center">
-                    <span className="text-sm text-[#9db0b9]">of 8 Days</span>
+                    <span className="text-sm text-[#9db0b9]">of {totals.casual} Days</span>
                 </div>
             </div>
             <div
@@ -266,86 +286,45 @@ const Bank = ({ employee_id, bank }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[#283339]">
-                            <tr className="group hover:bg-white/5 transition-colors cursor-pointer">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className="size-8 rounded bg-primary/10 text-primary flex items-center justify-center">
-                                            <span
-                                                className="material-symbols-outlined text-[18px]">beach_access</span>
-                                        </div>
-                                        <span className="text-sm font-medium text-white">Annual Leave</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-[#9db0b9]">Nov 13 - Nov 14</td>
-                                <td className="px-6 py-4 text-sm text-white">2</td>
-                                <td className="px-6 py-4 text-right">
-                                    <span
-                                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                                        Pending
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr className="group hover:bg-white/5 transition-colors cursor-pointer">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className="size-8 rounded bg-pink-500/10 text-pink-500 flex items-center justify-center">
-                                            <span
-                                                className="material-symbols-outlined text-[18px]">medication</span>
-                                        </div>
-                                        <span className="text-sm font-medium text-white">Sick Leave</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-[#9db0b9]">Oct 02</td>
-                                <td className="px-6 py-4 text-sm text-white">1</td>
-                                <td className="px-6 py-4 text-right">
-                                    <span
-                                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-500 border border-green-500/20">
-                                        Approved
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr className="group hover:bg-white/5 transition-colors cursor-pointer">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className="size-8 rounded bg-orange-500/10 text-orange-500 flex items-center justify-center">
-                                            <span
-                                                className="material-symbols-outlined text-[18px]">event_busy</span>
-                                        </div>
-                                        <span className="text-sm font-medium text-white">Casual Leave</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-[#9db0b9]">Sep 15</td>
-                                <td className="px-6 py-4 text-sm text-white">1</td>
-                                <td className="px-6 py-4 text-right">
-                                    <span
-                                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-500 border border-green-500/20">
-                                        Approved
-                                    </span>
-                                </td>
-                            </tr>
-                            <tr className="group hover:bg-white/5 transition-colors cursor-pointer">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className="size-8 rounded bg-primary/10 text-primary flex items-center justify-center">
-                                            <span
-                                                className="material-symbols-outlined text-[18px]">beach_access</span>
-                                        </div>
-                                        <span className="text-sm font-medium text-white">Annual Leave</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-[#9db0b9]">Aug 20 - Aug 25</td>
-                                <td className="px-6 py-4 text-sm text-white">5</td>
-                                <td className="px-6 py-4 text-right">
-                                    <span
-                                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-500 border border-red-500/20">
-                                        Rejected
-                                    </span>
-                                </td>
-                            </tr>
+                            {leaves.slice(0, 10).map((l) => {
+                                const name = l.leave_type?.name || l.leave_group_type?.leave_type?.name || 'Leave';
+                                const from = l.from_date || l.start_date;
+                                const to = l.to_date || l.end_date;
+                                const dateStr = from && to && from !== to
+                                    ? `${new Date(from).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })} - ${new Date(to).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}`
+                                    : from ? new Date(from).toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) : '—';
+                                const days = l.total_days || l.days || 0;
+                                const statusCfg = {
+                                    0: { label: 'Pending', cls: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+                                    1: { label: 'Approved', cls: 'bg-green-500/10 text-green-500 border-green-500/20' },
+                                    2: { label: 'Rejected', cls: 'bg-red-500/10 text-red-500 border-red-500/20' },
+                                }[l.status] || { label: 'Unknown', cls: 'bg-slate-500/10 text-slate-500 border-slate-500/20' };
+                                const icon = name.toLowerCase().includes('sick') ? 'medication'
+                                    : name.toLowerCase().includes('casual') ? 'event_busy'
+                                    : 'beach_access';
+                                return (
+                                    <tr key={l.id} className="group hover:bg-white/5 transition-colors cursor-pointer">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="size-8 rounded bg-primary/10 text-primary flex items-center justify-center">
+                                                    <span className="material-symbols-outlined text-[18px]">{icon}</span>
+                                                </div>
+                                                <span className="text-sm font-medium text-white">{name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-[#9db0b9]">{dateStr}</td>
+                                        <td className="px-6 py-4 text-sm text-white">{days}</td>
+                                        <td className="px-6 py-4 text-right">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusCfg.cls}`}>
+                                                {statusCfg.label}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                            {leaves.length === 0 && (
+                                <tr><td colSpan={4} className="text-center py-10 text-sm text-slate-500">No leave requests</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

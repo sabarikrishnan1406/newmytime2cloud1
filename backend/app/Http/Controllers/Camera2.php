@@ -92,35 +92,6 @@ class Camera2 extends Controller
             Storage::append($file_name, $message);
 
             (new AttendanceLogCameraController)->store();
-
-            // Notify live feed subscribers via MQTT relay
-            try {
-                $relayPayload = json_encode([
-                    'topic' => "mqtt/face/{$device_sn}/event",
-                    'payload' => [
-                        'operator' => 'RecPush',
-                        'info' => [
-                            'customId' => $card_number,
-                            'personName' => $request->person_name,
-                            'facesluiceId' => $device_sn,
-                            'time' => $dateTime->format('Y-m-d H:i:s'),
-                            'VerifyStatus' => '1',
-                        ],
-                    ],
-                ]);
-                $ch = curl_init('http://localhost:8083/publish');
-                curl_setopt_array($ch, [
-                    CURLOPT_POST => true,
-                    CURLOPT_POSTFIELDS => $relayPayload,
-                    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-                    CURLOPT_TIMEOUT => 3,
-                    CURLOPT_RETURNTRANSFER => true,
-                ]);
-                curl_exec($ch);
-                curl_close($ch);
-            } catch (\Throwable $e) {
-                // Silent — live feed relay is best-effort
-            }
         } else {
             $file_name = "camera/camera2-error-logs-" . date("d-m-Y") . ".log";
             Logger::channel("custom")->error('Error occured while inserting Camera2 logs logs.' . $message);

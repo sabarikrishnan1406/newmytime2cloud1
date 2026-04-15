@@ -24,13 +24,10 @@ class SyncAutoShift extends Command
     protected $description = 'Sync Auto Shift';
     public function handle()
     {
-        $url = 'https://backend.mytime2cloud.com/api/render_logs';
-
+        $url = rtrim(env('APP_URL', 'https://v2backend.mytime2cloud.com'), '/') . '/api/render_logs';
         if (env("APP_ENV") == "desktop") {
             $localIp = gethostbyname(gethostname());
-            $port = 8000;
-            $url = "http://$localIp:$port/api/render_logs";
-            // $url = 'https://mytime2cloud-backend.test/api/render_logs';
+            $url = "http://{$localIp}:8000/api/render_logs";
         }
 
         $id = $this->argument("company_id");

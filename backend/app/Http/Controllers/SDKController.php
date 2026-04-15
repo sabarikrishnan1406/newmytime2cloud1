@@ -717,16 +717,22 @@ class SDKController extends Controller
 
 
 
-                        $statusOut = 200;
-                        $msgOut = 'OK';
+                        $statusOut = 'Device unreachable';
+                        $msgOut = 'Device unreachable or login failed';
                         if ($response != '') {
                             $decoded = json_decode($response);
                             if (isset($decoded->errors[0]->detail)) {
+                                // Explicit error
                                 $statusOut = $decoded->errors[0]->detail;
                                 $msgOut = $decoded->errors[0]->detail;
-                            } elseif (isset($decoded->id) || isset($decoded->person_name) || isset($decoded->status)) {
+                            } elseif (is_object($decoded) || is_array($decoded)) {
+                                // Valid JSON response (no errors) → success
                                 $statusOut = 200;
                                 $msgOut = 'Person added';
+                            } else {
+                                // Non-JSON response (e.g. "Unable to Connect Device") → real failure
+                                $statusOut = 'Failed';
+                                $msgOut = is_string($response) && strlen($response) < 200 ? $response : 'Device returned unexpected response';
                             }
                         }
 

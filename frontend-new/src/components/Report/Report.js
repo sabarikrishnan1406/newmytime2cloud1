@@ -350,8 +350,8 @@ export default function AttendanceTable() {
           company_name: user?.company_name || user?.company?.name || 'Company',
         });
 
-        // Template URL must use localhost for Puppeteer (runs on same machine as PDF service)
-        let templateUrl = `http://localhost:3002/attendance-report/?${t4Params.toString()}`;
+        const SUMMARY_BASE = process.env.NEXT_PUBLIC_SUMMARY_REPORT_URL || PDF_SERVICE;
+        let templateUrl = `${SUMMARY_BASE}/attendance-report/?${t4Params.toString()}`;
 
         setIsPdfDownloading(true);
         setPdfProgress(0);

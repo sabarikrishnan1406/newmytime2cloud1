@@ -18,7 +18,19 @@ import { Banknote } from "lucide-react";
 import { updateBank } from "@/lib/api";
 import { parseApiError } from "@/lib/utils";
 
-const Bank = ({ employee_id, bank }) => {
+const Bank = ({ employee_id, bank, payroll = {} }) => {
+    const fmt = (n) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const basic = Number(payroll?.basic_salary || 0);
+    const hra = Number(payroll?.hra || payroll?.house_rent_allowance || 0);
+    const allowances = Number(payroll?.allowances || payroll?.total_allowances || 0);
+    const gross = Number(payroll?.gross_salary || (basic + hra + allowances));
+    const net = Number(payroll?.net_salary || gross);
+    const ytdTax = Number(payroll?.ytd_tax || payroll?.total_tax || 0);
+    const ytdEarnings = Number(payroll?.ytd_earnings || payroll?.total_earnings || 0);
+    const pct = (v) => gross > 0 ? Math.round((v / gross) * 100) : 0;
+    const basicPct = pct(basic);
+    const hraPct = pct(hra);
+    const allowPct = pct(allowances);
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const [globalError, setGlobalError] = useState(null);
@@ -97,14 +109,14 @@ const Bank = ({ employee_id, bank }) => {
                 <div
                     className="flex flex-col sm:flex-row items-center justify-around gap-8 flex-1 relative z-10">
                     <div className="relative size-48 shrink-0 rounded-full shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]"
-                        style={{ background: 'conic-gradient(#6366f1 0% 45%, #2dd4bf 45% 75%, #0ea5e9 75% 100%)' }}
+                        style={{ background: `conic-gradient(#6366f1 0% ${basicPct}%, #2dd4bf ${basicPct}% ${basicPct + hraPct}%, #0ea5e9 ${basicPct + hraPct}% 100%)` }}
                     >
                         <div
                             className="absolute inset-4 bg-[#162025] rounded-full flex flex-col items-center justify-center">
                             <span
                                 className="text-xs font-semibold text-[#9db0b9] uppercase tracking-wider">Gross
                                 Pay</span>
-                            <span className="text-3xl font-bold text-white tracking-tight">$8,500</span>
+                            <span className="text-3xl font-bold text-white tracking-tight">${fmt(gross)}</span>
                             <span className="text-[10px] text-green-400 mt-1 flex items-center gap-0.5">
                                 <span className="material-symbols-outlined text-[12px]">trending_up</span> +2.5%
                             </span>
@@ -120,10 +132,10 @@ const Bank = ({ employee_id, bank }) => {
                                     <span
                                         className="text-sm font-medium text-gray-600 dark:text-gray-300 group-hover:text-indigo-400 transition-colors">Basic
                                         Salary</span>
-                                    <span className="text-xs text-[#5f717a]">45% of total</span>
+                                    <span className="text-xs text-[#5f717a]">{basicPct}% of total</span>
                                 </div>
                             </div>
-                            <span className="text-sm font-bold text-gray-600 dark:text-gray-300">$3,825</span>
+                            <span className="text-sm font-bold text-gray-600 dark:text-gray-300">${fmt(basic)}</span>
                         </div>
                         <div className="flex items-center justify-between group cursor-pointer">
                             <div className="flex items-center gap-3">
@@ -133,10 +145,10 @@ const Bank = ({ employee_id, bank }) => {
                                 <div className="flex flex-col">
                                     <span
                                         className="text-sm font-medium text-gray-600 dark:text-gray-300 group-hover:text-teal-400 transition-colors">HRA</span>
-                                    <span className="text-xs text-[#5f717a]">30% of total</span>
+                                    <span className="text-xs text-[#5f717a]">{hraPct}% of total</span>
                                 </div>
                             </div>
-                            <span className="text-sm font-bold text-gray-600 dark:text-gray-300">$2,550</span>
+                            <span className="text-sm font-bold text-gray-600 dark:text-gray-300">${fmt(hra)}</span>
                         </div>
                         <div className="flex items-center justify-between group cursor-pointer">
                             <div className="flex items-center gap-3">
@@ -146,10 +158,10 @@ const Bank = ({ employee_id, bank }) => {
                                 <div className="flex flex-col">
                                     <span
                                         className="text-sm font-medium text-gray-600 dark:text-gray-300 group-hover:text-sky-400 transition-colors">Allowances</span>
-                                    <span className="text-xs text-[#5f717a]">25% of total</span>
+                                    <span className="text-xs text-[#5f717a]">{allowPct}% of total</span>
                                 </div>
                             </div>
-                            <span className="text-sm font-bold text-gray-600 dark:text-gray-300">$2,125</span>
+                            <span className="text-sm font-bold text-gray-600 dark:text-gray-300">${fmt(allowances)}</span>
                         </div>
                     </div>
                 </div>
@@ -165,87 +177,32 @@ const Bank = ({ employee_id, bank }) => {
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
                     <div className="flex flex-col gap-1">
-                        <div
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group">
-                            <div className="flex items-center gap-4">
-                                <div
-                                    className="size-10 rounded-lg glass-card border border-gray-300 dark:border-[#283339] flex items-center justify-center text-indigo-400 group-hover:border-indigo-500/30 transition-colors">
-                                    <span className="material-symbols-outlined">account_balance</span>
+                        {(payroll?.history && payroll.history.length > 0 ? payroll.history : []).map((h, idx) => {
+                            const isProcessing = (h.status || '').toLowerCase() === 'processing' || (h.status || '').toLowerCase() === 'pending';
+                            return (
+                                <div key={idx} className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`size-10 rounded-lg glass-card border border-gray-300 dark:border-[#283339] flex items-center justify-center ${isProcessing ? 'text-indigo-400' : 'text-teal-400'}`}>
+                                            <span className="material-symbols-outlined">{isProcessing ? 'account_balance' : 'check_circle'}</span>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{h.title || h.label || h.name || 'Salary'}</span>
+                                            <span className="text-xs text-[#9db0b9]">{h.date || h.payment_date || ''}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <span className="text-sm font-bold text-gray-600 dark:text-gray-300">${fmt(h.amount)}</span>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 ${isProcessing ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-teal-500/10 text-teal-400 border-teal-500/20'}`}>
+                                            {isProcessing && <div className="size-1 bg-orange-400 rounded-full animate-pulse"></div>}
+                                            {isProcessing ? 'Processing' : 'Completed'}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Salary - Oct 2023</span>
-                                    <span className="text-xs text-[#9db0b9]">Oct 30, 2023</span>
-                                </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-1">
-                                <span className="text-sm font-bold text-gray-600 dark:text-gray-300">$4,250.00</span>
-                                <span
-                                    className="text-[10px] bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full border border-orange-500/20 flex items-center gap-1">
-                                    <div className="size-1 bg-orange-400 rounded-full animate-pulse"></div>
-                                    Processing
-                                </span>
-                            </div>
-                        </div>
-                        <div
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group">
-                            <div className="flex items-center gap-4">
-                                <div
-                                    className="size-10 rounded-lg glass-card border border-gray-300 dark:border-[#283339] flex items-center justify-center text-teal-400 group-hover:border-teal-500/30 transition-colors">
-                                    <span className="material-symbols-outlined">check_circle</span>
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Salary - Sep 2023</span>
-                                    <span className="text-xs text-[#9db0b9]">Sep 29, 2023</span>
-                                </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-1">
-                                <span className="text-sm font-bold text-gray-600 dark:text-gray-300">$4,250.00</span>
-                                <span
-                                    className="text-[10px] bg-teal-500/10 text-teal-400 px-2 py-0.5 rounded-full border border-teal-500/20 flex items-center gap-1">
-                                    Completed
-                                </span>
-                            </div>
-                        </div>
-                        <div
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group">
-                            <div className="flex items-center gap-4">
-                                <div
-                                    className="size-10 rounded-lg glass-card border border-gray-300 dark:border-[#283339] flex items-center justify-center text-teal-400 group-hover:border-teal-500/30 transition-colors">
-                                    <span className="material-symbols-outlined">check_circle</span>
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Perf. Bonus</span>
-                                    <span className="text-xs text-[#9db0b9]">Sep 15, 2023</span>
-                                </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-1">
-                                <span className="text-sm font-bold text-gray-600 dark:text-gray-300">$1,500.00</span>
-                                <span
-                                    className="text-[10px] bg-teal-500/10 text-teal-400 px-2 py-0.5 rounded-full border border-teal-500/20 flex items-center gap-1">
-                                    Completed
-                                </span>
-                            </div>
-                        </div>
-                        <div
-                            className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors group">
-                            <div className="flex items-center gap-4">
-                                <div
-                                    className="size-10 rounded-lg glass-card border border-gray-300 dark:border-[#283339] flex items-center justify-center text-teal-400 group-hover:border-teal-500/30 transition-colors">
-                                    <span className="material-symbols-outlined">check_circle</span>
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Salary - Aug 2023</span>
-                                    <span className="text-xs text-[#9db0b9]">Aug 30, 2023</span>
-                                </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-1">
-                                <span className="text-sm font-bold text-gray-600 dark:text-gray-300">$4,100.00</span>
-                                <span
-                                    className="text-[10px] bg-teal-500/10 text-teal-400 px-2 py-0.5 rounded-full border border-teal-500/20 flex items-center gap-1">
-                                    Completed
-                                </span>
-                            </div>
-                        </div>
+                            );
+                        })}
+                        {(!payroll?.history || payroll.history.length === 0) && (
+                            <div className="text-center text-sm text-slate-500 py-10">No payment history</div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -261,7 +218,7 @@ const Bank = ({ employee_id, bank }) => {
                 </div>
                 <div className="flex flex-col gap-1 mt-4 z-10">
                     <div className="flex items-end justify-between">
-                        <span className="text-3xl font-light text-gray-600 dark:text-gray-300">$12,400</span>
+                        <span className="text-3xl font-light text-gray-600 dark:text-gray-300">${fmt(ytdTax)}</span>
                         <span className="text-xs text-[#9db0b9] mb-1.5">YTD Tax</span>
                     </div>
                     <div
@@ -283,7 +240,7 @@ const Bank = ({ employee_id, bank }) => {
                     <span className="material-symbols-outlined text-teal-400">savings</span>
                 </div>
                 <div className="mt-4">
-                    <span className="text-3xl font-light text-gray-600 dark:text-gray-300 block">$54,250</span>
+                    <span className="text-3xl font-light text-gray-600 dark:text-gray-300 block">${fmt(ytdEarnings)}</span>
                     <span className="text-xs text-green-400 mt-1 flex items-center gap-1">
                         <span className="material-symbols-outlined text-[14px]">trending_up</span>
                         +12% vs last year
@@ -294,36 +251,28 @@ const Bank = ({ employee_id, bank }) => {
                 className="glass-card col-span-1 md:col-span-2 lg:col-span-2 p-6 flex flex-col justify-between">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold text-gray-600 dark:text-gray-300">Deductions &amp; Benefits</h3>
-                    <span className="text-xs text-[#9db0b9]">Active Plans</span>
+                    <span className="text-xs text-[#9db0b9]">{(payroll?.deductions?.length || 0)} Active Plans</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <div
-                        className="dark:bg-white/5 rounded-lg p-3 border dark:border-white/5 border-gray-300 hover:border-indigo-500/30 transition-colors flex flex-col gap-2">
-                        <div className="flex items-center gap-2 text-indigo-300">
-                            <span className="material-symbols-outlined text-[18px]">health_and_safety</span>
-                            <span className="text-xs font-bold uppercase">Health</span>
-                        </div>
-                        <span className="text-lg font-bold text-white">$150<span
-                            className="text-xs font-normal text-[#5f717a]">/mo</span></span>
-                    </div>
-                    <div
-                        className="dark:bg-white/5 rounded-lg p-3 border dark:border-white/5 border-gray-300 hover:border-teal-500/30 transition-colors flex flex-col gap-2">
-                        <div className="flex items-center gap-2 text-teal-300">
-                            <span className="material-symbols-outlined text-[18px]">volunteer_activism</span>
-                            <span className="text-xs font-bold uppercase">401k</span>
-                        </div>
-                        <span className="text-lg font-bold text-white">5%<span
-                            className="text-xs font-normal text-[#5f717a]"> match</span></span>
-                    </div>
-                    <div
-                        className="dark:bg-white/5 rounded-lg p-3 border dark:border-white/5 border-gray-300 hover:border-sky-500/30 transition-colors flex flex-col gap-2">
-                        <div className="flex items-center gap-2 text-sky-300">
-                            <span className="material-symbols-outlined text-[18px]">directions_car</span>
-                            <span className="text-xs font-bold uppercase">Parking</span>
-                        </div>
-                        <span className="text-lg font-bold text-white">$0<span
-                            className="text-xs font-normal text-[#5f717a]"> covered</span></span>
-                    </div>
+                    {(payroll?.deductions || []).map((d, idx) => {
+                        const palette = ['indigo', 'teal', 'sky', 'amber', 'rose', 'emerald'];
+                        const c = palette[idx % palette.length];
+                        return (
+                            <div key={idx} className={`dark:bg-white/5 rounded-lg p-3 border dark:border-white/5 border-gray-300 hover:border-${c}-500/30 transition-colors flex flex-col gap-2`}>
+                                <div className={`flex items-center gap-2 text-${c}-300`}>
+                                    <span className="material-symbols-outlined text-[18px]">{d.icon || 'payments'}</span>
+                                    <span className="text-xs font-bold uppercase">{d.name || d.title || 'Item'}</span>
+                                </div>
+                                <span className="text-lg font-bold text-white">
+                                    {d.display || d.value || `$${fmt(d.amount)}`}
+                                    {d.suffix && <span className="text-xs font-normal text-[#5f717a]"> {d.suffix}</span>}
+                                </span>
+                            </div>
+                        );
+                    })}
+                    {(!payroll?.deductions || payroll.deductions.length === 0) && (
+                        <div className="col-span-full text-center text-sm text-slate-500 py-6">No deductions or benefits</div>
+                    )}
                 </div>
             </div>
         </div>

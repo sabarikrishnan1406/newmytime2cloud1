@@ -1,14 +1,7 @@
 // columns.js
 import {
-  ScanFace,
-  QrCode,
-  Fingerprint,
-  Hand,
-  Lock,
   MoreVertical,
-  Pencil,
   Trash,
-  Eye
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -18,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ProfilePicture from "@/components/ProfilePicture";
 
-export default (viewEmployee) => [
+export default (deleteEmployee) => [
   {
     key: "employee",
     header: "Personnel",
@@ -97,13 +90,15 @@ export default (viewEmployee) => [
         >
           <DropdownMenuItem
             onClick={(e) => {
-              e.stopPropagation(); // Stop row redirect
-              viewEmployee(employee)
+              e.stopPropagation();
+              if (confirm(`Delete payroll for ${employee.first_name || 'this employee'}?`)) {
+                deleteEmployee?.(employee);
+              }
             }}
             className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
           >
-            <Eye className="w-4 h-4 text-primary" />
-            <span className="text-primary font-medium">View</span>
+            <Trash className="w-4 h-4 text-red-600 dark:text-red-400" />
+            <span className="text-red-600 dark:text-red-400 font-medium">Delete</span>
           </DropdownMenuItem>
 
 

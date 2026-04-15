@@ -24,7 +24,7 @@ export default function LeaveSettingsPage() {
             className={`pb-3 text-sm font-semibold transition-all border-b-2 ${
               activeTab === "types"
                 ? "text-primary border-primary"
-                : "text-slate-400 border-transparent hover:text-white"
+                : "text-slate-600 dark:text-slate-400 border-transparent hover:text-slate-900 dark:hover:text-white"
             }`}
           >
             LEAVE TYPES
@@ -34,7 +34,7 @@ export default function LeaveSettingsPage() {
             className={`pb-3 text-sm font-semibold transition-all border-b-2 ${
               activeTab === "groups"
                 ? "text-primary border-primary"
-                : "text-slate-400 border-transparent hover:text-white"
+                : "text-slate-600 dark:text-slate-400 border-transparent hover:text-slate-900 dark:hover:text-white"
             }`}
           >
             GROUPS

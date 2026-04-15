@@ -3,9 +3,27 @@
 import { getDocuments } from '@/lib/api';
 import { calculateYearsOfService } from '@/lib/utils';
 import { FileType, ImageIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
 
 const Profile = ({ payload }) => {
+  const router = useRouter();
+
+  // Calculate profile completion from filled fields
+  const completionFields = [
+    payload?.first_name, payload?.last_name, payload?.email, payload?.phone_number,
+    payload?.profile_picture, payload?.joining_date, payload?.department_id,
+    payload?.designation_id, payload?.branch_id, payload?.gender, payload?.dob,
+    payload?.address, payload?.emergency_contact, payload?.system_user_id,
+  ];
+  const filled = completionFields.filter(v => v !== null && v !== undefined && v !== '' && v !== 0).length;
+  const profileCompletion = Math.round((filled / completionFields.length) * 100);
+
+  // Annual leave from leave_group / leave balance
+  const annualLeaveTotal = payload?.leave_group?.annual_leaves ?? payload?.annual_leaves ?? 0;
+  const annualLeaveUsed = payload?.leave_summary?.annual_used ?? 0;
+  const annualLeaveAvail = Math.max(0, annualLeaveTotal - annualLeaveUsed);
+  const annualPct = annualLeaveTotal > 0 ? Math.round((annualLeaveAvail / annualLeaveTotal) * 360) : 0;
 
   const [documents, setDocuments] = useState([]);
 
@@ -149,6 +167,8 @@ const Profile = ({ payload }) => {
             </div>
           </div>
           <button
+            onClick={() => router.push(`/employees/edit?id=${payload?.id}`)}
+            title="Edit Employee"
             className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-primary transition-colors"
           >
             <span className="material-symbols-outlined text-[20px]"
@@ -197,7 +217,7 @@ const Profile = ({ payload }) => {
               >Last Net Pay</span
               >
               <span className="text-lg font-bold text-gray-600 dark:text-gray-300"
-              >$4,250.00</span
+              >{payload?.payroll?.net_salary ? `$${Number(payload.payroll.net_salary).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '—'}</span
               >
             </div>
             <div className="flex items-end gap-1 h-8 mt-2 opacity-80">
@@ -265,18 +285,18 @@ const Profile = ({ payload }) => {
             <div
               className="size-16 rounded-full flex items-center justify-center relative bg-slate-100 shadow-inner"
               style={{
-                background: "conic-gradient(#4f46e5 220deg, #e2e8f0 0deg)",
+                background: `conic-gradient(#4f46e5 ${annualPct}deg, #e2e8f0 0deg)`,
               }}
             >
               <div
                 className="size-14 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center z-10 shadow-sm"
               >
-                <span className="text-sm font-bold text-gray-600 dark:text-gray-300">12</span>
+                <span className="text-sm font-bold text-gray-600 dark:text-gray-300">{annualLeaveAvail}</span>
               </div>
             </div>
             <div className="flex flex-col">
               <span className="text-2xl font-light text-gray-600 dark:text-gray-300"
-              >12/20</span
+              >{annualLeaveAvail}/{annualLeaveTotal}</span
               >
               <span className="text-xs text-gray-600 dark:text-gray-300"
               >Days Available</span
@@ -387,7 +407,7 @@ const Profile = ({ payload }) => {
           >
           <div className="flex flex-col gap-2 mt-auto">
             <div className="flex justify-between items-end">
-              <span className="text-3xl font-light text-primary">85%</span>
+              <span className="text-3xl font-light text-primary">{profileCompletion}%</span>
               <a
                 className="text-xs text-primary font-medium hover:underline mb-1"
                 href="#"
@@ -398,7 +418,8 @@ const Profile = ({ payload }) => {
               className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden"
             >
               <div
-                className="bg-primary h-full rounded-full w-[85%] shadow-[0_0_8px_rgba(79,70,229,0.4)]"
+                className="bg-primary h-full rounded-full shadow-[0_0_8px_rgba(79,70,229,0.4)]"
+                style={{ width: `${profileCompletion}%` }}
               ></div>
             </div>
           </div>

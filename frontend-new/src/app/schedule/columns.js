@@ -159,8 +159,8 @@ export default (deleteItem, onEdit, onView, { selectedIds, toggleSelect, toggleA
                             }}
                             className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                         >
-                            <Eye className="w-4 h-4 text-blue-500" />
-                            <span className="text-blue-500 font-medium">View</span>
+                            <Eye className="w-4 h-4 text-slate-700 dark:text-slate-200" />
+                            <span className="text-slate-700 dark:text-slate-200 font-medium">View</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             onClick={(e) => {
@@ -169,8 +169,8 @@ export default (deleteItem, onEdit, onView, { selectedIds, toggleSelect, toggleA
                             }}
                             className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                         >
-                            <Pencil className="w-4 h-4 text-emerald-500" />
-                            <span className="text-emerald-500 font-medium">Edit</span>
+                            <Pencil className="w-4 h-4 text-slate-700 dark:text-slate-200" />
+                            <span className="text-slate-700 dark:text-slate-200 font-medium">Edit</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             onClick={(e) => {
@@ -179,8 +179,8 @@ export default (deleteItem, onEdit, onView, { selectedIds, toggleSelect, toggleA
                             }}
                             className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                         >
-                            <Trash className="w-4 h-4 text-red-500" />
-                            <span className="text-red-500 font-medium">Delete</span>
+                            <Trash className="w-4 h-4 text-red-600 dark:text-red-400" />
+                            <span className="text-red-600 dark:text-red-400 font-medium">Delete</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

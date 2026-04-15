@@ -2,7 +2,7 @@ import { api } from "../api";
 import { API_BASE, buildQueryParams } from "../api-client";
 
 export const getGoogleHolidays = async (selectedYear) => {
-    const { data } = await api.get(`https://googlecalendar.mytime2cloud.com/holidays/${selectedYear}`);
+    const { data } = await api.get(`https://googlesynccalendarv2.mytime2cloud.com/holidays/${selectedYear}`);
     return data;
 };
 

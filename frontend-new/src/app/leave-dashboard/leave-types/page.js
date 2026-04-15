@@ -147,8 +147,8 @@ export default function LeaveTypesPage() {
       {drawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
-          <div className="relative w-full max-w-md bg-slate-900 border-l border-white/10 shadow-2xl flex flex-col overflow-y-auto animate-in slide-in-from-right duration-200">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 sticky top-0 bg-slate-900 z-10">
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border-l border-white/10 shadow-2xl flex flex-col overflow-y-auto animate-in slide-in-from-right duration-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 sticky top-0 bg-white dark:bg-slate-900 z-10">
               <h2 className="text-lg font-bold text-white">{editing ? "Edit Leave Type" : "Add Leave Type"}</h2>
               <button onClick={() => setDrawerOpen(false)} className="text-slate-400 hover:text-white"><X size={20} /></button>
             </div>

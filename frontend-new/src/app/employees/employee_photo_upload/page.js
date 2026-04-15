@@ -22,7 +22,7 @@ import { getUser } from '@/config/index';
 // Add this helper component at the top of your file (or in a separate file)
 const SyncStatusModal = ({ results, total, currentCount, isOpen, onClose, isLoading }) => {
   if (!isOpen) return null;
-
+  console.log("SyncStatusModal Rendered with results:", results);
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={!isLoading ? onClose : null}></div>
@@ -238,33 +238,42 @@ export default function AttendanceTable() {
           };
 
           try {
-            console.log(`Syncing ${emp.name} to device ${device.id}...`);
+            console.group(`[SYNC DEBUG] ${emp.name} → ${device.id}`);
+            console.log('Outgoing payload:', JSON.parse(JSON.stringify(payload)));
+            console.time('addPerson duration');
 
             const data = await addPerson(payload);
 
-            // Extract the specific result from your JSON structure
-            // { "deviceResponse": [{ "status": 200, ... }] }
+            console.timeEnd('addPerson duration');
+            console.log('Raw API response:', data);
+            console.log('deviceResponse array:', data?.deviceResponse);
+
             const apiResult = data?.deviceResponse?.[0];
+            console.log('apiResult[0]:', apiResult);
+            console.log('status value:', apiResult?.status, '| type:', typeof apiResult?.status);
+            console.log('sdk_response:', apiResult?.sdk_response);
+            console.groupEnd();
 
             if (apiResult) {
-              // Update results list one-by-one
               setSyncResults((prev) => [...prev, {
                 ...apiResult,
-                // Fallback for name/id if the API doesn't return them in deviceResponse
                 name: apiResult.name || emp.name,
                 device_id: apiResult.device_id || device.id,
-                status: apiResult.status // This is 200 (number)
+                status: apiResult.status
               }]);
             } else {
               throw new Error("Invalid API Response Structure");
             }
 
           } catch (err) {
-            console.error(`Error syncing ${emp.name}:`, err);
+            console.groupEnd();
+            console.error(`[SYNC DEBUG] Error syncing ${emp.name}:`, err);
+            console.error('Error response data:', err?.response?.data);
+            console.error('Error status:', err?.response?.status);
             setSyncResults((prev) => [...prev, {
               name: emp.name,
               device_id: device.id,
-              status: "Error", // Mark as error for UI
+              status: "Error",
               sdk_response: parseApiError(err)
             }]);
           }

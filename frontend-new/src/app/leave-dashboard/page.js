@@ -23,10 +23,10 @@ const statusColors = {
 const leaveTypeColors = ["#40ab63", "#e74c3c", "#f39c12", "#8e44ad", "#3498db", "#1abc9c", "#e67e22", "#2ecc71"];
 
 const KpiCard = ({ title, value, subtitle, icon: Icon, trend }) => (
-  <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-5 flex justify-between items-start hover:shadow-lg transition-all">
+  <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl p-5 flex justify-between items-start hover:shadow-lg transition-all">
     <div>
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{title}</p>
-      <h3 className="text-3xl font-bold text-white mt-1">{value}</h3>
+      <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">{title}</p>
+      <h3 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{value}</h3>
       <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
       {trend && (
         <p className={`text-xs mt-1 font-medium ${trend.positive ? "text-emerald-400" : "text-red-400"}`}>
@@ -192,8 +192,8 @@ export default function LeaveDashboard() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Monthly Trends */}
-        <div className="lg:col-span-2 bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">Monthly Leave Trends</h3>
+        <div className="lg:col-span-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Monthly Leave Trends</h3>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={monthlyData.length > 0 ? monthlyData : [{ month: "No Data", approved: 0, rejected: 0, pending: 0 }]}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -208,8 +208,8 @@ export default function LeaveDashboard() {
         </div>
 
         {/* Leave Type Distribution */}
-        <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">Leave Type Distribution</h3>
+        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Leave Type Distribution</h3>
           {typeDistribution.length > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={200}>
@@ -224,10 +224,10 @@ export default function LeaveDashboard() {
               </ResponsiveContainer>
               <div className="space-y-1.5 mt-2">
                 {typeDistribution.map((t) => (
-                  <div key={t.name} className="flex items-center gap-2 text-xs text-slate-400">
+                  <div key={t.name} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                     <div className="w-2.5 h-2.5 rounded-full" style={{ background: t.color }} />
                     <span>{t.name}</span>
-                    <span className="ml-auto font-medium text-white">{t.value}</span>
+                    <span className="ml-auto font-medium text-slate-900 dark:text-white">{t.value}</span>
                   </div>
                 ))}
               </div>
@@ -239,21 +239,21 @@ export default function LeaveDashboard() {
       </div>
 
       {/* Recent Leave Requests Table */}
-      <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl">
-        <div className="p-5 border-b border-white/10">
-          <h3 className="text-sm font-semibold text-white">Recent Leave Requests</h3>
+      <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl">
+        <div className="p-5 border-b border-slate-200 dark:border-white/10">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Recent Leave Requests</h3>
           <p className="text-xs text-slate-500 mt-0.5">Latest leave requests from your organization</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase">Employee</th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase">Leave Type</th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase">Duration</th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase">Days</th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase">Status</th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase">Applied On</th>
+              <tr className="border-b border-slate-200 dark:border-white/10">
+                <th className="text-left font-medium text-slate-600 dark:text-slate-400 px-5 py-3 text-xs uppercase">Employee</th>
+                <th className="text-left font-medium text-slate-600 dark:text-slate-400 px-5 py-3 text-xs uppercase">Leave Type</th>
+                <th className="text-left font-medium text-slate-600 dark:text-slate-400 px-5 py-3 text-xs uppercase">Duration</th>
+                <th className="text-left font-medium text-slate-600 dark:text-slate-400 px-5 py-3 text-xs uppercase">Days</th>
+                <th className="text-left font-medium text-slate-600 dark:text-slate-400 px-5 py-3 text-xs uppercase">Status</th>
+                <th className="text-left font-medium text-slate-600 dark:text-slate-400 px-5 py-3 text-xs uppercase">Applied On</th>
               </tr>
             </thead>
             <tbody>
@@ -263,12 +263,12 @@ export default function LeaveDashboard() {
                 <tr><td colSpan={6} className="text-center py-10 text-slate-500">No leave requests found</td></tr>
               ) : (
                 leaves.slice(0, 10).map((req) => (
-                  <tr key={req.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                  <tr key={req.id} className="border-b border-slate-200 dark:border-white/5 last:border-0 hover:bg-white/5 transition-colors">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
                         <ProfilePicture src={req.employee?.profile_picture} />
                         <div>
-                          <p className="font-medium text-white">{req.employee?.first_name || "—"}</p>
+                          <p className="font-medium text-slate-900 dark:text-white">{req.employee?.first_name || "—"}</p>
                           <p className="text-xs text-slate-500">{req.employee?.department?.name || "—"}</p>
                         </div>
                       </div>
@@ -279,7 +279,7 @@ export default function LeaveDashboard() {
                     <td className="px-5 py-3 text-slate-400">
                       {req.from_date || req.start_date} → {req.to_date || req.end_date}
                     </td>
-                    <td className="px-5 py-3 font-medium text-white">{req.days || req.total_days || "—"}</td>
+                    <td className="px-5 py-3 font-medium text-slate-900 dark:text-white">{req.days || req.total_days || "—"}</td>
                     <td className="px-5 py-3"><StatusBadge status={req.status} /></td>
                     <td className="px-5 py-3 text-slate-400">{req.created_at?.split("T")[0] || "—"}</td>
                   </tr>

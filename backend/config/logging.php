@@ -72,11 +72,7 @@ return [
             'path'   => storage_path('logs/camerasdk_' . date("Y-m-d") . '.log'),
             'level'  => env('LOG_LEVEL', 'debug'),
         ],
-        'camera_OX_900'      => [
-            'driver' => 'single',
-            'path'   => storage_path('logs/camera_OX_900_' . date("Y-m-d") . '.log'),
-            'level'  => env('LOG_LEVEL', 'debug'),
-        ],
+        
         'device_employee_upload' => [
             'driver' => 'daily',
             'path'   => storage_path('logs/device-employee-upload.log'),
@@ -189,6 +185,12 @@ return [
             'path' => storage_path('logs/device-employee-upload.log'),
             'level' => 'info',
             'days' => 10, // keep 30 days, adjust as you like
+        ],
+        'camera_OX_900' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ox900/events.log'),
+            'level' => 'debug',
+            'days' => 30,
         ],
     ],
 

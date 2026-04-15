@@ -173,7 +173,8 @@ export const downloadSummaryPDF = async ({ from_date, to_date, branch_ids, depar
     if (shift_type_id !== undefined) params.set('shift_type_id', String(shift_type_id));
 
     const templateName = report_type === 'daily' ? 'daily' : 'monthly';
-    const reportUrl = `${PDF_SERVICE_BASE}/templates/${templateName}/?${params.toString()}`;
+    const SUMMARY_BASE = process.env.NEXT_PUBLIC_SUMMARY_REPORT_URL || `${PDF_SERVICE_BASE}/templates`;
+    const reportUrl = `${SUMMARY_BASE}/${templateName}/?${params.toString()}`;
 
     const fileName = report_type === 'daily'
         ? `Daily_Summary_Report_${from_date}.pdf`

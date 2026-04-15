@@ -302,30 +302,30 @@ export default function LeaveReportsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-4">
-          <p className="text-xs font-semibold text-slate-400 uppercase">Total Requests</p>
-          <p className="text-2xl font-bold text-white mt-1">{tableRows.length}</p>
+        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl p-4">
+          <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Total Requests</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{tableRows.length}</p>
         </div>
-        <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-4">
-          <p className="text-xs font-semibold text-slate-400 uppercase">Total Days</p>
-          <p className="text-2xl font-bold text-white mt-1">{totalDays}</p>
+        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl p-4">
+          <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Total Days</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{totalDays}</p>
         </div>
-        <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-4">
-          <p className="text-xs font-semibold text-slate-400 uppercase">Approved Days</p>
+        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl p-4">
+          <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Approved Days</p>
           <p className="text-2xl font-bold text-emerald-400 mt-1">{approvedDays}</p>
         </div>
-        <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-4">
-          <p className="text-xs font-semibold text-slate-400 uppercase">Pending</p>
+        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl p-4">
+          <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">Pending</p>
           <p className="text-2xl font-bold text-yellow-400 mt-1">{pendingCount}</p>
         </div>
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-5">
+        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <FileText className="w-4 h-4 text-slate-400" />
-            <h3 className="text-sm font-semibold text-white">Leave Usage by Department</h3>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Leave Usage by Department</h3>
           </div>
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
@@ -343,10 +343,10 @@ export default function LeaveReportsPage() {
           )}
         </div>
 
-        <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl p-5">
+        <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <FileText className="w-4 h-4 text-slate-400" />
-            <h3 className="text-sm font-semibold text-white">Monthly Trends</h3>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Monthly Trends</h3>
           </div>
           {monthlyData.length > 0 ? (
             <ResponsiveContainer width="100%" height={260}>
@@ -366,9 +366,9 @@ export default function LeaveReportsPage() {
       </div>
 
       {/* Data Table */}
-      <div className="bg-white/5 dark:bg-slate-800/50 border border-white/10 rounded-xl">
-        <div className="p-5 border-b border-white/10">
-          <h3 className="text-sm font-semibold text-white">Leave Details</h3>
+      <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-xl">
+        <div className="p-5 border-b border-slate-200 dark:border-white/10">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Leave Details</h3>
           <p className="text-xs text-slate-500 mt-0.5">
             {tableRows.length} record{tableRows.length !== 1 ? "s" : ""} found
           </p>
@@ -376,13 +376,13 @@ export default function LeaveReportsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Employee</th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Department</th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Leave Type</th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Duration</th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Days</th>
-                <th className="text-left font-medium text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Status</th>
+              <tr className="border-b border-slate-200 dark:border-white/10">
+                <th className="text-left font-medium text-slate-600 dark:text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Employee</th>
+                <th className="text-left font-medium text-slate-600 dark:text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Department</th>
+                <th className="text-left font-medium text-slate-600 dark:text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Leave Type</th>
+                <th className="text-left font-medium text-slate-600 dark:text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Duration</th>
+                <th className="text-left font-medium text-slate-600 dark:text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Days</th>
+                <th className="text-left font-medium text-slate-600 dark:text-slate-400 px-5 py-3 text-xs uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -392,7 +392,7 @@ export default function LeaveReportsPage() {
                 <tr><td colSpan={6} className="text-center py-10 text-slate-500">No leave records found</td></tr>
               ) : (
                 tableRows.map((row) => (
-                  <tr key={row.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                  <tr key={row.id} className="border-b border-slate-200 dark:border-white/5 last:border-0 hover:bg-slate-100 dark:hover:bg-white dark:bg-white/5 transition-colors">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <ProfilePicture src={row.profile_picture} className="w-7 h-7" />

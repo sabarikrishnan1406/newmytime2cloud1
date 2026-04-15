@@ -111,13 +111,13 @@ export default (deleteItem, editItem) => [
             onClick={() => editItem(employee)}
             className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100"
           >
-            <Pencil className="w-4 h-4 text-primary" /> <span className="text-primary">Edit</span>
+            <Pencil className="w-4 h-4 text-slate-700 dark:text-slate-200" /> <span className="text-primary">Edit</span>
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => deleteItem(employee.id)}
             className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100"
           >
-            <Trash className="w-4 h-4 text-primary" /> <span className="text-primary">Delete</span>
+            <Trash className="w-4 h-4 text-red-600 dark:text-red-400" /> <span className="text-primary">Delete</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
 
