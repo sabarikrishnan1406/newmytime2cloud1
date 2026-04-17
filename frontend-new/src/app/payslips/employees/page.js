@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getBranches, getDepartmentsByBranchIds, getEmployees } from '@/lib/api';
+import { api, buildQueryParams } from "@/lib/api-client";
 import { EmployeeExtras } from '@/components/Employees/Extras';
 import Columns from "../columns";
 import DataTable from "@/components/ui/DataTable";
@@ -29,12 +30,56 @@ export default function PayrollEmployeesPage() {
   const fetchRecords = useCallback(async (page, perPage) => {
     setIsLoading(true);
     try {
-      const result = await getEmployees({ page, per_page: perPage, branch_ids: selectedBranchIds });
-      if (result?.data) {
-        setEmployees(result.data);
-        setCurrentPage(result.current_page || 1);
-        setTotal(result.total || 0);
-      }
+      // 1. Pull all employees (bulk)
+      const empResult = await getEmployees({ page: 1, per_page: 1000, branch_ids: selectedBranchIds });
+      const allEmployees = empResult?.data || [];
+
+      // 2. Pull salary structures — only employees with a structure are "payroll employees"
+      const params = await buildQueryParams({});
+      const { data: structuresRes } = await api.get("/payroll-management/salary-structures", {
+        params: { ...params, per_page: 1000 },
+      });
+      const structures = structuresRes?.data || [];
+
+      // Map employee_id → latest structure
+      const byEmp = {};
+      structures.forEach((s) => {
+        const key = String(s.employee_id);
+        if (!byEmp[key] || new Date(s.effective_from) > new Date(byEmp[key].effective_from)) {
+          byEmp[key] = s;
+        }
+      });
+
+      // 3. Keep only employees who have a structure, merge structure values in as `payroll`
+      const withStructure = allEmployees
+        .filter((e) => byEmp[String(e.system_user_id)] || byEmp[String(e.employee_id)] || byEmp[String(e.id)])
+        .map((e) => {
+          const s =
+            byEmp[String(e.system_user_id)] ||
+            byEmp[String(e.employee_id)] ||
+            byEmp[String(e.id)];
+          return {
+            ...e,
+            payroll: {
+              basic_salary: Number(s.basic_salary || 0),
+              gross_salary: Number(s.gross_salary || 0),
+              net_salary: Number(s.net_salary || s.gross_salary || 0),
+              house_allowance: Number(s.house_allowance || 0),
+              transport_allowance: Number(s.transport_allowance || 0),
+              food_allowance: Number(s.food_allowance || 0),
+              medical_allowance: Number(s.medical_allowance || 0),
+              other_allowance: Number(s.other_allowance || 0),
+              overtime_eligible: !!s.overtime_eligible,
+              effective_from: s.effective_from,
+              salary_mode: s.salary_mode,
+            },
+          };
+        });
+
+      const start = (page - 1) * perPage;
+      setEmployees(withStructure.slice(start, start + perPage));
+      setCurrentPage(page);
+      setTotal(withStructure.length);
     } catch (error) {
       notify("Error", parseApiError(error), "error");
     } finally {

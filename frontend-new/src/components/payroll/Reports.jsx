@@ -29,22 +29,68 @@ export default function PayrollReports() {
         params: { ...params, report_type: reportId, month, format: "csv" },
         responseType: "text",
       });
-      // Parse CSV and render as printable HTML
       const lines = data.split("\n").filter(l => l.trim());
       const headers = lines[0].split(",").map(h => h.replace(/"/g, "").trim());
       const rows = lines.slice(1).map(l => l.split(",").map(c => c.replace(/"/g, "").trim()));
+
+      const companyName = "HYDERS PARK";
+      const monthLabel = new Date(month + "-01").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      const generatedOn = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+      const totalRows = rows.length;
+
       const win = window.open("", "_blank");
-      win.document.write(`<html><head><title>${reportName} - ${month}</title>
-        <style>body{font-family:Arial,sans-serif;padding:30px}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px}
-        th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f5f5f5;font-weight:bold;font-size:10px;text-transform:uppercase}
-        h1{font-size:18px;margin-bottom:4px}p{font-size:12px;color:#666}
-        @media print{body{padding:10px}}</style></head><body>
-        <h1>${reportName}</h1><p>Month: ${month}</p>
-        <table><thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>
-        <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>
-        </body></html>`);
+      win.document.write(`<!DOCTYPE html><html><head><title>${reportName} - ${monthLabel}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Segoe UI', Arial, sans-serif; background: #fff; color: #1f2937; padding: 32px; font-size: 12px; }
+  .header { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: #fff; padding: 24px 28px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: flex-start; }
+  .company { font-size: 24px; font-weight: 700; letter-spacing: 0.5px; }
+  .subtitle { font-size: 13px; margin-top: 4px; opacity: 0.9; }
+  .badge { background: rgba(255,255,255,0.2); color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; }
+  .meta { background: #f9fafb; padding: 16px 28px; display: flex; justify-content: space-between; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+  .meta strong { color: #111827; }
+  .section-title { background: #1e3a8a; color: #fff; padding: 10px 28px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; background: #fff; }
+  th { background: #f3f4f6; color: #374151; font-weight: 600; text-transform: uppercase; font-size: 9px; letter-spacing: 0.5px; padding: 10px 12px; border-bottom: 2px solid #d1d5db; text-align: left; }
+  td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; color: #1f2937; }
+  tbody tr:nth-child(even) { background: #fafbfc; }
+  tbody tr:hover { background: #eff6ff; }
+  .footer { margin-top: 24px; padding: 16px 28px; background: #1e3a8a; color: #fff; border-radius: 0 0 8px 8px; display: flex; justify-content: space-between; font-size: 12px; }
+  .footer-total { font-size: 14px; font-weight: 700; }
+  .wrap { border: 1px solid #e5e7eb; border-top: none; overflow: hidden; }
+  @media print {
+    body { padding: 12px; }
+    .header { border-radius: 0; }
+    .footer { border-radius: 0; }
+    tbody tr:hover { background: inherit; }
+  }
+</style></head><body>
+  <div class="header">
+    <div>
+      <div class="company">${companyName}</div>
+      <div class="subtitle">${reportName} · ${monthLabel}</div>
+    </div>
+    <div class="badge">CONFIDENTIAL</div>
+  </div>
+  <div class="meta">
+    <div>Report: <strong>${reportName}</strong></div>
+    <div>Period: <strong>${monthLabel}</strong></div>
+    <div>Generated: <strong>${generatedOn}</strong></div>
+  </div>
+  <div class="section-title">Data (${totalRows} record${totalRows === 1 ? "" : "s"})</div>
+  <div class="wrap">
+    <table>
+      <thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>
+    </table>
+  </div>
+  <div class="footer">
+    <div>${companyName} · Generated ${generatedOn}</div>
+    <div class="footer-total">${totalRows} Record${totalRows === 1 ? "" : "s"}</div>
+  </div>
+  <script>window.onload=()=>{setTimeout(()=>window.print(),300)}</script>
+</body></html>`);
       win.document.close();
-      win.print();
     } catch (e) {
       alert("Download failed. Make sure payroll has been generated for this month.");
     } finally {

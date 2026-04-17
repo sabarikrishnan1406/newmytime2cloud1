@@ -91,7 +91,7 @@ export default (deleteEmployee, editEmployee) => [
       const isFace = profile_picture;
 
       return (
-        <div className="flex items-center justify-center space-x-2 text-green-500 dark:text-slate-600">
+        <div className="flex items-center justify-center space-x-2 text-[#15803D] dark:text-slate-600">
           {isFace && <ScanFace className="w-5 h-5 hover:text-indigo-600 transition-colors" title="Face" />}
           {isCardNumberSet && <QrCode className="w-5 h-5 hover:text-indigo-600 transition-colors" title="Card" />}
           {isFingerPrint && <Fingerprint className="w-5 h-5 hover:text-indigo-600 transition-colors" title="Fingerprint" />}

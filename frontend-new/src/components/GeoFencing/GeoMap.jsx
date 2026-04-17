@@ -56,6 +56,7 @@ export default function GeoMap({
                         center,
                         zoom: 13,
                         disableDefaultUI: true,
+                        clickableIcons: false, // so clicks on POIs don't open info windows
                     });
 
                     markerRef.current = new maps.Marker({
@@ -131,6 +132,15 @@ export default function GeoMap({
         const listener = mapRef.current.addListener("click", (e) => {
             const lat = e.latLng.lat();
             const lng = e.latLng.lng();
+
+            // Default behaviour: any click without an active tool picks that spot as the branch location.
+            if (!activeTool) {
+                if (markerRef.current) markerRef.current.setPosition({ lat, lng });
+                if (circleRef.current) circleRef.current.setCenter({ lat, lng });
+                mapRef.current.panTo(new maps.LatLng(lat, lng));
+                if (typeof setCenterProp === "function") setCenterProp({ lat, lng });
+                return;
+            }
 
             if (activeTool === "marker") {
                 // place an extra marker

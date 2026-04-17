@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { getLeavesRequest } from "@/lib/endpoint/leaves";
+import { getEmployeeGovernmentHolidays } from "@/lib/endpoint/holidays";
+import { api } from "@/lib/api";
 import { useForm } from "react-hook-form";
 import { SuccessDialog } from "@/components/SuccessDialog";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,11 @@ const Bank = ({ employee_id, bank, payload }) => {
     const [open, setOpen] = useState(false);
     const [globalError, setGlobalError] = useState(null);
     const [leaves, setLeaves] = useState([]);
+    const [viewMonth, setViewMonth] = useState(() => {
+        const d = new Date();
+        return { year: d.getFullYear(), month: d.getMonth() };
+    });
+    const [holidays, setHolidays] = useState([]);
 
     useEffect(() => {
         if (!employee_id) return;
@@ -31,6 +38,95 @@ const Bank = ({ employee_id, bank, payload }) => {
             .then(r => setLeaves(Array.isArray(r?.data) ? r.data : Array.isArray(r) ? r : []))
             .catch(() => setLeaves([]));
     }, [employee_id]);
+
+    useEffect(() => {
+        const countryCode = (payload?.branch?.country || "AE").toUpperCase().trim();
+        const year = viewMonth.year;
+        console.group(`[Leaves Calendar] employee=${employee_id} branch=${payload?.branch?.branch_name} country=${countryCode} year=${year}`);
+        console.log("payload.branch:", payload?.branch);
+
+        const loadHolidays = async () => {
+            let govHolidays = [];
+            let hasCustom = false;
+
+            if (employee_id) {
+                try {
+                    const empGovData = await getEmployeeGovernmentHolidays(employee_id, {
+                        country_code: countryCode,
+                        year,
+                    });
+                    console.log("getEmployeeGovernmentHolidays →", empGovData);
+                    if (empGovData?.success) {
+                        hasCustom = empGovData.is_custom === true;
+                        const list = empGovData.data || [];
+                        govHolidays = (hasCustom ? list.filter(h => h.is_enabled) : list)
+                            .map(h => ({ ...h, id: h.holiday_id || h.id, country_code: countryCode }));
+                    }
+                } catch (e) {
+                    console.log("getEmployeeGovernmentHolidays failed:", e?.response?.status, e?.message);
+                }
+            }
+
+            if (!hasCustom && govHolidays.length === 0) {
+                try {
+                    const { data: govData } = await api.get("/government-holidays", {
+                        params: { country_code: countryCode, year },
+                    });
+                    console.log("/government-holidays →", govData);
+                    if (govData?.success && Array.isArray(govData?.data)) {
+                        govHolidays = govData.data;
+                    }
+                } catch (e) {
+                    console.log("/government-holidays failed:", e?.response?.status, e?.message);
+                }
+            }
+
+            console.log("final govHolidays count:", govHolidays.length, govHolidays);
+            console.groupEnd();
+            setHolidays(govHolidays);
+        };
+
+        loadHolidays();
+    }, [viewMonth.year, employee_id, payload?.branch?.country]);
+
+    const monthName = new Date(viewMonth.year, viewMonth.month, 1)
+        .toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    const firstDay = new Date(viewMonth.year, viewMonth.month, 1).getDay();
+    const daysInMonth = new Date(viewMonth.year, viewMonth.month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(viewMonth.year, viewMonth.month, 0).getDate();
+    const today = new Date();
+    const isToday = (d) => today.getFullYear() === viewMonth.year
+        && today.getMonth() === viewMonth.month && today.getDate() === d;
+    const holidayMap = holidays.reduce((acc, h) => {
+        const raw = h.date || h.start_date || h.start?.date || h.holiday_date || h.startDate;
+        if (!raw) return acc;
+        const dt = new Date(raw);
+        if (isNaN(dt)) return acc;
+        if (dt.getFullYear() === viewMonth.year && dt.getMonth() === viewMonth.month) {
+            acc[dt.getDate()] = { ...h, _name: h.name || h.localName || h.summary || h.title || "Holiday" };
+        }
+        return acc;
+    }, {});
+    const leaveDayMap = leaves.reduce((acc, l) => {
+        if (l.status !== 1) return acc;
+        const from = new Date(l.from_date || l.start_date);
+        const to = new Date(l.to_date || l.end_date || from);
+        if (isNaN(from)) return acc;
+        for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+            if (d.getFullYear() === viewMonth.year && d.getMonth() === viewMonth.month) {
+                acc[d.getDate()] = true;
+            }
+        }
+        return acc;
+    }, {});
+    const prevMonth = () => setViewMonth(v => {
+        const m = v.month - 1;
+        return m < 0 ? { year: v.year - 1, month: 11 } : { year: v.year, month: m };
+    });
+    const nextMonth = () => setViewMonth(v => {
+        const m = v.month + 1;
+        return m > 11 ? { year: v.year + 1, month: 0 } : { year: v.year, month: m };
+    });
 
     // Totals from leave_group on payload
     const totals = {
@@ -186,75 +282,48 @@ const Bank = ({ employee_id, bank, payload }) => {
                     </h3>
                     <div
                         className="flex items-center gap-2 bg-[#111618] rounded-md p-1 border border-[#283339]">
-                        <button className="p-1 hover:text-white text-[#9db0b9] transition-colors"><span
+                        <button onClick={prevMonth} className="p-1 hover:text-white text-[#9db0b9] transition-colors"><span
                             className="material-symbols-outlined text-[16px]">chevron_left</span></button>
-                        <span className="text-xs font-bold text-white px-2">Nov 2024</span>
-                        <button className="p-1 hover:text-white text-[#9db0b9] transition-colors"><span
+                        <span className="text-xs font-bold text-white px-2">{monthName}</span>
+                        <button onClick={nextMonth} className="p-1 hover:text-white text-[#9db0b9] transition-colors"><span
                             className="material-symbols-outlined text-[16px]">chevron_right</span></button>
                     </div>
                 </div>
                 <div className="grid grid-cols-7 gap-1 flex-1 text-center">
-                    <div className="text-[10px] font-bold text-[#5f717a] uppercase py-2">Su</div>
-                    <div className="text-[10px] font-bold text-[#5f717a] uppercase py-2">Mo</div>
-                    <div className="text-[10px] font-bold text-[#5f717a] uppercase py-2">Tu</div>
-                    <div className="text-[10px] font-bold text-[#5f717a] uppercase py-2">We</div>
-                    <div className="text-[10px] font-bold text-[#5f717a] uppercase py-2">Th</div>
-                    <div className="text-[10px] font-bold text-[#5f717a] uppercase py-2">Fr</div>
-                    <div className="text-[10px] font-bold text-[#5f717a] uppercase py-2">Sa</div>
-                    <div className="p-2 text-sm text-[#283339]">28</div>
-                    <div className="p-2 text-sm text-[#283339]">29</div>
-                    <div className="p-2 text-sm text-[#283339]">30</div>
-                    <div className="p-2 text-sm text-[#283339]">31</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">1</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">2</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">3</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">4</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">5</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">6</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">7</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">8</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">9</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">10</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">11</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">12</div>
-                    <div
-                        className="relative p-2 rounded bg-primary/20 text-white font-bold cursor-pointer border border-primary/30">
-                        13
-                        <div
-                            className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 bg-primary rounded-full">
-                        </div>
-                    </div>
-                    <div
-                        className="relative p-2 rounded bg-primary/20 text-white font-bold cursor-pointer border border-primary/30">
-                        14
-                        <div
-                            className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 bg-primary rounded-full">
-                        </div>
-                    </div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">15</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">16</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">17</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">18</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">19</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">20</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">21</div>
-                    <div
-                        className="p-2 text-sm font-bold text-white bg-white/10 rounded cursor-pointer border border-white/20">
-                        22</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">23</div>
-                    <div
-                        className="relative p-2 text-sm text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 rounded cursor-pointer">
-                        24
-                        <div
-                            className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 bg-amber-500 rounded-full">
-                        </div>
-                    </div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">25</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">26</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">27</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">28</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">29</div>
-                    <div className="p-2 text-sm text-[#9db0b9] hover:bg-white/5 rounded cursor-pointer">30</div>
+                    {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d => (
+                        <div key={d} className="text-[10px] font-bold text-[#5f717a] uppercase py-2">{d}</div>
+                    ))}
+                    {Array.from({ length: firstDay }).map((_, i) => (
+                        <div key={`p${i}`} className="p-2 text-sm text-[#283339]">{daysInPrevMonth - firstDay + i + 1}</div>
+                    ))}
+                    {Array.from({ length: daysInMonth }).map((_, i) => {
+                        const day = i + 1;
+                        const holiday = holidayMap[day];
+                        const isLeave = leaveDayMap[day];
+                        const todayCls = isToday(day) ? "bg-white/10 border border-white/20 font-bold text-white" : "";
+                        if (holiday) {
+                            return (
+                                <div key={day} title={holiday._name}
+                                    className="relative p-2 text-sm text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 rounded cursor-pointer">
+                                    {day}
+                                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 bg-amber-500 rounded-full"></div>
+                                </div>
+                            );
+                        }
+                        if (isLeave) {
+                            return (
+                                <div key={day} className="relative p-2 rounded bg-primary/20 text-white font-bold cursor-pointer border border-primary/30">
+                                    {day}
+                                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 size-1 bg-primary rounded-full"></div>
+                                </div>
+                            );
+                        }
+                        return (
+                            <div key={day} className={`p-2 text-sm rounded cursor-pointer ${todayCls || "text-[#9db0b9] hover:bg-white/5"}`}>
+                                {day}
+                            </div>
+                        );
+                    })}
                 </div>
                 <div className="flex items-center gap-4 mt-4 pt-4 border-t border-[#283339] text-xs">
                     <div className="flex items-center gap-2">

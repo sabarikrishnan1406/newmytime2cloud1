@@ -12,6 +12,8 @@ import {
   Edit3,
   Monitor,
   User,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLiveAttendance } from "@/context/LiveAttendanceContext";
@@ -88,6 +90,8 @@ function LiveFeed({ branch_ids, department_ids }) {
 
   const [records, setRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Fetch device logs API
   const fetchRecords = async () => {
@@ -189,6 +193,15 @@ function LiveFeed({ branch_ids, department_ids }) {
   }, [branch_ids, department_ids]);
 
   useEffect(() => {
+    setPage(1);
+  }, [rowsPerPage, records.length]);
+
+  const totalPages = Math.max(1, Math.ceil(records.length / rowsPerPage));
+  const currentPage = Math.min(page, totalPages);
+  const startIdx = (currentPage - 1) * rowsPerPage;
+  const pagedRecords = records.slice(startIdx, startIdx + rowsPerPage);
+
+  useEffect(() => {
     if (!lastAttendanceEvent) return;
 
     fetchRecords();
@@ -243,95 +256,118 @@ function LiveFeed({ branch_ids, department_ids }) {
         </div>
       </div>
 
-      {/* Table Header - Fixed column sizes to match body */}
-      <div className="grid grid-cols-12 px-6 py-3 border-y border-gray-200 dark:border-white/5 text-[11px] font-bold text-slate-500 uppercase tracking-wider bg-white/[0.02]">
-        <div className="col-span-1">Date</div>
-        <div className="col-span-2">Employee</div>
-        <div className="col-span-2">Branch / Dept</div>
-        <div className="col-span-1">Mode</div>
-        <div className="col-span-1">Device</div>
-        <div className="col-span-1">Device Type</div>
-        <div className="col-span-1">Function</div>
-        <div className="col-span-1">Time</div>
-        <div className="col-span-2 text-right pr-2">Status</div>
+      {/* Table Header */}
+      <div className="grid px-6 py-4 border-y border-gray-200 dark:border-white/5 text-xs font-bold text-slate-500 uppercase tracking-wider bg-white/[0.02]" style={{ gridTemplateColumns: "2fr 1.6fr 1.4fr 0.8fr 0.7fr 0.9fr 0.9fr 0.8fr 1fr" }}>
+        <div className="text-left">Personnel</div>
+        <div className="text-left">Branch / Department</div>
+        <div className="text-left">Date Time</div>
+        <div className="text-left">Log Type</div>
+        <div className="text-left">Mode</div>
+        <div className="text-left">Device</div>
+        <div className="text-left">Device Type</div>
+        <div className="text-left">Function</div>
+        <div className="text-left">Location</div>
       </div>
 
       {/* List Body */}
       <div className="flex-1 overflow-y-auto px-4">
-        {records.map((item, index) => (
+        {pagedRecords.map((item, index) => (
           <div
             key={index}
-            className={`grid grid-cols-12 py-4 items-center cursor-pointer group gap-2 transition-colors hover:bg-slate-50 dark:hover:bg-white/5 ${index !== records.length - 1
+            className={`grid px-6 py-4 items-center cursor-pointer group transition-colors hover:bg-slate-50 dark:hover:bg-white/5 ${index !== pagedRecords.length - 1
               ? "border-b border-gray-100 dark:border-white/5"
               : ""
               }`}
+            style={{ gridTemplateColumns: "2fr 1.6fr 1.4fr 0.8fr 0.7fr 0.9fr 0.9fr 0.8fr 1fr" }}
           >
-            {/* Date & Day */}
-            <div className="col-span-1 pl-2">
-              <span className="text-[11px] font-medium text-gray-600 dark:text-gray-300 block">
-                {item.date}
-              </span>
-              <span className="text-[10px] text-slate-500">
-                {new Date(item.edit_date).toLocaleDateString("en-US", { weekday: "short" })}
-              </span>
-            </div>
-            {/* Employee */}
-            <div className="col-span-2 flex gap-3 pl-2">
-              <div className="size-8 min-w-[32px] rounded-full overflow-hidden relative border border-border flex items-center justify-center">
+            {/* Personnel: avatar + name + id */}
+            <div className="flex gap-3 items-center">
+              <div className="size-10 min-w-[40px] rounded-full overflow-hidden relative border border-border flex items-center justify-center">
                 <ProfilePicture src={item?.profile_picture} />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 group-hover:text-slate-950 dark:group-hover:text-white transition-colors truncate">
+                <span className="text-sm font-bold text-gray-700 dark:text-gray-200 truncate">
                   {item.name}
                 </span>
-                <span className="text-xs text-slate-600 dark:text-slate-300">
+                <span className="text-xs text-slate-500 dark:text-slate-400">
                   ID: {item.id}
                 </span>
               </div>
             </div>
-            {/* Branch/Department */}
-            <div className="col-span-2 text-xs text-slate-600 dark:text-slate-300">
+            {/* Branch / Department */}
+            <div className="text-sm text-slate-600 dark:text-slate-300">
               {item.dept}
             </div>
-
+            {/* Date Time */}
+            <div className="text-sm text-slate-600 dark:text-slate-300">
+              {item.date} {item.time}
+            </div>
+            {/* Log Type */}
+            <div className="text-sm text-slate-600 dark:text-slate-300">
+              {item.inout || "—"}
+            </div>
             {/* Mode */}
-            <div className="col-span-1 flex items-center text-slate-600 dark:text-slate-300">
+            <div className="flex items-center text-slate-600 dark:text-slate-300">
               {item?.modes?.map((icon, idx) => (
                 <span key={idx}>{icon}</span>
               ))}
             </div>
-
             {/* Device */}
-            <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300 truncate">
+            <div className="text-sm font-medium text-slate-600 dark:text-slate-300 truncate">
               {item.deviceName}
             </div>
             {/* Device Type */}
-            <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300">
-              {item.deviceType === "all" ? "All" : item.deviceType === "Attendance" ? "Attendance" : item.deviceType === "Access Control" ? "Access Control" : item.deviceType || "—"}
+            <div className="text-sm text-slate-600 dark:text-slate-300">
+              {item.deviceType === "all" ? "All" : item.deviceType || "—"}
             </div>
-            {/* Function - show device function as-is */}
-            <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+            {/* Function */}
+            <div className="text-sm text-slate-600 dark:text-slate-300">
               {item.deviceFunction || "—"}
             </div>
-            {/* Time */}
-            <div className="col-span-1 text-xs text-slate-600 dark:text-slate-300">
-              {item.time}
-            </div>
-            {/* Status */}
-            <div className="col-span-2 text-right pr-2">
-              <span
-                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full font-medium text-[9px] border ${getStatusStyles(item.status)}`}
-              >
-                {item.statusType !== "neutral" && (
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${item.status === "Allowed" ? "bg-emerald-500" : "bg-amber-500"}`}
-                  ></span>
-                )}
-                {item.status}
-              </span>
+            {/* Location */}
+            <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-300">
+              <span className="material-symbols-outlined text-[16px] text-slate-400">location_on</span>
+              <span>{item.deviceName || item.deviceLocation || "—"}</span>
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Pagination Footer */}
+      <div className="flex items-center justify-end gap-6 px-6 py-3 border-t border-gray-200 dark:border-white/5 text-xs text-slate-600 dark:text-slate-300 bg-white/[0.02]">
+        <div className="flex items-center gap-2">
+          <span>Rows per page:</span>
+          <select
+            value={rowsPerPage}
+            onChange={(e) => setRowsPerPage(Number(e.target.value))}
+            className="bg-transparent border border-gray-200 dark:border-white/10 rounded px-2 py-1 text-xs focus:outline-none"
+          >
+            {[10, 25, 50, 100].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </div>
+        <span>
+          {records.length === 0
+            ? "0 - 0"
+            : `${startIdx + 1} - ${Math.min(startIdx + rowsPerPage, records.length)} of ${records.length}`}
+        </span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage <= 1}
+            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage >= totalPages}
+            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );

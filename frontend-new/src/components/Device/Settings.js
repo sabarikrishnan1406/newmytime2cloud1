@@ -157,8 +157,6 @@ const DeviceSettings = ({ device, device_id, open, setOpen, onSuccess = () => { 
         }
     };
 
-    if (deviceInfo) return null;
-
     if (!open) return null;
 
     return (

@@ -73,7 +73,11 @@ export default function GeoFencing() {
               center={center}
               radius={radius}
               activeTool={activeTool}
-              setCenter={setCenter}
+              setCenter={(c) => {
+                setCenter(c);
+                setSelectedLat(c.lat);
+                setSelectedLng(c.lng);
+              }}
               setRadius={setRadius}
               onMapReady={(api) => setMapApi(api)}
             />

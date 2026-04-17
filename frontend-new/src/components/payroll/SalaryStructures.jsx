@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { api, buildQueryParams } from "@/lib/api-client";
 import { Search, Plus, Eye, Edit, X } from "lucide-react";
+import ProfilePicture from "@/components/ProfilePicture";
 
 const emptyForm = {
   employee_id: "", effective_from: "", effective_to: "", salary_mode: "gross_based",
@@ -32,6 +33,7 @@ export default function SalaryStructures() {
         ...s,
         employeeName: s.employee ? `${s.employee.first_name} ${s.employee.last_name || ""}`.trim() : `Emp ${s.employee_id}`,
         employeeId: String(s.employee?.employee_id || s.employee_id),
+        profilePicture: s.employee?.profile_picture || null,
         department: s.employee?.department?.name || "---",
         basicSalary: parseFloat(s.basic_salary) || 0,
         grossSalary: parseFloat(s.gross_salary) || 0,
@@ -121,8 +123,15 @@ export default function SalaryStructures() {
                 return (
                   <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition text-xs text-gray-600 dark:text-gray-300">
                     <td className="px-4 py-3">
-                      <div className="text-xs font-medium text-gray-800 dark:text-gray-100">{s.employeeName}</div>
-                      <div className="text-[10px] text-gray-400">ID: {s.employeeId}</div>
+                      <div className="flex items-center gap-3">
+                        <div className="size-9 min-w-[36px] rounded-full overflow-hidden border border-gray-200 dark:border-white/10 flex items-center justify-center">
+                          <ProfilePicture src={s.profilePicture} />
+                        </div>
+                        <div>
+                          <div className="text-xs font-medium text-gray-800 dark:text-gray-100">{s.employeeName}</div>
+                          <div className="text-[10px] text-gray-400">ID: {s.employeeId}</div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-3 py-3 text-[11px]">{s.department}</td>
                     <td className="px-3 py-3">{s.basicSalary.toLocaleString()}</td>

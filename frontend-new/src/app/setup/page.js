@@ -144,7 +144,7 @@ export default function Index() {
                                 className={[
                                     "w-full text-left rounded-xl px-4 py-3.5 transition-all flex items-center gap-3.5 cursor-pointer group",
                                     isActive
-                                        ? "bg-indigo-600 dark:bg-indigo-500/15 text-white dark:text-indigo-300 shadow-lg shadow-indigo-500/20 dark:shadow-indigo-500/10"
+                                        ? "bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-0 shadow-sm dark:shadow-indigo-500/10"
                                         : isCompleted
                                             ? "text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-white/5"
                                             : "text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-white/5",
@@ -154,7 +154,7 @@ export default function Index() {
                                 <div className={[
                                     "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition-all",
                                     isActive
-                                        ? "bg-white/20 dark:bg-indigo-400/20 text-white dark:text-indigo-300"
+                                        ? "bg-indigo-600 dark:bg-indigo-400/20 text-white dark:text-indigo-300"
                                         : "bg-gray-200 dark:bg-white/5 text-gray-400 dark:text-slate-600 group-hover:bg-gray-300 dark:group-hover:bg-white/10",
                                 ].join(" ")}>
                                     {stepNum}
@@ -164,13 +164,13 @@ export default function Index() {
                                 <div className="flex-1 min-w-0">
                                     <div className={[
                                         "font-semibold text-sm leading-tight truncate",
-                                        isActive ? "text-white dark:text-indigo-200" : "",
+                                        isActive ? "text-indigo-800 dark:text-indigo-200" : "",
                                     ].join(" ")}>
                                         {step.sidebarTitle}
                                     </div>
                                     <div className={[
                                         "text-[10px] mt-0.5",
-                                        isActive ? "text-white/60 dark:text-indigo-300/50" : "text-gray-400 dark:text-slate-600",
+                                        isActive ? "text-indigo-600/70 dark:text-indigo-300/50" : "text-gray-400 dark:text-slate-600",
                                     ].join(" ")}>
                                         {step.subtitle || step.label}
                                     </div>
@@ -178,7 +178,7 @@ export default function Index() {
 
                                 {/* Active indicator */}
                                 {isActive && (
-                                    <div className="w-1.5 h-1.5 rounded-full bg-white dark:bg-indigo-400 shrink-0 animate-pulse" />
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 shrink-0 animate-pulse" />
                                 )}
                             </button>
                         );
