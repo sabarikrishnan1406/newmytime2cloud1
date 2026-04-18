@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\ReverseGeocodeService;
+use Illuminate\Support\Facades\Schema;
 
 class CompanyBranchController extends Controller
 {
@@ -26,7 +27,7 @@ class CompanyBranchController extends Controller
         });
 
         $model->orderBy(request('order_by') ?? "id", request('sort_by_desc') ? "desc" : "asc");
-        return $model->get(["id", "branch_name as name"]);
+        return $model->get(["id", "branch_name as name", "country", "timezone"]);
     }
 
     public function branchListGeoFencing($id)
@@ -150,35 +151,43 @@ class CompanyBranchController extends Controller
     {
         $data = $request->validated();
 
-        // Auto-detect country and timezone from latitude/longitude
-        if (!empty($data['lat']) && !empty($data['lon']) && $data['lat'] !== 'undefined' && $data['lon'] !== 'undefined') {
-            $existing = CompanyBranch::find($id);
-            $latChanged = $existing && $existing->lat != $data['lat'];
-            $lonChanged = $existing && $existing->lon != $data['lon'];
-            $coordsChanged = $latChanged || $lonChanged;
+        // Auto-detect country/timezone from lat/lon — optional, runs only if enabled.
+        // Enable by setting GEOCODE_ON_UPDATE=true in .env. Disabled by default because
+        // external APIs (Nominatim, TimezoneDB) can hang and cause 500s on slow networks.
+        if (env('GEOCODE_ON_UPDATE', false)
+            && !empty($data['lat']) && !empty($data['lon'])
+            && $data['lat'] !== 'undefined' && $data['lon'] !== 'undefined') {
+            try {
+                $existing = CompanyBranch::find($id);
+                $coordsChanged = $existing && ($existing->lat != $data['lat'] || $existing->lon != $data['lon']);
 
-            $geoService = new ReverseGeocodeService();
+                $geoService = new ReverseGeocodeService();
 
-            // Auto-detect country if not provided or if coordinates changed
-            if (empty($data['country']) || $coordsChanged) {
-                $country = $geoService->getCountryCode($data['lat'], $data['lon']);
-                if ($country) {
-                    $data['country'] = $country;
-                    \Log::info("Auto-detected country: $country for branch: " . $data['branch_name']);
+                if ($coordsChanged || empty($data['country'])) {
+                    $country = $geoService->getCountryCode($data['lat'], $data['lon']);
+                    if ($country) $data['country'] = $country;
                 }
-            }
 
-            // Auto-detect timezone if not provided or if coordinates changed
-            if (empty($data['timezone']) || $coordsChanged) {
-                $timezone = $geoService->getTimezone($data['lat'], $data['lon']);
-                if ($timezone) {
-                    $data['timezone'] = $timezone;
-                    \Log::info("Auto-detected timezone: $timezone for branch: " . $data['branch_name']);
+                if ($coordsChanged || empty($data['timezone'])) {
+                    $timezone = $geoService->getTimezone($data['lat'], $data['lon']);
+                    if ($timezone) $data['timezone'] = $timezone;
                 }
+            } catch (\Throwable $e) {
+                \Log::warning("Branch auto-detect failed: " . $e->getMessage());
             }
         }
 
-        CompanyBranch::where("user_id", $data['user_id'])->update(["user_id" => 0]);
+        // Filter $data to only include columns that actually exist on the branches table.
+        try {
+            $schemaCols = \Schema::getColumnListing('company_branches');
+            $data = array_intersect_key($data, array_flip($schemaCols));
+        } catch (\Throwable $e) {
+            \Log::warning("Schema check failed, continuing with full payload: " . $e->getMessage());
+        }
+
+        if (!empty($data['user_id'])) {
+            CompanyBranch::where("user_id", $data['user_id'])->update(["user_id" => 0]);
+        }
 
         // if (isset($request->logo)) {
         //     $file = $request->file('logo');
@@ -211,22 +220,22 @@ class CompanyBranchController extends Controller
                 "geofence_radius_meter" => $request->geofence_radius_meter,
             ];
 
-            // Auto-detect country and timezone from new coordinates
-            if (!empty($request->lat) && !empty($request->lon)) {
-                $geoService = new ReverseGeocodeService();
-                
-                // Auto-detect country
-                $country = $geoService->getCountryCode($request->lat, $request->lon);
-                if ($country) {
-                    $updateData['country'] = $country;
-                    \Log::info("✅ Auto-detected country: $country for geofencing update");
-                }
-                
-                // Auto-detect timezone
-                $timezone = $geoService->getTimezone($request->lat, $request->lon);
-                if ($timezone) {
-                    $updateData['timezone'] = $timezone;
-                    \Log::info("✅ Auto-detected timezone: $timezone for geofencing update");
+            // Auto-detect country/timezone — opt-in via GEOCODE_ON_UPDATE=true in .env.
+            if (env('GEOCODE_ON_UPDATE', false) && !empty($request->lat) && !empty($request->lon)) {
+                try {
+                    $geoService = new ReverseGeocodeService();
+                    $schema = \Schema::getColumnListing('company_branches');
+
+                    if (in_array('country', $schema)) {
+                        $country = $geoService->getCountryCode($request->lat, $request->lon);
+                        if ($country) $updateData['country'] = $country;
+                    }
+                    if (in_array('timezone', $schema)) {
+                        $timezone = $geoService->getTimezone($request->lat, $request->lon);
+                        if ($timezone) $updateData['timezone'] = $timezone;
+                    }
+                } catch (\Throwable $e) {
+                    \Log::warning("Geo auto-detect failed, continuing without: " . $e->getMessage());
                 }
             }
 

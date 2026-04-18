@@ -51,9 +51,8 @@ class ReportController extends Controller
 
         $data = $model->paginate($perPage);
 
-        // Recalculate weekoff for "A" records
-        $items = collect($data->items());
-        \App\Services\Attendance\AttendanceWeekOffService::recalculateForReport($items, (int) $request->company_id);
+        // Weekoff is now computed and persisted by RenderWeekOffJob (daily cron + manual runs).
+        // The DB is the single source of truth — no in-memory override needed.
 
         $showTabs = json_decode($request->showTabs, true) ?: [];
 

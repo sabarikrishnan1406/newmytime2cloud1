@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Shift;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\GenerateAttendanceReport;
+use App\Jobs\RenderWeekOffJob;
 use App\Models\Attendance;
 use App\Models\AttendanceLog;
 use App\Models\Company;
@@ -74,15 +75,21 @@ class RenderController extends Controller
 
 
         if ($request->shift_type_id == 2) {
-            return (new MultiShiftController)->renderData($request);
+            $r = (new MultiShiftController)->renderData($request);
+            $this->dispatchWeekoffForRange($request);
+            return $r;
         }
 
         if ($request->shift_type_id == 5) {
-            return (new SplitShiftController)->renderData($request);
+            $r = (new SplitShiftController)->renderData($request);
+            $this->dispatchWeekoffForRange($request);
+            return $r;
         }
 
         if ($request->shift_type_id == 4) {
-            return (new NightShiftController)->renderData($request);
+            $r = (new NightShiftController)->renderData($request);
+            $this->dispatchWeekoffForRange($request);
+            return $r;
         }
 
         if ($request->shift_type_id == 3) {
@@ -90,6 +97,7 @@ class RenderController extends Controller
             try { $results = array_merge($results, (new AutoShiftController)->renderData($request)); } catch (\Exception $e) {}
             try { $results = array_merge($results, (new SingleShiftController)->renderData($request)); } catch (\Exception $e) {}
             try { $results = array_merge($results, (new NightShiftController)->renderData($request)); } catch (\Exception $e) {}
+            $this->dispatchWeekoffForRange($request);
             return $results;
         }
 
@@ -97,6 +105,7 @@ class RenderController extends Controller
             $results = [];
             try { $results = array_merge($results, (new FiloShiftController)->renderData($request)); } catch (\Exception $e) {}
             try { $results = array_merge($results, (new SingleShiftController)->renderData($request)); } catch (\Exception $e) {}
+            $this->dispatchWeekoffForRange($request);
             return $results;
         }
 
@@ -106,7 +115,34 @@ class RenderController extends Controller
         try { $results = array_merge($results, (new FiloShiftController)->renderData($request)); } catch (\Exception $e) {}
         try { $results = array_merge($results, (new SingleShiftController)->renderData($request)); } catch (\Exception $e) {}
         try { $results = array_merge($results, (new NightShiftController)->renderData($request)); } catch (\Exception $e) {}
+        $this->dispatchWeekoffForRange($request);
         return $results;
+    }
+
+    protected function dispatchWeekoffForRange(Request $request): void
+    {
+        $companyId = (int) ($request->company_id ?? 0);
+        $employeeIds = (array) ($request->employee_ids ?? []);
+        $dates = (array) ($request->dates ?? []);
+        if (!$companyId || !$employeeIds || !$dates) return;
+
+        try {
+            $from = Carbon::parse($dates[0])->startOfMonth();
+            $to = Carbon::parse($dates[1] ?? $dates[0])->startOfMonth();
+        } catch (\Throwable $e) { return; }
+
+        $months = [];
+        $cursor = $from->copy();
+        while ($cursor->lessThanOrEqualTo($to)) {
+            $months[] = $cursor->format('Y-m');
+            $cursor->addMonth();
+        }
+
+        foreach ($employeeIds as $empId) {
+            foreach ($months as $ym) {
+                try { RenderWeekOffJob::dispatchSync($companyId, $ym, $empId); } catch (\Throwable $e) {}
+            }
+        }
     }
 
     public function renderMultiInOut(Request $request)

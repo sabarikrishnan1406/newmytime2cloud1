@@ -91,7 +91,7 @@ class Camera2 extends Controller
             //chmod($file_name, 666);
             Storage::append($file_name, $message);
 
-            (new AttendanceLogCameraController)->store();
+           // (new AttendanceLogCameraController)->store();
         } else {
             $file_name = "camera/camera2-error-logs-" . date("d-m-Y") . ".log";
             Logger::channel("custom")->error('Error occured while inserting Camera2 logs logs.' . $message);

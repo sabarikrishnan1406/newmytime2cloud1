@@ -135,32 +135,68 @@ class GovernmentHolidaysController extends Controller
      */
     private function fetchFromGoogleCalendar($year)
     {
+        // Prefer the local Node sync-calendar service (already normalises + groups holidays).
         try {
-            \Log::info("Fetching UAE holidays from Google Calendar for {$year}");
-            
-            // Google's public ICS URL for UAE Holidays  
+            $nodeUrl = env('SYNC_CALENDAR_URL', 'http://127.0.0.1:5780') . "/holidays/{$year}";
+            \Log::info("Fetching UAE holidays from sync-calendar Node service at {$nodeUrl}");
+
+            $response = Http::timeout(8)->get($nodeUrl);
+
+            if ($response->successful()) {
+                $list = $response->json();
+                if (is_array($list) && !empty($list)) {
+                    $data = array_map(function ($h) {
+                        $start = $h['start_date'] ?? $h['date'] ?? null;
+                        $end = $h['end_date'] ?? $start;
+                        return [
+                            'id' => md5(($start ?? '') . ($h['name'] ?? '')),
+                            'name' => $h['name'] ?? 'Holiday',
+                            'start_date' => $start,
+                            'end_date' => $end,
+                            'year' => (string) ($h['year'] ?? substr($start ?? '', 0, 4)),
+                            'total_days' => (int) ($h['total_days'] ?? 1),
+                            'country_code' => 'AE',
+                            'type' => 'government',
+                            'is_public' => 'Public',
+                        ];
+                    }, $list);
+
+                    \Log::info("✅ Got " . count($data) . " UAE holidays from sync-calendar service");
+                    return [
+                        'success' => true,
+                        'data' => $data,
+                        'country' => 'AE',
+                        'source' => 'sync-calendar-service',
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning("sync-calendar service fetch failed: " . $e->getMessage());
+        }
+
+        // Fallback: fetch Google Calendar ICS directly
+        try {
+            \Log::info("Fetching UAE holidays directly from Google Calendar for {$year}");
             $icsUrl = 'https://calendar.google.com/calendar/ical/en.ae%23holiday%40group.v.calendar.google.com/public/basic.ics';
-            
+
             $response = Http::withoutVerifying()
                 ->timeout(10)
                 ->get($icsUrl);
 
             if ($response->successful()) {
-                $icsContent = $response->body();
-                $holidays = $this->parseICS($icsContent, $year);
-
+                $holidays = $this->parseICS($response->body(), $year);
                 if (!empty($holidays)) {
-                    \Log::info("✅ Found " . count($holidays) . " UAE holidays from Google Calendar");
+                    \Log::info("✅ Found " . count($holidays) . " UAE holidays from Google Calendar ICS");
                     return [
                         'success' => true,
                         'data' => $holidays,
                         'country' => 'AE',
-                        'source' => 'google.calendar'
+                        'source' => 'google.calendar',
                     ];
                 }
             }
         } catch (\Exception $e) {
-            \Log::warning("Google Calendar fetch failed: " . $e->getMessage());
+            \Log::warning("Google Calendar ICS fetch failed: " . $e->getMessage());
         }
 
         return null;

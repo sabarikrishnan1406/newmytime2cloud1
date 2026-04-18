@@ -229,9 +229,17 @@ class Attendance extends Model
             $key = strtolower($request->branch_id);
             $q->whereHas('employee', fn(Builder $query) => $query->where('branch_id',   $key));
         });
-        // $model->when($request->filled('branch_id'), function ($q) use ($request) {
-        //     $q->where('branch_id',   $request->branch_id);
-        // });
+
+        // Plural branch_ids support (multi-select from frontend)
+        $branch_ids = $request->branch_ids;
+        if (gettype($branch_ids) !== "array") {
+            $branch_ids = $branch_ids ? explode(",", $branch_ids) : [];
+        }
+        $model->when($request->filled('branch_ids') && count($branch_ids) > 0, function ($q) use ($request, $branch_ids) {
+            $q->whereIn('employee_id', Employee::whereIn("branch_id", $branch_ids)
+                ->where('company_id', $request->company_id)
+                ->pluck("system_user_id"));
+        });
 
 
         $model->when($request->daily_date && $request->report_type == 'Daily', function ($q) use ($request) {
@@ -255,12 +263,15 @@ class Attendance extends Model
         }
         $scheduledEmployeeIds = $scheduleQuery->pluck('employee_id')->unique();
 
-        $eligibleEmployeeIds = Employee::where('company_id', $company_id)
-            ->where('status', 1)
-            ->whereIn('system_user_id', $scheduledEmployeeIds)
-            ->pluck('system_user_id');
+        // If the caller explicitly picked employee(s), honour that without the schedule gate.
+        if (empty($request->employee_id)) {
+            $eligibleEmployeeIds = Employee::where('company_id', $company_id)
+                ->where('status', 1)
+                ->whereIn('system_user_id', $scheduledEmployeeIds)
+                ->pluck('system_user_id');
 
-        $model->whereIn('employee_id', $eligibleEmployeeIds);
+            $model->whereIn('employee_id', $eligibleEmployeeIds);
+        }
 
         $model->with([
             'employee' => function ($q) use ($company_id) {
@@ -508,7 +519,14 @@ class Attendance extends Model
 
     public static function processWeekOffFunc($currentDayKey, $weekoff_rules, $company_id, $date, $employeeId, $firstLog)
     {
-        // Delegate to the consolidated service.
+        // Normalise: DB column may arrive as JSON string, array, or null.
+        if (is_string($weekoff_rules)) {
+            $decoded = json_decode($weekoff_rules, true);
+            $weekoff_rules = is_array($decoded) ? $decoded : null;
+        } elseif (!is_array($weekoff_rules)) {
+            $weekoff_rules = null;
+        }
+
         $shift = (object) ['weekoff_rules' => $weekoff_rules];
 
         return AttendanceWeekOffService::calculateStatus(

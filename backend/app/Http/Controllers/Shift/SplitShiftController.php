@@ -24,7 +24,7 @@ class SplitShiftController extends Controller
             $endDateString = $request->dates[0];
         }
 
-        $company_id = $request->company_ids[0];
+        $company_id = $request->company_ids[0] ?? $request->company_id ?? 0;
         $employee_ids = $request->employee_ids;
 
         // Convert start and end dates to DateTime objects

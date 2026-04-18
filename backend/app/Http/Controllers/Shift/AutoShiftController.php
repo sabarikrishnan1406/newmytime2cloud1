@@ -348,7 +348,7 @@ class AutoShiftController extends Controller
         } else {
             $endDateString = $request->dates[0];
         }
-        $company_id = $request->company_ids[0];
+        $company_id = $request->company_ids[0] ?? $request->company_id ?? 0;
         $employee_ids = $request->employee_ids;
 
         // Convert start and end dates to DateTime objects
@@ -496,17 +496,17 @@ class AutoShiftController extends Controller
                 // $arr["shifts"] = $shifts;
                 // return $items[] = $arr;
 
-                ScheduleEmployee::where("company_id", $params['company_id'])
-                    ->where("employee_id", $UserID)
-                    ->where("isAutoShift", true)
-                    ->update([
-                        /////////  "from_date" => $params['date'],
-                        //"to_date" => $params['date'],
-                        ///// "to_date" =>  date("Y-m-d", strtotime(date("Y-m-d") . " +1 day")),
+                // ScheduleEmployee::where("company_id", $params['company_id'])
+                //     ->where("employee_id", $UserID)
+                //     ->where("isAutoShift", true)
+                //     ->update([
+                //         /////////  "from_date" => $params['date'],
+                //         //"to_date" => $params['date'],
+                //         ///// "to_date" =>  date("Y-m-d", strtotime(date("Y-m-d") . " +1 day")),
 
-                        "shift_type_id" => $nearestShift['shift_type_id'],
-                        "shift_id" => $nearestShift['id'],
-                    ]);
+                //         "shift_type_id" => $nearestShift['shift_type_id'],
+                //         "shift_id" => $nearestShift['id'],
+                //     ]);
 
 
 

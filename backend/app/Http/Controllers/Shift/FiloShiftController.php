@@ -25,7 +25,7 @@ class FiloShiftController extends Controller
         } else {
             $endDateString = $request->dates[0];
         }
-        $company_id = $request->company_ids[0];
+        $company_id = $request->company_ids[0] ?? $request->company_id ?? 0;
         $employee_ids = $request->employee_ids;
 
         // Convert start and end dates to DateTime objects
@@ -230,14 +230,19 @@ class FiloShiftController extends Controller
         }
 
         try {
+            DB::beginTransaction();
+
             Attendance::where("company_id", $id)
                 ->whereIn("employee_id", array_column($items, "employee_id"))
                 ->where("date", $date)
                 ->delete();
 
             Attendance::insert($items);
+
+            DB::commit();
             $message = "[" . $date . " " . date("H:i:s") .  "] Filo Shift.  Affected Ids: " . json_encode($UserIds) . " " . $message;
         } catch (\Throwable $e) {
+            DB::rollback();
             $message = "[" . $date . " " . date("H:i:s") .  "] Filo Shift. " . $e->getMessage();
         }
 

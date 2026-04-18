@@ -95,9 +95,14 @@ class Kernel extends ConsoleKernel
         //     ->when(fn() => now()->isLastOfMonth())
         //     ->withoutOverlapping();
 
-        $schedule->command("render:weekoff --month={$month}")
-            ->mondays()
-            ->at('05:00') // Or '05:00'
+        // Weekoff rendering — covers ongoing and previous month across all companies.
+        // Commands evaluate month/year at runtime inside the command itself.
+        $schedule->command("render:weekoff-all " . now()->month . " " . now()->year)
+            ->dailyAt('05:15')
+            ->withoutOverlapping();
+
+        $schedule->command("render:weekoff-all " . now()->subMonth()->month . " " . now()->subMonth()->year)
+            ->monthlyOn(1, '05:45')
             ->withoutOverlapping();
 
         $schedule

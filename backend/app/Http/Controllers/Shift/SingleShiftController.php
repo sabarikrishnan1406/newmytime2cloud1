@@ -26,7 +26,7 @@ class SingleShiftController extends Controller
         } else {
             $endDateString = $request->dates[0];
         }
-        $company_id = $request->company_ids[0];
+        $company_id = $request->company_ids[0] ?? $request->company_id ?? 0;
         $employee_ids = $request->employee_ids;
 
         // Convert start and end dates to DateTime objects
@@ -269,20 +269,28 @@ class SingleShiftController extends Controller
         }
 
         try {
+            // Skip destructive delete if we have nothing to reinsert.
+            if (empty($items)) {
+                $message = "[" . $date . " " . date("H:i:s") .  "] Single Shift: No data found (skipping delete)";
+                $this->devLog("render-manual-log", $message);
+                return $message;
+            }
 
             DB::beginTransaction();
-            $model = Attendance::query();
-            $model->where("company_id", $id);
-            $model->whereIn("employee_id", array_column($items, "employee_id"));
-            $model->where("date", $date);
-            $model->delete();
-            DB::commit();
-            $model->insert($items);
+
+            Attendance::where("company_id", $id)
+                ->whereIn("employee_id", array_column($items, "employee_id"))
+                ->where("date", $date)
+                ->delete();
+
+            Attendance::insert($items);
+
+            DB::commit(); // only commit after both operations succeed
+
             $message = "[" . $date . " " . date("H:i:s") .  "] Single Shift.   Affected Ids: " . json_encode($UserIds);
         } catch (\Throwable $e) {
-            $message = "[" . $date . " " . date("H:i:s") .  "] Single Shift. " . $e->getMessage();
-
             DB::rollback();
+            $message = "[" . $date . " " . date("H:i:s") .  "] Single Shift. " . $e->getMessage();
         }
 
         $this->devLog("render-manual-log", $message);
