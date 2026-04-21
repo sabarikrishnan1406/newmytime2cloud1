@@ -775,6 +775,23 @@ export const updateDeviceSettings = async (payload) => {
     return data;
 };
 
+export const getDeviceCamviiSettingsFromSDK = async (params = {}) => {
+
+    let baseURL = API_BASE;
+    const { data } = await axios.get(`${baseURL}/get-device-camvii-settings-from-sdk`, {
+        params: await buildQueryParams(params),
+    });
+
+    return data;
+};
+
+export const updateDeviceCamviiSettings = async (payload) => {
+
+    let baseURL = API_BASE;
+    const { data } = await axios.post(`${baseURL}/update-device-camvii-sdk-settings`, payload);
+    return data;
+};
+
 export const checkDeviceHealth = async (company_id) => {
     const { data } = await axios.get(`${API_BASE}/check_device_health`, {
         params: { company_id },

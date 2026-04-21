@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getUser } from "@/config";
 import { api, buildQueryParams } from "@/lib/api-client";
 import { getStaffUser } from "@/lib/staff-user";
+import BirthdayPopup from "@/components/Employees/BirthdayPopup";
 
 /* ── Metric Card ── */
 const MetricCard = ({ icon, iconBg, label, value, suffix, badge, badgeColor }) => (
@@ -311,6 +312,7 @@ export default function StaffDashboard() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
+      <BirthdayPopup />
       {/* HEADER — CONNECTED: employee name from getUser(), live date/time */}
       <header className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">

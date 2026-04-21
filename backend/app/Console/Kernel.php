@@ -43,6 +43,8 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('birthday:wish')->dailyAt('00:00');
 
+        $schedule->command('ai:birthday-feed')->dailyAt('00:05')->withoutOverlapping();
+
         $schedule->command('delete_old_records')->monthlyOn(1, '00:00');
 
         $schedule

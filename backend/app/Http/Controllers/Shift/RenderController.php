@@ -101,10 +101,16 @@ class RenderController extends Controller
             return $results;
         }
 
-        if ($request->shift_type_id == 1 || $request->shift_type_id == 6) {
+        if ($request->shift_type_id == 1) {
             $results = [];
-            try { $results = array_merge($results, (new FiloShiftController)->renderData($request)); } catch (\Exception $e) {}
-            try { $results = array_merge($results, (new SingleShiftController)->renderData($request)); } catch (\Exception $e) {}
+            try { $results = (new FiloShiftController)->renderData($request); } catch (\Exception $e) {}
+            $this->dispatchWeekoffForRange($request);
+            return $results;
+        }
+
+        if ($request->shift_type_id == 6) {
+            $results = [];
+            try { $results = (new SingleShiftController)->renderData($request); } catch (\Exception $e) {}
             $this->dispatchWeekoffForRange($request);
             return $results;
         }

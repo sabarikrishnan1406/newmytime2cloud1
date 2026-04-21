@@ -17,6 +17,14 @@ const RFID = ({
     const [password, setPassword] = useState(rfid_card_password || "");
     const [showPassword, setShowPassword] = useState(false);
 
+    // Sync with props when payload updates
+    useEffect(() => {
+        setCardNumber(rfid_card_number || "");
+    }, [rfid_card_number]);
+    useEffect(() => {
+        setPassword(rfid_card_password || "");
+    }, [rfid_card_password]);
+
     // 2. Update state when user actually types
     const handleCardChange = (e) => {
         setCardNumber(e.target.value);

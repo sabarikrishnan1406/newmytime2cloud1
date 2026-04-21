@@ -68,3 +68,9 @@ export const getAIFeeds = async (params = {}) => {
     const { data } = await api.get("/ai-feeds", { params: queryParams });
     return data;
 };
+
+export const getWeeklyBirthdays = async (params = {}) => {
+    const queryParams = await buildQueryParams(params);
+    const { data } = await api.get("/ai-feeds-weekly-birthdays", { params: queryParams });
+    return data;
+};

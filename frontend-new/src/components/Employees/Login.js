@@ -23,6 +23,11 @@ const Login = ({ employee_id, email }) => {
         password_confirmation: "",
     });
 
+    // Sync email when props update (payload.user loads async or employee switched)
+    useEffect(() => {
+        setForm((prev) => ({ ...prev, email: email || "" }));
+    }, [email]);
+
 
     // 2. Update state when user actually types
     const handleEmailChange = (e) => {
@@ -47,35 +52,35 @@ const Login = ({ employee_id, email }) => {
             return;
         }
 
-        // Logic Guard: Don't save if password fields are being typed but don't match yet
-        if (form.password && form.password !== form.password_confirmation) {
-            notify("Error", "Passwords do not match", "error");
-            return;
-        }
-
-        // Logic Guard: Don't save if password is too weak (optional, based on your needs)
-        if (form.password && strength.score < 2) {
-            notify("Error", "Password is too weak", "error");
-            return;
+        // Decide whether the password is acceptable to save.
+        // If not, we still save the email — only the password is skipped.
+        let passwordIsValid = false;
+        let passwordWarning = "";
+        if (form.password) {
+            if (form.password !== form.password_confirmation) {
+                passwordWarning = "Passwords do not match — email saved, password NOT changed";
+            } else if (strength.score < 2) {
+                passwordWarning = "Password too weak — email saved, password NOT changed";
+            } else {
+                passwordIsValid = true;
+            }
         }
 
         setLoading(true);
 
         try {
-            const finalPayload = {
-                email: form.email,
-            };
-
-            // Only include password if it's fully validated and confirmed
-            if (form.password && form.password === form.password_confirmation) {
-                finalPayload.password = form.password;
-            }
+            const finalPayload = { email: form.email };
+            if (passwordIsValid) finalPayload.password = form.password;
 
             await updateLogin(finalPayload, employee_id);
-            notify("Success", "Login details has been added", "success");
+
+            if (passwordWarning) {
+                notify("Warning", passwordWarning, "warning");
+            } else {
+                notify("Success", "Login details saved", "success");
+            }
         } catch (error) {
             notify("Error", parseApiError(error), "error");
-
         } finally {
             setLoading(false);
         }

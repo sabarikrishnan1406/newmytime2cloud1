@@ -94,11 +94,22 @@ const Login = () => {
                 localStorage.setItem("token", token);
                 localStorage.setItem("user", JSON.stringify(data?.user));
 
-                // Redirect based on role
-                if (role === 'employee') {
-                    window.location.href = "/staff/dashboard";
-                } else {
+                // Redirect based on actual user type returned from server.
+                // Admin / Manager → admin UI at "/" (backend enforces per-role access).
+                // Staff (employee) → staff portal at "/staff/dashboard".
+                const serverUser = data?.user || {};
+                const userType = serverUser.user_type;
+                const isAdminOrManager = serverUser.is_master === true
+                    || userType === 'company'
+                    || userType === 'admin'
+                    || userType === 'manager'
+                    || role === 'company'
+                    || role === 'manager';
+
+                if (isAdminOrManager) {
                     window.location.href = "/";
+                } else {
+                    window.location.href = "/staff/dashboard";
                 }
             }
         } catch (error) {
@@ -144,14 +155,14 @@ const Login = () => {
                         alt="MyTime Cloud Logo"
                         className="h-14 w-auto object-contain brightness-110 mb-10 self-start"
                     />
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 mb-8 text-[10px] font-bold tracking-[0.2em] text-emerald-400 uppercase rounded-full bg-emerald-500/10 border border-emerald-500/20 w-fit">
-                        <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 mb-8 text-sm font-bold tracking-[0.2em] text-emerald-400 uppercase rounded-full bg-emerald-500/10 border border-emerald-500/20 w-fit">
+                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
                         Enterprise Intelligence
                     </div>
-                    <h2 className="text-4xl xl:text-[3.25rem] font-extrabold text-white mb-5 leading-[1.1]">
+                    <h2 className="text-5xl xl:text-7xl font-extrabold text-white mb-7 leading-[1.05]">
                         Empower your<br />workforce with<br /><span className="text-emerald-400">next-gen</span><br />intelligence.
                     </h2>
-                    <p className="text-slate-400 text-base leading-relaxed">
+                    <p className="text-slate-300 text-xl leading-relaxed">
                         Streamline attendance, optimize complex scheduling,<br />and gain real-time insights with our award-winning<br />platform.
                     </p>
                 </div>

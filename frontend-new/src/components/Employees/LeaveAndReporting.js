@@ -13,6 +13,14 @@ const LeaveAndReporting = ({ id, leave_group_id, reporting_manager_id }) => {
     const [selectedLeaveGroupId, setSelectedLeaveGroupId] = useState(leave_group_id);
     const [selectedReportingManagerId, setSelectedReportingManagerId] = useState(reporting_manager_id);
 
+    // Sync with props when payload updates
+    useEffect(() => {
+        setSelectedLeaveGroupId(leave_group_id);
+    }, [leave_group_id]);
+    useEffect(() => {
+        setSelectedReportingManagerId(reporting_manager_id);
+    }, [reporting_manager_id]);
+
     // 1. Fetch Dropdown Data once on load
     useEffect(() => {
         const fetchOptions = async () => {

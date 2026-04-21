@@ -1,12 +1,10 @@
 // /config/index.js
 
-let env = process.env;
-
-export const API_BASE_URL = env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 export const FACE_VALIDATOR_URL =
   typeof window !== "undefined"
-    ? env.NEXT_PUBLIC_FACE_VALIDATOR_ENDPOINT || "https://face-validator.mytime2cloud.com"
+    ? process.env.NEXT_PUBLIC_FACE_VALIDATOR_ENDPOINT || "https://face-validator.mytime2cloud.com"
     : null;
 
 

@@ -166,3 +166,28 @@ export const DEVICE_ENABLE_DISABLE = [
     { name: 'Disabled', id: "0" },
 ];
 
+export const VERIFICATION_MODE = [
+    { id: 'face', name: 'Face' },
+    { id: 'card', name: 'Card' },
+    { id: 'face_or_card', name: 'Face Or Card' },
+    { id: 'face_and_card', name: 'Face And Card' },
+];
+
+export const RECOGNITION_MODE = [
+    { id: 'single', name: 'Single Person' },
+    { id: 'multiple', name: 'Multiple Person' },
+];
+
+export const OPEN_DURATION = [
+    { id: 1, name: '1' },
+    { id: 2, name: '2' },
+    { id: 3, name: '3' },
+    { id: 4, name: '4' },
+    { id: 5, name: '5' },
+    { id: 6, name: '6' },
+    { id: 7, name: '7' },
+    { id: 8, name: '8' },
+    { id: 9, name: '9' },
+    { id: 10, name: '10' },
+];
+

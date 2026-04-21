@@ -10,8 +10,10 @@ const VoiceButton = dynamic(() => import("@/components/Voice/VoiceButton"), { ss
 
 export default function LayoutShell({ children }) {
   const pathname = usePathname();
-  const isStaffRoute = pathname?.startsWith("/staff");
-  const isLoginRoute = pathname === "/login";
+  // Normalize: strip trailing slash so checks work whether `trailingSlash` is on or off.
+  const path = pathname?.replace(/\/$/, "") || "";
+  const isStaffRoute = path.startsWith("/staff");
+  const isLoginRoute = path === "/login" || path.startsWith("/login/");
 
   // Staff and login pages render their own layout
   if (isStaffRoute || isLoginRoute) {

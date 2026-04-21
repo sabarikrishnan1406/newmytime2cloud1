@@ -719,29 +719,46 @@ class EmployeeControllerNew extends Controller
             // 1. Check if the user exists first
             $user = User::where('employee_id', $id)->first();
 
-            // 2. Prepare the base data
+            // 2. Look up the employee — we need company_id/branch_id to scope the user correctly,
+            // otherwise the staff login will get company_id=0 and every API filter returns nothing.
+            $employee = Employee::find($id);
+
+            // 3. Prepare the base data
             $data = [
                 'name'  => "---",
                 'email' => $request->email,
             ];
 
-            // 3. Handle Password
+            // 4. Handle Password
             if ($request->filled('password') && $request->password !== "********") {
-                // User provided a new password
                 $data['password'] = Hash::make($request->password);
             } elseif (!$user) {
-                // CRITICAL: User is being CREATED, but no password was sent.
-                // We must set a random/temporary password because the DB column is NOT NULL.
+                // CRITICAL: new user without password — column is NOT NULL.
                 $data['password'] = "secret";
             }
 
-            // 4. Perform the Update or Create
+            // 5. Always (re)scope the user to the employee's company/branch when employee exists.
+            // Fixes: staff users having company_id=0 → empty dashboards, missing birthday popup, etc.
+            if ($employee) {
+                $data['company_id'] = $employee->company_id;
+                $data['branch_id']  = $employee->branch_id;
+            }
+
+            // 6. Perform the Update or Create
             if ($user) {
                 $user->update($data);
             } else {
                 $user = User::create(array_merge($data, [
                     'employee_id' => $id,
                 ]));
+            }
+
+            // 7. Backfill the employee->user link if missing.
+            // Without this, Employee::user() (belongsTo via user_id) returns an empty default
+            // and the Edit page shows blank email + disabled toggles even though the user row exists.
+            if ($employee && (int) $employee->user_id !== (int) $user->id) {
+                $employee->user_id = $user->id;
+                $employee->save();
             }
 
             return response()->json([

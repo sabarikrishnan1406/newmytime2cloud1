@@ -11,12 +11,30 @@ const Settings = ({ id, user_id, status, web_login_access, mobile_app_login_acce
 
     const [loading, setLoading] = useState(false);
 
-    // 2. Local State
-    const [employeeStatus, setEmployeeStatus] = useState(status);
-    const [webAccess, setWebAccess] = useState(web_login_access);
-    const [mobileAccess, setMobileAccess] = useState(mobile_app_login_access);
-    const [location, setLocation] = useState(tracking_status);
-    const [mobilePunch, setMobilePunch] = useState(mobile_punch);
+    // 2. Local State — initialized from props, kept in sync when props change
+    const [employeeStatus, setEmployeeStatus] = useState(!!status);
+    const [webAccess, setWebAccess] = useState(!!web_login_access);
+    const [mobileAccess, setMobileAccess] = useState(!!mobile_app_login_access);
+    const [location, setLocation] = useState(!!tracking_status);
+    const [mobilePunch, setMobilePunch] = useState(!!mobile_punch);
+
+    // Sync local state whenever the employee's user record finishes loading
+    // (payload.user is async — initial render often has undefined values).
+    useEffect(() => {
+        setEmployeeStatus(!!status);
+    }, [status]);
+    useEffect(() => {
+        setWebAccess(!!web_login_access);
+    }, [web_login_access]);
+    useEffect(() => {
+        setMobileAccess(!!mobile_app_login_access);
+    }, [mobile_app_login_access]);
+    useEffect(() => {
+        setLocation(!!tracking_status);
+    }, [tracking_status]);
+    useEffect(() => {
+        setMobilePunch(!!mobile_punch);
+    }, [mobile_punch]);
 
     // Styling Classes
     const toggleTrackClass = "block overflow-hidden h-6 rounded-full cursor-pointer transition-colors duration-300";
