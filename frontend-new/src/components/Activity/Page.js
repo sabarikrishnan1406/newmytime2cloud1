@@ -61,7 +61,7 @@ export default function Activity() {
     <>
       <div className="flex flex-wrap items-center justify-between mb-6">
         <div className="flex flex-wrap items-center space-x-3 space-y-2 sm:space-y-0">
-          <h2 className="text-2xl font-extrabold text-gray-900 flex items-center">
+          <h2 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 flex items-center">
             Activity
           </h2>
 
@@ -79,7 +79,7 @@ export default function Activity() {
       </div>
 
       <DataTable
-        className="bg-slate-50 overflow-hidden min-h-[700px]"
+        className="bg-slate-50 dark:bg-slate-900 overflow-hidden min-h-[700px]"
         columns={columns}
         data={records}
         isLoading={isLoading}

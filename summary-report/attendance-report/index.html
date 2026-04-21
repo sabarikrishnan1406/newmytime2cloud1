@@ -199,6 +199,63 @@
     body, body * {
       font-weight: 400 !important;
     }
+
+    /* ==================== FORMAT C (activated via ?template=c URL param) ==================== */
+
+    /* Medium weight baseline for professional look */
+    body.format-c, body.format-c * {
+      font-weight: 500 !important;
+    }
+
+    /* Darker shade for muted/gray text */
+    body.format-c [class*="text-slate-400"],
+    body.format-c [class*="text-slate-500"],
+    body.format-c [class*="text-slate-600"] {
+      color: #1f2937 !important;
+    }
+
+    /* Time values (font-mono cells) — bolder and black */
+    body.format-c table td.font-mono,
+    body.format-c td[class*="font-mono"] {
+      color: #000 !important;
+      font-weight: 600 !important;
+    }
+
+    /* MISSING status rows (bg-amber-100/50) */
+    body.format-c tr[class*="bg-amber-100"] td,
+    body.format-c tr[class*="bg-amber-100"] span {
+      color: #ea580c !important;
+    }
+
+    /* Summary cards compression */
+    body.format-c [class*="grid-cols-4"] > div,
+    body.format-c [class*="grid-cols-12"] > div {
+      padding: 6px 10px !important;
+      min-height: 0 !important;
+    }
+
+    /* Smaller summary big numbers */
+    body.format-c .text-3xl,
+    body.format-c [class*="text-3xl"] {
+      font-size: 20px !important;
+      line-height: 1.1 !important;
+    }
+    body.format-c .text-xl,
+    body.format-c [class*="text-xl"] {
+      font-size: 16px !important;
+    }
+
+    /* Smaller profile picture */
+    body.format-c img[class*="rounded-full"],
+    body.format-c [class*="w-16"][class*="h-16"] {
+      width: 36px !important;
+      height: 36px !important;
+    }
+
+    /* Darker borders */
+    body.format-c [class*="border-slate-200"] {
+      border-color: #9ca3af !important;
+    }
   </style>
 </head>
 
@@ -206,6 +263,16 @@
   <div id="root"></div>
 
   <script>
+    // Format C activation: if URL has ?template=c, add format-c class to body
+    (function() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        if (params.get("template") === "c") {
+          document.body.classList.add("format-c");
+        }
+      } catch (e) {}
+    })();
+
     const observer = new MutationObserver(function() {
       // Remove spacer divs
       document.querySelectorAll('[class*="min-h-"]').forEach(function(el) {

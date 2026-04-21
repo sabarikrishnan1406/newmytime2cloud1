@@ -207,7 +207,7 @@ export default function VisitorDashboard() {
               <BarChart data={realHourlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" />
                 <XAxis dataKey="hour" tick={tickStyle} /><YAxis tick={tickStyle} />
-                <Tooltip contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                <Tooltip cursor={false} contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
                 <Bar dataKey="visitors" fill="hsl(173, 58%, 39%)" radius={[4, 4, 0, 0]} name="Visitors" />
                 <Bar dataKey="expected" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} name="Expected" opacity={0.6} />
               </BarChart>
@@ -215,7 +215,7 @@ export default function VisitorDashboard() {
               <LineChart data={realHourlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" />
                 <XAxis dataKey="hour" tick={tickStyle} /><YAxis tick={tickStyle} />
-                <Tooltip contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                <Tooltip cursor={false} contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
                 <Line type="monotone" dataKey="visitors" stroke="hsl(173, 58%, 39%)" strokeWidth={2.5} dot={{ r: 3 }} name="Visitors" />
                 <Line type="monotone" dataKey="expected" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={{ r: 3 }} name="Expected" />
               </LineChart>
@@ -224,7 +224,7 @@ export default function VisitorDashboard() {
                 <defs><linearGradient id="colorV" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="hsl(173, 58%, 39%)" stopOpacity={0.2} /><stop offset="95%" stopColor="hsl(173, 58%, 39%)" stopOpacity={0} /></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" />
                 <XAxis dataKey="hour" tick={tickStyle} /><YAxis tick={tickStyle} />
-                <Tooltip contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                <Tooltip cursor={false} contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
                 <Area type="monotone" dataKey="visitors" stroke="hsl(173, 58%, 39%)" fillOpacity={1} fill="url(#colorV)" strokeWidth={2} name="Visitors" />
                 <Line type="monotone" dataKey="expected" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={{ r: 3 }} name="Expected" />
               </AreaChart>
@@ -242,7 +242,7 @@ export default function VisitorDashboard() {
               <ResponsiveContainer width="100%" height={140}>
                 <PieChart><Pie data={realTypeData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value">
                   {realTypeData.map((e) => <Cell key={e.name} fill={e.color} />)}
-                </Pie><Tooltip contentStyle={chartStyle} /></PieChart>
+                </Pie><Tooltip cursor={false} contentStyle={chartStyle} /></PieChart>
               </ResponsiveContainer>
               <div className="space-y-2 mt-3">
                 {realTypeData.map((t) => (
@@ -266,7 +266,7 @@ export default function VisitorDashboard() {
               <ResponsiveContainer width="100%" height={140}>
                 <PieChart><Pie data={accessMethodData} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={3} dataKey="value">
                   {accessMethodData.map((e) => <Cell key={e.name} fill={e.color} />)}
-                </Pie><Tooltip contentStyle={chartStyle} /></PieChart>
+                </Pie><Tooltip cursor={false} contentStyle={chartStyle} /></PieChart>
               </ResponsiveContainer>
               <div className="space-y-2 mt-3">
                 {accessMethodData.map((t) => (
@@ -302,7 +302,7 @@ export default function VisitorDashboard() {
             <BarChart data={realWeeklyTrend} barCategoryGap="20%">
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" />
               <XAxis dataKey="day" tick={tickStyle} /><YAxis tick={tickStyle} />
-              <Tooltip contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+              <Tooltip cursor={false} contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
               <Bar dataKey="thisWeek" fill="hsl(173, 58%, 39%)" radius={[4, 4, 0, 0]} name="This Week" />
               <Bar dataKey="lastWeek" fill="hsl(220, 13%, 85%)" radius={[4, 4, 0, 0]} name="Last Week" />
             </BarChart>
@@ -310,7 +310,7 @@ export default function VisitorDashboard() {
             <LineChart data={realWeeklyTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" />
               <XAxis dataKey="day" tick={tickStyle} /><YAxis tick={tickStyle} />
-              <Tooltip contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+              <Tooltip cursor={false} contentStyle={chartStyle} /><Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
               <Line type="monotone" dataKey="thisWeek" stroke="hsl(173, 58%, 39%)" strokeWidth={2.5} dot={{ r: 4 }} name="This Week" />
               <Line type="monotone" dataKey="lastWeek" stroke="hsl(220, 13%, 75%)" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} name="Last Week" />
             </LineChart>

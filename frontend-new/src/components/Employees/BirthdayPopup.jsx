@@ -1,61 +1,90 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { getAIFeeds } from "@/lib/endpoint/dashboard";
+import { getStaffUser } from "@/lib/staff-user";
 
 const BALLOON_COLORS = ["#ff6ba1", "#ffb347", "#ffd93d", "#6bcb77", "#4d96ff", "#c780ff", "#ff80aa", "#80d0ff"];
 const CONFETTI_COLORS = ["#ff4d6d", "#ffc857", "#90e0ef", "#b5ead7", "#c9b6ff", "#ffd6a5"];
 
-function todayKey() {
+// Grab MM-DD for today regardless of timezone formatting quirks.
+function todayMD() {
   const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${mm}-${dd}`;
+  return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function isToday(dateString) {
-  if (!dateString) return false;
-  const d = new Date(dateString);
-  if (isNaN(d)) return false;
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
+// Accepts "YYYY-MM-DD" or full date strings; returns "MM-DD" or null.
+function dobMonthDay(dob) {
+  if (!dob || typeof dob !== "string") return null;
+  const match = dob.match(/(\d{2})-(\d{2})$/); // last MM-DD in the string
+  if (match) return `${match[1]}-${match[2]}`;
+  const d = new Date(dob);
+  if (isNaN(d)) return null;
+  return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function parseData(row) {
-  if (!row) return null;
-  if (row.data && typeof row.data === "object") return row.data;
-  if (typeof row.data === "string") {
-    try { return JSON.parse(row.data); } catch { return null; }
+// Self-heal broken avatar URLs into the cake emoji.
+function handleImgError(e) {
+  const parent = e.currentTarget.parentNode;
+  if (!parent) return;
+  e.currentTarget.style.display = "none";
+  if (!parent.querySelector("[data-birthday-fallback]")) {
+    const span = document.createElement("div");
+    span.dataset.birthdayFallback = "1";
+    span.className = "w-full h-full flex items-center justify-center text-2xl";
+    span.textContent = "🎂";
+    parent.appendChild(span);
   }
-  return null;
+}
+
+// Pull the person's display info straight from /me — whichever company they
+// belong to. No ai_feeds caching, no backend-regenerate dance when they change
+// their avatar or DOB.
+function resolvePerson(me) {
+  if (!me) return null;
+  const emp = me.employee_record || me.employee || {};
+  const dob = emp.date_of_birth || me.date_of_birth || null;
+  if (!dob) return null;
+  if (dobMonthDay(dob) !== todayMD()) return null;
+
+  const firstName = emp.first_name || me.first_name || "";
+  const lastName = emp.last_name || me.last_name || "";
+  const fullName = (emp.display_name || `${firstName} ${lastName}`).trim() || "Our Teammate";
+  const picture = emp.profile_picture || me.employee_profile_picture || me.profile_picture || null;
+  const department = emp.department?.name || emp.department_name || null;
+  const designation = emp.designation?.name || emp.designation_name || null;
+  const branch = emp.branch?.branch_name || emp.branch?.name || me.branch?.branch_name || null;
+
+  let age = null;
+  try {
+    const d = new Date(dob);
+    if (!isNaN(d)) {
+      const now = new Date();
+      age = now.getFullYear() - d.getFullYear();
+      const mdNow = now.getMonth() * 100 + now.getDate();
+      const mdDob = d.getMonth() * 100 + d.getDate();
+      if (mdNow < mdDob) age--;
+    }
+  } catch (_) {}
+
+  return { fullName, picture, department, designation, branch, age, key: emp.id || me.id || "self" };
 }
 
 export default function BirthdayPopup() {
   const [open, setOpen] = useState(false);
-  const [people, setPeople] = useState([]);
+  const [person, setPerson] = useState(null);
 
   useEffect(() => {
-    // Show on every dashboard visit; the isToday(created_at) filter below ensures we
-    // only ever surface today's birthday entries, so the popup naturally goes away
-    // tomorrow when no fresh entries match.
     let cancelled = false;
     (async () => {
       try {
-        const res = await getAIFeeds({ per_page: 50 });
-        const rows = res?.data || [];
-        const todays = rows.filter(
-          (r) => r?.type === "birthday" && isToday(r.created_at)
-        );
-        if (!cancelled && todays.length > 0) {
-          setPeople(todays);
+        const me = await getStaffUser();
+        const p = resolvePerson(me);
+        if (!cancelled && p) {
+          setPerson(p);
           setOpen(true);
         }
       } catch (e) {
-        console.error("BirthdayPopup fetch failed:", e);
+        console.error("BirthdayPopup resolve failed:", e);
       }
     })();
     return () => { cancelled = true; };
@@ -70,11 +99,11 @@ export default function BirthdayPopup() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const handleClose = () => {
-    setOpen(false);
-  };
+  const handleClose = () => setOpen(false);
 
-  if (!open || people.length === 0) return null;
+  if (!open || !person) return null;
+
+  const line = [person.designation, person.department, person.branch].filter(Boolean).join(" • ");
 
   return (
     <div
@@ -187,38 +216,30 @@ export default function BirthdayPopup() {
           </p>
         </div>
 
-        <div className="relative z-10 px-6 pb-4 overflow-y-auto max-h-[50vh]">
-          <div className="flex flex-col gap-3">
-            {people.map((row) => {
-              const d = parseData(row) || {};
-              const fullName = d.full_name || "Our Teammate";
-              const avatar = d.profile_picture || null;
-              const line = [d.designation, d.department, d.branch].filter(Boolean).join(" • ");
-              return (
-                <div
-                  key={row.id}
-                  className="flex items-center gap-4 bg-white/25 backdrop-blur-md rounded-xl p-3 text-white"
-                >
-                  <div className="shrink-0 size-14 rounded-full overflow-hidden ring-4 ring-white/70 bg-white">
-                    {avatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={avatar} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-2xl">🎂</div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-base font-extrabold truncate">
-                      {fullName}
-                      {d.age ? <span className="opacity-80 font-semibold text-xs ml-2">({d.age})</span> : null}
-                    </div>
-                    {line && (
-                      <div className="text-[11px] opacity-95 truncate">{line}</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        <div className="relative z-10 px-6 pb-4">
+          <div className="flex items-center gap-4 bg-white/25 backdrop-blur-md rounded-xl p-3 text-white">
+            <div className="shrink-0 size-14 rounded-full overflow-hidden ring-4 ring-white/70 bg-white">
+              {person.picture ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={person.picture}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  onError={handleImgError}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-2xl">🎂</div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-base font-extrabold truncate">
+                {person.fullName}
+                {person.age ? <span className="opacity-80 font-semibold text-xs ml-2">({person.age})</span> : null}
+              </div>
+              {line && (
+                <div className="text-[11px] opacity-95 truncate">{line}</div>
+              )}
+            </div>
           </div>
         </div>
 

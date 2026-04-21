@@ -148,7 +148,8 @@ function LiveFeed({ branch_ids, department_ids }) {
 
         // Mode logic
         let modes = [];
-        if (e.DeviceID?.includes("Mobile")) {
+        const isMobileLog = e.DeviceID?.includes("Mobile");
+        if (isMobileLog) {
           modes = [baseIcons.Mobile];
         } else if (e.DeviceID?.startsWith("Camera") || e.channel === "camera") {
           modes = [baseIcons.Face];
@@ -158,6 +159,11 @@ function LiveFeed({ branch_ids, department_ids }) {
           modes = [baseIcons.Device];
         }
 
+        // Mobile logs have no device record, so device.function is null. Show "Auto"
+        // since mobile punches auto-resolve in/out (same treatment as option → Auto).
+        const resolvedFunction =
+          e?.device?.function || (isMobileLog ? "Auto" : "---");
+
         return {
           ...e,
           id: e?.employee?.employee_id,
@@ -165,8 +171,8 @@ function LiveFeed({ branch_ids, department_ids }) {
           dept: branchDept,
           deviceName,
           deviceLocation,
-          deviceFunction: e?.device?.function || "---",
-          deviceType: e?.device?.device_type || "---",
+          deviceFunction: resolvedFunction,
+          deviceType: e?.device?.device_type || (isMobileLog ? "Attendance" : "---"),
           time: `${e.time}`,
           profile_picture: `${e.employee?.profile_picture}`,
           inout,

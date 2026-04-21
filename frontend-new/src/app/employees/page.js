@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getBranches, getDepartmentsByBranchIds, getEmployees, removeEmployee } from '@/lib/api';
 import { EmployeeExtras } from '@/components/Employees/Extras';
-import BirthdayPopup from '@/components/Employees/BirthdayPopup';
 
 import Columns from "./columns";
 import DataTable from '@/components/ui/DataTable';
@@ -119,7 +118,6 @@ export default function EmployeesPage() {
 
     return (
         <div className='p-4 pb-24 overflow-y-auto max-h-[calc(100vh-100px)]'>
-            <BirthdayPopup />
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6  sm:space-y-0">
                 <h1 className="text-2xl font-extrabold text-gray-600 dark:text-gray-300 flex items-center">
                     {/* <User className="w-7 h-7 mr-3 text-indigo-600" /> */}

@@ -38,6 +38,16 @@ export async function getStaffUser() {
         mobile_punch: me?.mobile_punch,
         employee_record: me?.employee_record,
       };
+
+      // Self-heal the stored user so getUser() callers (buildQueryParams etc.) see
+      // the fresh company_id/branch_id/user_type. Without this, staff who logged in
+      // before a backend backfill keep sending company_id=0 until they re-login.
+      if (me && typeof window !== "undefined") {
+        try {
+          const stored = JSON.parse(localStorage.getItem("user")) || {};
+          localStorage.setItem("user", JSON.stringify({ ...stored, ...me }));
+        } catch (_) {}
+      }
     } catch (e) {
       _cachedMe = {};
     }

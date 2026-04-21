@@ -12,6 +12,7 @@ use App\Http\Requests\Employee\StoreRequest;
 use App\Http\Requests\Employee\StoreRequestFromDevice;
 use App\Http\Requests\Employee\UpdateRequest;
 use App\Http\Requests\Employee\UpdateRequestFromDevice;
+use App\Console\Commands\AI\AIBirthdayFeed;
 use App\Models\Attendance;
 use App\Models\AttendanceLog;
 use App\Models\Company;
@@ -112,8 +113,9 @@ class EmployeeController extends Controller
                 "user_type"  => "employee",
                 "name"       => "null",
                 "email"      => $request->email,
-                "password"   => Hash::make("secret"),
+                "password"   => Hash::make($request->filled('password') ? $request->password : "secret"),
                 "company_id" => $data["company_id"],
+                "branch_id"  => $data["branch_id"] ?? 0,
             ]);
 
             if (! $user) {
@@ -131,6 +133,22 @@ class EmployeeController extends Controller
             if (! $employee) {
                 return $this->response('Employee cannot add.', null, false);
             }
+
+            // Back-link the user row to the employee so staff login / /me can resolve
+            // employee context. Without this, users.employee_id stays 0 and staff pages
+            // render empty.
+            if (! empty($data["user_id"])) {
+                User::where("id", $data["user_id"])->update([
+                    "employee_id" => $employee->id,
+                    "branch_id"   => $employee->branch_id,
+                ]);
+            }
+
+            // If the new hire was created with today as their DOB, drop a birthday
+            // feed row immediately so their staff popup shows without waiting for the
+            // next 00:05 ai:birthday-feed cron.
+            AIBirthdayFeed::insertForEmployee($employee);
+
             $employee->profile_picture = asset('media/employee/profile_picture' . $employee->profile_picture);
 
             // DB::commit();

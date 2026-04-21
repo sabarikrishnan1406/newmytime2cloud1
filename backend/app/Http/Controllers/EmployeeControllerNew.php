@@ -147,6 +147,7 @@ class EmployeeControllerNew extends Controller
                         'password' => $password,
                         'employee_id' => $employee->id,
                         "company_id" => $employee->company_id,
+                        "user_type" => "employee",
                     ]);
                     $user = $existingUser;
                 } else {
@@ -157,6 +158,7 @@ class EmployeeControllerNew extends Controller
                         'password' => $password, // Already hashed above
                         'employee_id' => $employee->id,
                         "company_id" => $employee->company_id,
+                        "user_type" => "employee",
                     ]);
                 }
 
@@ -716,12 +718,17 @@ class EmployeeControllerNew extends Controller
                 'password' => 'nullable|min:8',
             ]);
 
-            // 1. Check if the user exists first
-            $user = User::where('employee_id', $id)->first();
-
             // 2. Look up the employee — we need company_id/branch_id to scope the user correctly,
             // otherwise the staff login will get company_id=0 and every API filter returns nothing.
             $employee = Employee::find($id);
+
+            // 1. Check if the user exists — prefer users.employee_id, fall back to the
+            // employee.user_id back-link so we don't create a duplicate user row when the
+            // original was created via employeeStore (which historically left users.employee_id = 0).
+            $user = User::where('employee_id', $id)->first();
+            if (! $user && $employee && $employee->user_id) {
+                $user = User::find($employee->user_id);
+            }
 
             // 3. Prepare the base data
             $data = [
@@ -744,13 +751,19 @@ class EmployeeControllerNew extends Controller
                 $data['branch_id']  = $employee->branch_id;
             }
 
+            // Ensure user_type is set so routing + permissions recognize this as a staff login.
+            if (empty($data['user_type'])) {
+                $data['user_type'] = 'employee';
+            }
+
+            // Always (re)bind the user row to this employee so /me and API filters resolve correctly.
+            $data['employee_id'] = $id;
+
             // 6. Perform the Update or Create
             if ($user) {
                 $user->update($data);
             } else {
-                $user = User::create(array_merge($data, [
-                    'employee_id' => $id,
-                ]));
+                $user = User::create($data);
             }
 
             // 7. Backfill the employee->user link if missing.

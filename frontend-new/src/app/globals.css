@@ -333,11 +333,11 @@ html:not(.dark) .text-\[\#5f717a\] { color: #64748b !important; }
            text #111827 / #6B7280 | borders #E5E7EB | hover #F3F6FB
    ========================================================================== */
 html:not(.dark) body {
-  background-color: #FFFFFF !important;
+  background-color: #e5e7eb !important;
   color: #111827;
 }
 html:not(.dark) .bg-obsidian {
-  background-color: #FFFFFF !important;
+  background-color: #e5e7eb !important;
 }
 
 /* Text hierarchy */

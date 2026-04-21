@@ -120,7 +120,11 @@ export default function PayrollDashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" />
               <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 11 }} />
               <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(v) => v.toLocaleString()} contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }} />
+              <Tooltip
+                cursor={false}
+                formatter={(v) => v.toLocaleString()}
+                contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }}
+              />
               <Bar dataKey="gross" name="Gross" fill="hsl(199,89%,38%)" radius={[4, 4, 0, 0]} />
               <Bar dataKey="net" name="Net" fill="hsl(152,60%,40%)" radius={[4, 4, 0, 0]} />
               <Bar dataKey="deductions" name="Deductions" fill="hsl(0,72%,51%)" radius={[4, 4, 0, 0]} />
@@ -138,7 +142,11 @@ export default function PayrollDashboard() {
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(v) => v.toLocaleString()} contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }} />
+              <Tooltip
+                cursor={false}
+                formatter={(v) => v.toLocaleString()}
+                contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }}
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>

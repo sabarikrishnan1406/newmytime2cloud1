@@ -40,6 +40,7 @@ const reportTemplates = [
   // { id: `Template1`, name: `Monthly Report Format A` },
   { id: 'Template4', name: 'Monthly Report Format A' },
   { id: `Template2`, name: `Monthly Report Format B` },
+  { id: 'Template5', name: 'Monthly Report Format C' },
 
   { id: `Template3`, name: `Daily` },
 ];
@@ -336,8 +337,8 @@ export default function AttendanceTable() {
       //   return;
       // }
 
-      // 1. Handle Template4 (Format A - Puppeteer PDF)
-      if (selectedReportTemplate === "Template4" && actionType !== "EXCEL") {
+      // 1. Handle Template4 (Format A) and Template5 (Format C) - Puppeteer PDF
+      if ((selectedReportTemplate === "Template4" || selectedReportTemplate === "Template5") && actionType !== "EXCEL") {
         const PDF_SERVICE = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://localhost:3002';
         const user = getUser();
         const t4Params = new URLSearchParams({
@@ -351,7 +352,8 @@ export default function AttendanceTable() {
         });
 
         const SUMMARY_BASE = process.env.NEXT_PUBLIC_SUMMARY_REPORT_URL || PDF_SERVICE;
-        let templateUrl = `${SUMMARY_BASE}/attendance-report/?${t4Params.toString()}`;
+        const templatePath = selectedReportTemplate === "Template5" ? "attendance-report/format-c.html" : "attendance-report/";
+        let templateUrl = `${SUMMARY_BASE}/${templatePath}?${t4Params.toString()}`;
 
         setIsPdfDownloading(true);
         setPdfProgress(0);

@@ -61,7 +61,16 @@ class AttendanceLog extends Model
             return $this->belongsTo(Device::class, "DeviceID", "device_id");
         }
 
-        return $this->belongsTo(Device::class, "DeviceID", "device_id")->withDefault(["name" => "Mobile", "device_id" => "Mobile"]);
+        // Mobile logs have no Device row. Supplying a `function` default so shift
+        // controllers (Multi/Night/Split/Auto) accept mobile punches — their validFunctions
+        // arrays already include "Mobile"/"mobile" but the isset() check fails without
+        // this default, which is why mobile logs weren't contributing to attendance calc.
+        return $this->belongsTo(Device::class, "DeviceID", "device_id")->withDefault([
+            "name" => "Mobile",
+            "device_id" => "Mobile",
+            "function" => "Mobile",
+            "device_type" => "all",
+        ]);
 
         // if ($this->log_type == 'Mobile') {
         //     return $this->belongsTo(Device::class, "DeviceID", "device_id")->withDefault(["name" => "Mobile", "device_id" => "Mobile"]);

@@ -55,12 +55,12 @@ class GovernmentHolidaysController extends Controller
                     return $holidays;
                 }
 
-                // For UAE, try Google Calendar API
-                if ($countryCode === 'AE') {
-                    $holidays = $this->fetchFromGoogleCalendar($year);
-                    if (!empty($holidays)) {
-                        return $holidays;
-                    }
+                // Fall back to the sync-calendar Node service for any country it
+                // knows about (Google Calendar ICS feeds). Covers IN, GB, US, SA, etc.
+                // where Nager.Date returns 204.
+                $holidays = $this->fetchFromSyncCalendar($countryCode, $year);
+                if (!empty($holidays)) {
+                    return $holidays;
                 }
 
                 // No holidays found
@@ -131,21 +131,23 @@ class GovernmentHolidaysController extends Controller
     }
 
     /**
-     * Fetch UAE holidays from Google Calendar ICS feed
+     * Fetch holidays for the given country from the sync-calendar Node service,
+     * which proxies Google Calendar's regional holiday ICS feeds. Works for any
+     * country code the Node service has in its CALENDAR_IDS map (AE, IN, GB, ...).
      */
-    private function fetchFromGoogleCalendar($year)
+    private function fetchFromSyncCalendar($countryCode, $year)
     {
-        // Prefer the local Node sync-calendar service (already normalises + groups holidays).
         try {
-            $nodeUrl = env('SYNC_CALENDAR_URL', 'http://127.0.0.1:5780') . "/holidays/{$year}";
-            \Log::info("Fetching UAE holidays from sync-calendar Node service at {$nodeUrl}");
+            $nodeUrl = env('SYNC_CALENDAR_URL', 'http://127.0.0.1:5780')
+                . "/holidays/{$year}?country=" . urlencode($countryCode);
+            \Log::info("Fetching {$countryCode} holidays from sync-calendar: {$nodeUrl}");
 
             $response = Http::timeout(8)->get($nodeUrl);
 
             if ($response->successful()) {
                 $list = $response->json();
                 if (is_array($list) && !empty($list)) {
-                    $data = array_map(function ($h) {
+                    $data = array_map(function ($h) use ($countryCode) {
                         $start = $h['start_date'] ?? $h['date'] ?? null;
                         $end = $h['end_date'] ?? $start;
                         return [
@@ -155,23 +157,31 @@ class GovernmentHolidaysController extends Controller
                             'end_date' => $end,
                             'year' => (string) ($h['year'] ?? substr($start ?? '', 0, 4)),
                             'total_days' => (int) ($h['total_days'] ?? 1),
-                            'country_code' => 'AE',
+                            'country_code' => $countryCode,
                             'type' => 'government',
                             'is_public' => 'Public',
                         ];
                     }, $list);
 
-                    \Log::info("✅ Got " . count($data) . " UAE holidays from sync-calendar service");
+                    \Log::info("✅ Got " . count($data) . " {$countryCode} holidays from sync-calendar service");
                     return [
                         'success' => true,
                         'data' => $data,
-                        'country' => 'AE',
+                        'country' => $countryCode,
                         'source' => 'sync-calendar-service',
                     ];
                 }
+            } else {
+                \Log::info("sync-calendar responded " . $response->status() . " for {$countryCode}/{$year}");
             }
         } catch (\Exception $e) {
             \Log::warning("sync-calendar service fetch failed: " . $e->getMessage());
+        }
+
+        // Only fall through to the direct ICS (UAE-only legacy path) when the caller
+        // asked for UAE — other countries have no hardcoded ICS below this point.
+        if ($countryCode !== 'AE') {
+            return null;
         }
 
         // Fallback: fetch Google Calendar ICS directly

@@ -211,28 +211,42 @@ class AuthController extends Controller
         $user->permissions = $user->assigned_permissions ? $user->assigned_permissions->permission_names : [];
         unset($user->assigned_permissions);
 
-        // Add employee details for staff dashboard
-        if ($user->employee_id) {
-            $emp = Employee::withOut(['user'])
-                ->with([
-                    'branch:id,branch_name,country',
-                    'department:id,name',
-                    'designation:id,name',
-                    'schedule' => function ($q) {
-                        $q->select('id', 'employee_id', 'company_id', 'shift_id', 'shift_type_id')
-                          ->with('shift:id,name,shift_type_id,on_duty_time,off_duty_time,working_hours,late_time,days');
-                    },
-                ])
-                ->find($user->employee_id);
+        // Add employee details for staff dashboard. Prefer users.employee_id, but
+        // fall back to employees.user_id so legacy rows with employee_id=0 still resolve.
+        $empQuery = Employee::withOut(['user'])
+            ->with([
+                'branch:id,branch_name,country',
+                'department:id,name',
+                'designation:id,name',
+                'schedule' => function ($q) {
+                    $q->select('id', 'employee_id', 'company_id', 'shift_id', 'shift_type_id')
+                      ->with('shift:id,name,shift_type_id,on_duty_time,off_duty_time,working_hours,late_time,days');
+                },
+            ]);
 
-            if ($emp) {
-                $user->employee_name = trim($emp->first_name . ' ' . $emp->last_name);
-                $user->employee_profile_picture = $emp->profile_picture;
-                $user->system_user_id = $emp->system_user_id;
-                $user->branch_id = $emp->branch_id;
-                $user->branch = $emp->branch;
-                $user->employee_record = $emp;
+        $emp = null;
+        if ($user->employee_id) {
+            $emp = (clone $empQuery)->find($user->employee_id);
+        }
+        if (! $emp) {
+            $emp = (clone $empQuery)->where('user_id', $user->id)->first();
+            // Self-heal: backfill users.employee_id so future /me and login flows are O(1).
+            if ($emp && (int) $user->employee_id !== (int) $emp->id) {
+                User::where('id', $user->id)->update([
+                    'employee_id' => $emp->id,
+                    'branch_id'   => $user->branch_id ?: $emp->branch_id,
+                ]);
+                $user->employee_id = $emp->id;
             }
+        }
+
+        if ($emp) {
+            $user->employee_name = trim($emp->first_name . ' ' . $emp->last_name);
+            $user->employee_profile_picture = $emp->profile_picture;
+            $user->system_user_id = $emp->system_user_id;
+            $user->branch_id = $emp->branch_id;
+            $user->branch = $emp->branch;
+            $user->employee_record = $emp;
         }
 
         return ['user' => $user];

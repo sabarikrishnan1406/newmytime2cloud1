@@ -25,7 +25,7 @@ const SyncGrid = ({ sync, leftTitle, rightTitle, leftIcon, theme = 'slate' }) =>
       searchTerm={sync.searchTerm}
       onSearchChange={sync.setSearchTerm}
     />
-    <div className="lg:col-span-1 flex flex-col justify-center items-center h-[280px]">
+    <div className="lg:col-span-1 flex flex-col justify-center items-center h-[440px]">
       <div className="backdrop-blur-xl border border-border shadow-lg rounded-full px-2 py-4 flex flex-row lg:flex-col gap-2 items-center bg-white/20 dark:bg-slate-800/40">
         <ControlBtn onClick={sync.moveSelectedToRight} icon={ChevronRight} />
         <ControlBtn onClick={sync.moveAllToRight} icon={ChevronsRight} />

@@ -54,7 +54,7 @@ const ItemsList = ({
   const isIndigo = theme === 'indigo';
 
   return (
-    <div className="lg:col-span-5 flex flex-col h-[280px] bg-white/80 dark:bg-slate-900 backdrop-blur-xl rounded-xl shadow-lg border border-border overflow-hidden">
+    <div className="lg:col-span-5 flex flex-col h-[440px] bg-white/80 dark:bg-slate-900 backdrop-blur-xl rounded-xl shadow-lg border border-border overflow-hidden">
       <div className="px-4 py-3 bg-white/30 dark:bg-slate-900">
         <div className="flex items-center gap-3">
           <h2 className="font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2 shrink-0">

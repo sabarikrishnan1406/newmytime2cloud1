@@ -45,45 +45,16 @@ class AIBirthdayFeed extends Command
                 ->get();
 
             foreach ($employees as $employee) {
-                $alreadyExists = AIFeeds::where('company_id', $companyId)
-                    ->where('employee_id', $employee->id)
-                    ->where('type', 'birthday')
-                    ->whereDate('created_at', $todayDate)
-                    ->exists();
-
-                if ($alreadyExists) {
-                    $skippedCount++;
-                    continue;
-                }
-
-                $fullName = trim(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? ''));
-                $dob = $employee->date_of_birth ?? ($employee->emirate->date_of_birth ?? null);
-                $age = $dob ? Carbon::parse($dob)->age : null;
-
-                try {
-                    AIFeeds::create([
-                        'company_id' => $companyId,
-                        'employee_id' => $employee->id,
-                        'type' => 'birthday',
-                        'description' => "🎉 Today is {$fullName}'s Birthday! Wishing a year full of joy, success, and milestones.",
-                        'data' => [
-                            'employee_id' => $employee->id,
-                            'employee_code' => $employee->employee_id ?? null,
-                            'first_name' => $employee->first_name,
-                            'last_name' => $employee->last_name,
-                            'full_name' => $fullName,
-                            'profile_picture' => $employee->profile_picture ?? null,
-                            'department' => $employee->department->name ?? null,
-                            'branch' => $employee->branch->branch_name ?? null,
-                            'designation' => $employee->designation->name ?? null,
-                            'age' => $age,
-                        ],
-                    ]);
+                $status = self::insertForEmployee($employee);
+                if ($status === 'inserted') {
                     $insertedCount++;
+                    $fullName = trim(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? ''));
                     $logger->logOutPut($logFilePath, "Inserted birthday feed for {$fullName} (id={$employee->id})");
-                } catch (\Throwable $e) {
-                    $logger->logOutPut($logFilePath, "FAILED for employee id={$employee->id}: " . $e->getMessage());
-                    $this->error("Failed for employee {$employee->id}: " . $e->getMessage());
+                } elseif ($status === 'skipped') {
+                    $skippedCount++;
+                } else {
+                    $logger->logOutPut($logFilePath, "FAILED for employee id={$employee->id}: {$status}");
+                    $this->error("Failed for employee {$employee->id}: {$status}");
                 }
             }
         }
@@ -94,5 +65,63 @@ class AIBirthdayFeed extends Command
         $logger->logOutPut($logFilePath, "***** Cron ended: ai:birthday-feed *****");
 
         return 0;
+    }
+
+    /**
+     * Insert an ai_feeds 'birthday' row for the given employee if today is their
+     * birthday and a row does not already exist for today. Returns one of:
+     *   'inserted' | 'skipped' | 'not_birthday' | '<error message>'
+     *
+     * Used by the daily cron AND by EmployeeController on new-hire creation so the
+     * popup surfaces immediately without waiting for the next 00:05 run.
+     */
+    public static function insertForEmployee(Employee $employee): string
+    {
+        $dob = $employee->date_of_birth ?? ($employee->emirate->date_of_birth ?? null);
+        if (! $dob) return 'not_birthday';
+
+        $today = Carbon::now()->format('m-d');
+        // date_of_birth is stored as 'YYYY-MM-DD' string. Extract MM-DD.
+        $dobMd = is_string($dob) ? substr($dob, 5, 5) : Carbon::parse($dob)->format('m-d');
+        if ($dobMd !== $today) return 'not_birthday';
+
+        $exists = AIFeeds::where('company_id', $employee->company_id)
+            ->where('employee_id', $employee->id)
+            ->where('type', 'birthday')
+            ->whereDate('created_at', Carbon::now()->toDateString())
+            ->exists();
+        if ($exists) return 'skipped';
+
+        $fullName = trim(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? ''));
+        $age = Carbon::parse($dob)->age;
+
+        // Lazy-load relations that may not be eager-loaded by the caller.
+        $department = $employee->department ?? null;
+        $branch = $employee->branch ?? null;
+        $designation = $employee->designation ?? null;
+
+        try {
+            AIFeeds::create([
+                'company_id' => $employee->company_id,
+                'employee_id' => $employee->id,
+                'type' => 'birthday',
+                'description' => "🎉 Today is {$fullName}'s Birthday! Wishing a year full of joy, success, and milestones.",
+                'data' => [
+                    'employee_id' => $employee->id,
+                    'employee_code' => $employee->employee_id ?? null,
+                    'first_name' => $employee->first_name,
+                    'last_name' => $employee->last_name,
+                    'full_name' => $fullName,
+                    'profile_picture' => $employee->profile_picture ?? null,
+                    'department' => $department->name ?? null,
+                    'branch' => $branch->branch_name ?? null,
+                    'designation' => $designation->name ?? null,
+                    'age' => $age,
+                ],
+            ]);
+            return 'inserted';
+        } catch (\Throwable $e) {
+            return $e->getMessage();
+        }
     }
 }
