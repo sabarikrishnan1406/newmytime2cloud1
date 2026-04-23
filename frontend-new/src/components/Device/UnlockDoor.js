@@ -27,7 +27,7 @@ const PinEntryModal = ({ device_id, pinModal, setPinModal, onSuccess }) => {
         if (pin.length === pinLength) {
 
             try {
-                let { status } = await checkPin({ pin: pin.join('') });
+                let { status } = await checkPin({ device_id, pin: pin.join('') });
 
                 if (status) {
                     onSuccess(pin.join(''))

@@ -1,4 +1,8 @@
 <?php
+// Mobile app routes must register before company.php, because company.php defines
+// Route::apiResource('employee', ...) which greedily matches GET /employee/{id}
+// and would swallow /employee/location-log, treating "location-log" as an id.
+include('realtime_location.php');
 include('admin.php');
 include('company.php');
 include('pdf.php');
@@ -35,7 +39,6 @@ include('camera-stream.php');
 include('chat.php');
 include('payroll_management.php');
 include('visitor_management.php');
-include('realtime_location.php');
 include('clocking.php');
 include('change_request.php');
 

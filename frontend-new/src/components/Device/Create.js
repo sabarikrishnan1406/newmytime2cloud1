@@ -22,6 +22,7 @@ let defaultPayload = {
   function: "auto",
   device_type: "all",
   status_id: 1,
+  door_pin: "",
   ip: "0.0.0.0",
   camera_rtsp_ip: "",
   camera_rtsp_port: "554",
@@ -391,6 +392,21 @@ const DeviceCreate = ({ onSuccess = () => { } }) => {
                     value={form.status_id}
                     onChange={(value) => handleChange("status_id", value)}
                     items={STATUSSES} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-slate-400">
+                    Door PIN <span className="text-red-400">*</span>
+                  </label>
+                  <Input
+                    placeholder="4-digit PIN (e.g. 1234)"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={form.door_pin}
+                    onChange={(e) => handleChange("door_pin", e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  />
                 </div>
               </div>
             </div>

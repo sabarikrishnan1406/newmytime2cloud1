@@ -252,13 +252,7 @@ class SDKController extends Controller
 
     public function AddPerson(Request $request)
     {
-        if (!$request->company_id || empty($request->snList) || empty($request->personList)) {
-            return response()->json([
-                'message' => 'company_id, snList and personList are required',
-                'cameraResponse' => [], 'cameraResponse2' => [], 'deviceResponse' => [],
-            ], 400);
-        }
-        \Log::info('AddPerson payload', ['company_id' => $request->company_id, 'snList' => $request->snList, 'personList' => $request->personList]);
+
 
         $cameraResponse1 = "";
         $cameraResponse2 = "";
@@ -391,19 +385,7 @@ class SDKController extends Controller
     public function processUploadPersons($url, $device_id, $person)
     {
         $image = public_path() . "/media/employee/profile_picture/" . $person["profile_picture_raw"];
-        if (!file_exists($image)) {
-            $image = 'https://backend.mytime2cloud.com/media/employee/profile_picture/' . $person["profile_picture_raw"];
-        }
-        $imageData = @file_get_contents($image);
-        if ($imageData === false) {
-            return [
-                "name" => $person["name"],
-                "userCode" => $person["userCode"],
-                "device_id" => $device_id,
-                'status' => 'Image not found',
-                'sdk_response' => ["message" => "Image not found at {$image}"],
-            ];
-        }
+        $imageData = file_get_contents($image);
         $person["faceImage"] = base64_encode($imageData);
         // return AddPerson::dispatch($url, $person);
 
@@ -663,12 +645,7 @@ class SDKController extends Controller
         foreach ($filteredCameraArray as  $value) {
 
 
-            $camera2Object = new DeviceCameraModel2Controller(
-                $value['camera_sdk_url'],
-                '',
-                $value['admin_username'] ?? null,
-                $value['admin_password'] ?? null
-            );
+            $camera2Object = new DeviceCameraModel2Controller($value['camera_sdk_url']);
 
             if ($camera2Object->sxdmSn == '')
                 $camera2Object->sxdmSn = $value['device_id'];
@@ -690,58 +667,31 @@ class SDKController extends Controller
 
                     //$personProfilePic = $persons['faceImage'];
                     $personProfilePic = public_path('media/employee/profile_picture/' . $persons['profile_picture_raw']);
-
-                    if (!file_exists($personProfilePic)) {
-                        $personProfilePic = 'https://backend.mytime2cloud.com/media/employee/profile_picture/' . $persons['profile_picture_raw'];
-                    }
+                    //$personProfilePic = public_path('media/employee/profile_picture/' .  "1666962517.jpg");
 
                     if ($personProfilePic != '') {
-                        $imageData = @file_get_contents($personProfilePic);
-                        if ($imageData === false) {
-                            $message[] = [
-                                "name" => $persons['name'],
-                                "userCode" => $persons['userCode'],
-                                "device_id" => $value['device_id'],
-                                'status' => 'Image not found',
-                                'sdk_response' => ["message" => "Image not found at {$personProfilePic}"],
-                            ];
-                            continue;
-                        }
+                        //$imageData = file_get_contents($personProfilePic);
+                        $imageData = file_get_contents($personProfilePic);
                         $md5string = base64_encode($imageData);;
-                        $response = (new DeviceCameraModel2Controller(
-                            $value['camera_sdk_url'],
-                            '',
-                            $value['admin_username'] ?? null,
-                            $value['admin_password'] ?? null
-                        ))->pushUserToCameraDevice($persons['name'],  $persons['userCode'], $md5string, $value['device_id'], $persons, $sessionId);
+                        $response = (new DeviceCameraModel2Controller($value['camera_sdk_url']))->pushUserToCameraDevice($persons['name'],  $persons['userCode'], $md5string, $value['device_id'], $persons, $sessionId);
 
 
 
-                        $statusOut = 'Device unreachable';
-                        $msgOut = 'Device unreachable or login failed';
+                        //$responseArray = $response != '' ? json_decode($response) : '';
                         if ($response != '') {
-                            $decoded = json_decode($response);
-                            if (isset($decoded->errors[0]->detail)) {
-                                // Explicit error
-                                $statusOut = $decoded->errors[0]->detail;
-                                $msgOut = $decoded->errors[0]->detail;
-                            } elseif (is_object($decoded) || is_array($decoded)) {
-                                // Valid JSON response (no errors) → success
-                                $statusOut = 200;
-                                $msgOut = 'Person added';
-                            } else {
-                                // Non-JSON response (e.g. "Unable to Connect Device") → real failure
-                                $statusOut = 'Failed';
-                                $msgOut = is_string($response) && strlen($response) < 200 ? $response : 'Device returned unexpected response';
-                            }
+                            $response = json_decode($response);
+                            // $response = $response->errors[0]?->error_code == 33 ? 'Duplicate Image' : 'Try Again.';
+                            $response = $response->errors[0]->detail;
+                        } else {
+                            $response = 200;
                         }
 
                         $message[] =  [
                             "name" => $persons['name'],
                             "userCode" => $persons['userCode'],
                             "device_id" => $value['device_id'],
-                            'status' => $statusOut,
-                            'sdk_response' => ["message" => $msgOut],
+                            'status' => $response == '' ? '200' : $response,
+                            'sdk_response' => ["message" => $response == '' ? '200' : $response],
                         ];
 
 
@@ -756,12 +706,7 @@ class SDKController extends Controller
                                         $camera2Object->sxdmSn = $value['device_id'];
                                     // $sessionId = $camera2Object->getActiveSessionId();
 
-                                    $response = (new DeviceCameraModel2Controller(
-                            $value['camera_sdk_url'],
-                            '',
-                            $value['admin_username'] ?? null,
-                            $value['admin_password'] ?? null
-                        ))->pushUserToCameraDevice($persons['name'],  $persons['userCode'], $md5string, $value['device_id'], $persons, $sessionId);
+                                    $response = (new DeviceCameraModel2Controller($value['camera_sdk_url']))->pushUserToCameraDevice($persons['name'],  $persons['userCode'], $md5string, $value['device_id'], $persons, $sessionId);
                                 }
                             }
                         } catch (Exception $e) {
@@ -769,12 +714,7 @@ class SDKController extends Controller
                                 $camera2Object->sxdmSn = $value['device_id'];
                             //$sessionId = $camera2Object->getActiveSessionId();
 
-                            $response = (new DeviceCameraModel2Controller(
-                            $value['camera_sdk_url'],
-                            '',
-                            $value['admin_username'] ?? null,
-                            $value['admin_password'] ?? null
-                        ))->pushUserToCameraDevice($persons['name'],  $persons['userCode'], $md5string, $value['device_id'], $persons, $sessionId);
+                            $response = (new DeviceCameraModel2Controller($value['camera_sdk_url']))->pushUserToCameraDevice($persons['name'],  $persons['userCode'], $md5string, $value['device_id'], $persons, $sessionId);
                             //sleep(10);
                         }
                         //sleep(10);
@@ -1424,7 +1364,7 @@ class SDKController extends Controller
     private function sendRequest($url, $data = [])
     {
         try {
-            $response = Http::timeout(3600)
+            $response = Http::timeout(0)
                 ->withoutVerifying()
                 ->withHeaders([
                     'Content-Type' => 'application/json',
@@ -1440,5 +1380,3 @@ class SDKController extends Controller
         }
     }
 }
-
-//test

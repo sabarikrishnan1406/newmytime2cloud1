@@ -349,7 +349,6 @@ Route::get('get-company-contact-info/{url}', [CompanyController::class, 'contact
 
 
 
-Route::post('set-pin', [CompanyController::class, 'setPin']);
 Route::get('check-pin', [CompanyController::class, 'checkPin']);
 Route::post('update-logo-only', [CompanyController::class, 'updateLogoOnly']);
 Route::get('get-logo-only/{id}', [CompanyController::class, 'getLogoOnly']);

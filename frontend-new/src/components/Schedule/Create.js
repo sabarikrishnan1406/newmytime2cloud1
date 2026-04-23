@@ -67,6 +67,7 @@ const Create = ({ onSuccess = () => { } }) => {
     const [shifts, setShifts] = useState([]);
     const [from, setFrom] = useState(null);
     const [to, setTo] = useState(null);
+    const [isAutoShift, setIsAutoShift] = useState(false);
 
     const [branches, setBranches] = useState([]);
     const [departments, setDepartments] = useState([]);
@@ -114,6 +115,7 @@ const Create = ({ onSuccess = () => { } }) => {
             setPreviewShift(null);
             setFrom(null);
             setTo(null);
+            setIsAutoShift(false);
         }
     }, [open]);
 
@@ -173,7 +175,7 @@ const Create = ({ onSuccess = () => { } }) => {
                     "from_date": from,
                     "to_date": to,
                     "is_over_time": false,
-                    "isAutoShift": false
+                    "isAutoShift": isAutoShift
                 }
             ],
             "company_id": 0,

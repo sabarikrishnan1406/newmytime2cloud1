@@ -172,7 +172,7 @@ function LiveFeed({ branch_ids, department_ids }) {
           deviceName,
           deviceLocation,
           deviceFunction: resolvedFunction,
-          deviceType: e?.device?.device_type || (isMobileLog ? "Attendance" : "---"),
+          deviceType: e?.device?.device_type || (isMobileLog ? "all" : "---"),
           time: `${e.time}`,
           profile_picture: `${e.employee?.profile_picture}`,
           inout,
@@ -331,9 +331,16 @@ function LiveFeed({ branch_ids, department_ids }) {
             <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300">
               {item.deviceType === "all" ? "All" : item.deviceType === "Attendance" ? "Attendance" : item.deviceType === "Access Control" ? "Access Control" : item.deviceType || "—"}
             </div>
-            {/* Function - show device function as-is */}
+            {/* Function — collapse "option" → "Auto" for the dashboard display only.
+                Values we render: In / Out / Auto. Raw DB value is untouched. */}
             <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300">
-              {item.deviceFunction || "—"}
+              {(() => {
+                const f = String(item.deviceFunction || "").trim().toLowerCase();
+                if (f === "in") return "In";
+                if (f === "out") return "Out";
+                if (f === "option" || f === "auto" || f === "all" || f === "mobile") return "Auto";
+                return item.deviceFunction || "—";
+              })()}
             </div>
             {/* Time */}
             <div className="col-span-1 text-xs text-slate-600 dark:text-slate-300">

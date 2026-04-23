@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\RealTimeLocation\StoreRequest;
+use App\Models\Employee;
 use App\Models\RealTimeLocation;
 use Illuminate\Http\Request;
-use App\Http\Requests\RealTimeLocation\StoreRequest;
+use Illuminate\Support\Facades\Validator;
 
 class RealTimeLocationController extends Controller
 {
@@ -40,5 +42,130 @@ class RealTimeLocationController extends Controller
         } catch (\Throwable $th) {
             return $this->response('Realtime location cannot add.', null, false);
         }
+    }
+
+    /**
+     * Mobile-friendly GPS ingest.
+     *
+     * Accepts:
+     *   {
+     *     "employee_id": "<system_user_id>",
+     *     "company_id":  <int>,
+     *     "latitude":    <number>,
+     *     "longitude":   <number>,
+     *     "status":      "inside" | "outside",
+     *     "logged_at":   "<ISO timestamp>"
+     *   }
+     *
+     * Multi-tenant safety: rejects the request if the employee doesn't belong to the
+     * posted company_id, so company A's mobile app cannot write into company B's
+     * trail. Works across all companies/branches/departments — the employee lookup
+     * inherits whatever branch/dept the employee already has configured.
+     */
+    public function logLocation(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'employee_id' => 'required',
+            'company_id'  => 'required|integer',
+            'latitude'    => 'required|numeric',
+            'longitude'   => 'required|numeric',
+            'status'      => 'nullable|string|in:inside,outside',
+            'logged_at'   => 'nullable|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Validation failed',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $companyId  = (int) $request->company_id;
+        $employeeId = (string) $request->employee_id;
+
+        // Tenancy gate — the employee must exist under the posted company.
+        $employee = Employee::where('company_id', $companyId)
+            ->where('system_user_id', $employeeId)
+            ->first(['id', 'system_user_id', 'first_name', 'last_name', 'branch_id', 'department_id']);
+
+        if (! $employee) {
+            return response()->json([
+                'status'  => false,
+                'message' => "Employee {$employeeId} not found under company {$companyId}",
+            ], 404);
+        }
+
+        $loggedAt = $request->filled('logged_at')
+            ? date('Y-m-d H:i:s', strtotime($request->logged_at))
+            : date('Y-m-d H:i:s');
+
+        $row = RealTimeLocation::create([
+            'company_id' => $companyId,
+            'UserID'     => $employeeId,
+            'device_id'  => 'Mobile-' . $employeeId,
+            'latitude'   => (string) $request->latitude,
+            'longitude'  => (string) $request->longitude,
+            'status'     => $request->status,
+            'date'       => substr($loggedAt, 0, 10),
+            'datetime'   => $loggedAt,
+            'full_name'  => trim(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? '')),
+        ]);
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Location logged.',
+            'data'    => [
+                'id'          => $row->id,
+                'employee_id' => $employeeId,
+                'company_id'  => $companyId,
+                'branch_id'   => $employee->branch_id,
+                'status'      => $row->status,
+                'logged_at'   => $row->datetime,
+            ],
+        ]);
+    }
+
+    /**
+     * Read back trail rows for one employee on a given day — used by the mobile app
+     * (history view) and by admin reports. Same tenancy gate as logLocation.
+     */
+    public function listLocationLogs(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'employee_id' => 'required',
+            'company_id'  => 'required|integer',
+            'date'        => 'nullable|date',
+            'per_page'    => 'nullable|integer|min:1|max:5000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Validation failed',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $companyId  = (int) $request->company_id;
+        $employeeId = (string) $request->employee_id;
+
+        $exists = Employee::where('company_id', $companyId)
+            ->where('system_user_id', $employeeId)
+            ->exists();
+        if (! $exists) {
+            return response()->json([
+                'status'  => false,
+                'message' => "Employee {$employeeId} not found under company {$companyId}",
+            ], 404);
+        }
+
+        $date = $request->date ?? date('Y-m-d');
+
+        return RealTimeLocation::where('company_id', $companyId)
+            ->where('UserID', $employeeId)
+            ->where('date', $date)
+            ->orderBy('datetime', 'asc')
+            ->paginate($request->per_page ?? 500);
     }
 }

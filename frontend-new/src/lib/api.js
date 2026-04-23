@@ -257,11 +257,6 @@ export const storeEmployee = async (payload) => {
     return await axios.post(`${API_BASE}/employee-store-new`, { ...payload, company_id: user?.company_id || 0 });
 };
 
-export const setPin = async (payload) => {
-    const user = await getUser();
-    return await axios.post(`${API_BASE}/set-pin`, { ...payload, company_id: user?.company_id || 0 });
-};
-
 export const updateContact = async (payload) => {
     const user = await getUser();
     return await axios.post(`${API_BASE}/company/${user?.company_id}/update/contact`, payload);

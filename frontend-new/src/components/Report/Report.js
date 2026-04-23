@@ -403,7 +403,14 @@ export default function AttendanceTable() {
 
         try {
           if (selectedReportTemplate === 'Template3') {
-            await downloadDailyPDF({ date: fromDate, ...pdfParams });
+            // Daily report uses the same Format C blade as monthly detail,
+            // with report_mode='daily' so all employees flow on the same page.
+            await downloadMonthlyDetailPDF({
+              ...pdfParams,
+              from_date: fromDate,
+              to_date: fromDate,
+              report_mode: 'daily',
+            });
           } else if (selectedReportTemplate === 'Template2') {
             await downloadMonthlyDetailPDF(pdfParams);
           } else {

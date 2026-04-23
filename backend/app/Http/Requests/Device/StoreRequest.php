@@ -59,6 +59,7 @@ class StoreRequest extends FormRequest
             'camera_rtsp_path' => ['nullable', 'string', 'max:255'],
             'camera_username' => ['nullable', 'string', 'max:255'],
             'camera_password' => ['nullable', 'string', 'max:255'],
+            'door_pin' => ['required', 'digits:4'],
         ];
     }
 
@@ -71,6 +72,8 @@ class StoreRequest extends FormRequest
             'utc_time_zone' => 'Timezone is required',
             'device_type' => 'Device Type is required',
             'status_id' => 'Status is required',
+            'door_pin.required' => 'Door PIN is required',
+            'door_pin.digits'   => 'Door PIN must be exactly 4 digits',
         ];
     }
 }

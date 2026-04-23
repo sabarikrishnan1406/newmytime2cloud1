@@ -59,13 +59,45 @@ export default (deleteItem, editItem) => {
         {
             key: "days",
             header: "Days",
-            render: (e) => (
-                <p
-                    className="text-sm text-slate-600 dark:text-slate-300"
-                >
-                    {Array.isArray(e.days) ? e.days.join(", ") : e.days || "N/A"}
-                </p>
-            ),
+            render: (e) => {
+                // Map: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+                const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
+                const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+                let raw = e.days;
+                if (typeof raw === "string") {
+                    raw = raw.split(/[, ]+/).filter(Boolean);
+                }
+
+                if (!Array.isArray(raw) || raw.length === 0) {
+                    return <p className="text-sm text-slate-600 dark:text-slate-300">N/A</p>;
+                }
+
+                const selected = new Set(raw.map((v) => Number(v)));
+                // Display order: Mon, Tue, Wed, Thu, Fri, Sat, Sun
+                const order = [1, 2, 3, 4, 5, 6, 0];
+
+                return (
+                    <div className="flex items-center gap-1">
+                        {order.map((d) => {
+                            const isOn = selected.has(d);
+                            return (
+                                <span
+                                    key={d}
+                                    title={DAY_NAMES[d]}
+                                    className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold ${
+                                        isOn
+                                            ? "bg-primary text-white"
+                                            : "bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+                                    }`}
+                                >
+                                    {DAY_LETTERS[d]}
+                                </span>
+                            );
+                        })}
+                    </div>
+                );
+            },
         },
 
         {

@@ -16,15 +16,6 @@ use Illuminate\Support\Facades\Storage;
 
 class AttendanceLogCameraController extends Controller
 {
-    public static function normalizeLogTime($value)
-    {
-        $v = trim((string) $value);
-        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $v)) {
-            $v .= ':00';
-        }
-        return $v;
-    }
-
     public function index(AttendanceLog $model, Request $request)
     {
         return $model->filter($request)->paginate($request->per_page);
@@ -98,7 +89,7 @@ class AttendanceLogCameraController extends Controller
             $baseRecord = [
                 "UserID" => $columns[0],
                 "DeviceID" => $columns[1],
-                "LogTime" => self::normalizeLogTime(str_replace("T", " ", $columns[2])),
+                "LogTime" => str_replace("T", " ", $columns[2]),
                 "SerialNumber" => $columns[3],
                 "log_date_time" => str_replace("T", " ", $columns[2]),
                 "index_serial_number" => $columns[3],
@@ -244,84 +235,19 @@ class AttendanceLogCameraController extends Controller
             }
         }
 
-        Logger::channel("custom")->info(count($records) . ' new logs has been inserted.');
+        Logger::channel("camera_OX_900")->info(count($records) . ' new logs has been inserted.');
 
         try {
             DB::table('attendance_logs')->insertOrIgnore($records);
             Storage::put("camera/camera-logs-count-" . $result['date'] . ".txt", $result['totalLines']);
             return $this->getMeta("Sync Attenance Camera Logs", count($records) . " new logs has been inserted.\n");
         } catch (\Throwable $th) {
-            Logger::channel("custom")->error('Error occured while inserting logs.');
-            Logger::channel("custom")->error('Error Details: ' . $th);
+            Logger::channel("camera_OX_900")->error('Error occured while inserting logs.');
+            Logger::channel("camera_OX_900")->error('Error Details: ' . $th);
             return $this->getMeta("Sync Attenance Camera Logs", " Error occured.\n");
         }
     }
 
-    public function store_old()
-    {
-        $result = $this->handleFile();
-
-        if (array_key_exists("error", $result)) {
-            return $this->getMeta("Sync Attenance Camera Logs", $result["message"] . "\n");
-        }
-
-        $result["data"] = array_values(array_unique($result["data"]));
-
-        $records = [];
-
-        foreach ($result["data"] as $row) {
-            $columns = explode(',', $row);
-
-            // $isDuplicateLogTime = $this->verifyDuplicateLog($columns);
-            // $isDuplicateLogTime = false;
-            // if (!$isDuplicateLogTime) {
-            $datetime = substr(str_replace("T", " ", $columns[2]), 0, 16);
-
-
-            if ($datetime != 'undefined') {
-                $baseRecord = [
-                    "UserID" => $columns[0],
-                    "DeviceID" => $columns[1],
-                    "LogTime" => self::normalizeLogTime(str_replace("T", " ", $columns[2])),
-                    "SerialNumber" => $columns[3],
-                    "log_date_time" => str_replace("T", " ", $columns[2]),
-                    "index_serial_number" => $columns[3],
-                    "log_date" =>  explode('T', $columns[2])[0] ?? date("Y-m-d"),
-
-                    "source_info" => "Attendanc Log Camerea -> store",
-                    "log_type" => null,
-                ];
-
-
-                if (trim($columns[4])  == "Out" || trim($columns[4])  == "In") {
-                    $baseRecord["log_type"] = $columns[4];
-                }
-
-                // Add the record to the $records array
-                $records[] = $baseRecord;
-            }
-            // }
-        }
-
-        try {
-            AttendanceLog::insert($records);
-            // Logger::channel("custom")->info(count($records) . ' new logs has been inserted.');
-            Storage::put("camera/camera-logs-count-" . $result['date'] . ".txt", $result['totalLines']);
-            ///Storage::append("camera/camera-logs-count-" . $result['date'] . ".txt", $result['totalLines']);
-            return $this->getMeta("Sync Attenance Camera Logs", count($records) . " new logs has been inserted." . "\n");
-        } catch (\Throwable $th) {
-
-            Logger::channel("custom")->error('Error occured while inserting logs.');
-            Logger::channel("custom")->error('Error Details: ' . $th);
-            return $this->getMeta("Sync Attenance Camera Logs", " Error occured." . "\n");
-
-            // return $data = [
-            //     'title' => 'Quick action required',
-            //     'body' => $th,
-            // ];
-            // Mail::to(env("ADMIN_MAIL_RECEIVERS"))->send(new NotifyIfLogsDoesNotGenerate($data));
-        }
-    }
     public function verifyDuplicateLog($columns)
     {
 

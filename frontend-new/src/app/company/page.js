@@ -23,7 +23,6 @@ import License from "@/components/Company/License";
 import Document from "@/components/Company/Document/Index";
 import Password from "@/components/Company/Password";
 import Branch from "@/components/Branch/Page";
-import DoorPin from "@/components/Company/DoorPin";
 import ChangeLogo from "@/components/Company/ChangeLogo";
 import { getCompanyInfo, getVisitorLink } from "@/lib/api";
 import VisitorAppLink from "@/components/Company/VisitorAppLink";
@@ -37,7 +36,6 @@ const Company = () => {
   const [profileData, setProfileData] = useState(null);
   const [contactData, setContactData] = useState(null);
   const [licenseData, setLicenseData] = useState(null);
-  const [pin, setPin] = useState(null);
 
 
 
@@ -85,7 +83,6 @@ const Company = () => {
           setProfileData(profile);
           setContactData(result.contact);
           setLicenseData(result.trade_license);
-          setPin(result.pin);
         }
 
       } catch (error) {
@@ -145,7 +142,6 @@ const Company = () => {
     { id: 'tab-schedule', label: 'Working Schedule' },
     { id: 'tab-docs', label: 'Documents' },
     { id: 'tab-password', label: 'Password' },
-    { id: 'tab-pin', label: 'Door Pin' },
   ];
 
   const handleGoBack = () => router.push(`/`);
@@ -199,7 +195,6 @@ const Company = () => {
           {activeTab === 'tab-schedule' && <WorkingSchedule />}
           {activeTab === 'tab-docs' && <Document />}
           {activeTab === 'tab-password' && <Password />}
-          {activeTab === 'tab-pin' && <DoorPin pin={pin} isLoading={isLoading} />}
         </div>
       </div>
     </div>

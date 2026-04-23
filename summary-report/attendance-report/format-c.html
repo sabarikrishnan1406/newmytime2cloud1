@@ -141,11 +141,14 @@
         return h + 'h ' + (m < 10 ? '0' : '') + m + 'm';
       }
       function statusLabel(s) {
-        var map = { P:'PRESENT', A:'ABSENT', O:'WEEKOFF', L:'LEAVE', H:'HOLIDAY', M:'MISSING', LC:'LATE COMING', EG:'EARLY GOING', ME:'MANUAL' };
+        // EG (early going) and LC (late coming) read as PRESENT in the status
+        // column — the actual minutes are already in the Late In / Early Go
+        // columns, so showing them again as a status label is duplication.
+        var map = { P:'PRESENT', A:'ABSENT', O:'WEEKOFF', L:'LEAVE', H:'HOLIDAY', M:'MISSING', LC:'PRESENT', EG:'PRESENT', ME:'MANUAL' };
         return map[s] || s;
       }
       function statusClass(s) {
-        var map = { P:'status-present', A:'status-absent', O:'status-weekoff', L:'status-leave', H:'status-holiday', M:'status-missing', LC:'status-lc', EG:'status-eg', ME:'status-present' };
+        var map = { P:'status-present', A:'status-absent', O:'status-weekoff', L:'status-leave', H:'status-holiday', M:'status-missing', LC:'status-present', EG:'status-present', ME:'status-present' };
         return map[s] || '';
       }
       function rowIsAbsent(s) { return s === 'A'; }

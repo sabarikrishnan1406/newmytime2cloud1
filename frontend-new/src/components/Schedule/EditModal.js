@@ -7,7 +7,7 @@ import DateRangeSelect from "../ui/DateRange";
 import { getShiftDropDownList, getSchedulesByEmployee, storeSchedule } from "@/lib/api";
 import { notify, parseApiError } from "@/lib/utils";
 
-const emptyRow = () => ({ shiftId: null, from: null, to: null, isOverTime: false });
+const emptyRow = () => ({ shiftId: null, from: null, to: null, isOverTime: false, isAutoShift: false });
 
 const EditScheduleModal = ({ employee, open, onClose, onSuccess, viewOnly = false, onSwitchToView }) => {
   const [shifts, setShifts] = useState([]);
@@ -34,6 +34,7 @@ const EditScheduleModal = ({ employee, open, onClose, onSuccess, viewOnly = fals
                 from: s.from_date || null,
                 to: s.to_date || null,
                 isOverTime: s.is_over_time || false,
+                isAutoShift: !!s.isAutoShift,
               }));
               setRows(mapped);
             } else {
@@ -53,6 +54,7 @@ const EditScheduleModal = ({ employee, open, onClose, onSuccess, viewOnly = fals
                 from: s.from_date || null,
                 to: s.to_date || null,
                 isOverTime: s.is_over_time || s.isOverTime || false,
+                isAutoShift: !!(s.isAutoShift ?? s.is_auto_shift ?? false),
               }));
               setRows(mapped);
             } else {
@@ -123,7 +125,7 @@ const EditScheduleModal = ({ employee, open, onClose, onSuccess, viewOnly = fals
           from_date: row.from,
           to_date: row.to,
           is_over_time: row.isOverTime,
-          isAutoShift: false,
+          isAutoShift: row.isAutoShift,
         };
       });
 
@@ -225,6 +227,16 @@ const EditScheduleModal = ({ employee, open, onClose, onSuccess, viewOnly = fals
                       className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors duration-300 ${row.isOverTime ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}
                     >
                       <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-300 ${row.isOverTime ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 pb-1">
+                    <span className="text-xs text-slate-500">Auto</span>
+                    <button
+                      type="button"
+                      onClick={() => !viewOnly && updateRow(index, "isAutoShift", !row.isAutoShift)}
+                      className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors duration-300 ${row.isAutoShift ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}
+                    >
+                      <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-300 ${row.isAutoShift ? 'translate-x-5' : 'translate-x-0.5'}`} />
                     </button>
                   </div>
                   {!viewOnly && rows.length > 1 && (

@@ -709,61 +709,66 @@ class DeviceCameraModel2Controller extends Controller
             $baseUrl = 'http://' . $baseUrl;
         }
 
-        // Try challenge-response auth (direct-to-device)
-        $curl = curl_init();
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $baseUrl . '/api/auth/login/challenge?username=' . urlencode($username),
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 8,
-            CURLOPT_CONNECTTIMEOUT => 5,
-        ]);
-        $chResp = curl_exec($curl);
-        curl_close($curl);
+        // Helper — runs the full challenge → hash → login handshake and returns the
+        // logged-in session_id (or '' on failure). Optionally sends sxdmToken/sxdmSn
+        // headers needed by the gateway to authorise the request path.
+        $auth = function ($gatewayHeaders) use ($baseUrl, $username, $password) {
+            $baseHeaders = array_merge(['Content-Type: application/json'], $gatewayHeaders);
 
-        $chResp = json_decode($chResp, true);
-        if (isset($chResp['session_id'], $chResp['challenge'], $chResp['salt'])) {
+            $curl = curl_init();
+            curl_setopt_array($curl, [
+                CURLOPT_URL => $baseUrl . '/api/auth/login/challenge?username=' . urlencode($username),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 8,
+                CURLOPT_CONNECTTIMEOUT => 5,
+                CURLOPT_HTTPHEADER => $gatewayHeaders,
+            ]);
+            $chResp = json_decode((string) curl_exec($curl), true);
+            curl_close($curl);
+            if (! isset($chResp['session_id'], $chResp['challenge'], $chResp['salt'])) {
+                return '';
+            }
+
             $hashed = hash('sha256', $password . $chResp['salt'] . $chResp['challenge']);
             $body = json_encode([
                 'session_id' => $chResp['session_id'],
-                'username' => $username,
-                'password' => $hashed,
+                'username'   => $username,
+                'password'   => $hashed,
             ]);
+
             $curl = curl_init();
             curl_setopt_array($curl, [
-                CURLOPT_URL => $baseUrl . '/api/auth/login',
+                CURLOPT_URL            => $baseUrl . '/api/auth/login',
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => $body,
-                CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-                CURLOPT_TIMEOUT => 8,
-            CURLOPT_CONNECTTIMEOUT => 5,
+                CURLOPT_POST           => true,
+                CURLOPT_POSTFIELDS     => $body,
+                CURLOPT_HTTPHEADER     => $baseHeaders,
+                CURLOPT_TIMEOUT        => 8,
+                CURLOPT_CONNECTTIMEOUT => 5,
             ]);
-            $loginResp = curl_exec($curl);
+            $loginResp = json_decode((string) curl_exec($curl), true);
             curl_close($curl);
-            $loginResp = json_decode($loginResp, true);
-            if (isset($loginResp['status']) && $loginResp['status'] == 200 && isset($loginResp['session_id'])) {
+
+            if (isset($loginResp['status'], $loginResp['session_id']) && $loginResp['status'] == 200) {
                 return $loginResp['session_id'];
             }
-        }
+            return '';
+        };
 
-        // Fallback: legacy gateway auth (sxdmToken header)
-        $curl = curl_init();
-        curl_setopt_array($curl, [
-            CURLOPT_URL => $baseUrl . '/api/auth/login/challenge?username=admin',
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 8,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_CUSTOMREQUEST => 'GET',
-            CURLOPT_HTTPHEADER => [
-                'sxdmToken:' . $this->sxdmToken,
-                'sxdmSn:' . $this->sxdmSn,
-            ],
-        ]);
-        $gwResp = curl_exec($curl);
-        curl_close($curl);
-        $gwResp = json_decode($gwResp, true);
-        if (isset($gwResp['session_id'])) {
-            return $gwResp['session_id'];
+        // 1. Direct-to-device (no gateway headers) — works when the SDK is running
+        // on a standalone device that doesn't enforce sxdmToken auth.
+        $sid = $auth([]);
+        if ($sid !== '') return $sid;
+
+        // 2. Gateway path — the shared SDK at 139.59.69.241:8888 rejects the challenge
+        // outright without these headers. Re-run the full handshake with them so we
+        // return a *logged-in* session_id, not the pre-login one from the challenge.
+        if ($this->sxdmToken !== '' && $this->sxdmSn !== '') {
+            $sid = $auth([
+                'sxdmToken: ' . $this->sxdmToken,
+                'sxdmSn: ' . $this->sxdmSn,
+            ]);
+            if ($sid !== '') return $sid;
         }
 
         return '';

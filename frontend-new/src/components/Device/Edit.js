@@ -378,6 +378,21 @@ const DeviceEdit = ({ open, setOpen, defaultPayload, onSuccess = () => { } }) =>
                                         items={STATUSSES} />
                                 </div>
                             </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-1.5">
+                                    <label className="block text-sm font-medium text-slate-400">
+                                        Door PIN <span className="text-red-400">*</span>
+                                    </label>
+                                    <Input
+                                        placeholder="4-digit PIN (e.g. 1234)"
+                                        inputMode="numeric"
+                                        maxLength={4}
+                                        value={form.door_pin || ""}
+                                        onChange={(e) => handleChange("door_pin", e.target.value.replace(/\D/g, "").slice(0, 4))}
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         {/* Action Buttons */}
