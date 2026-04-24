@@ -149,7 +149,7 @@ export default function Header() {
   return (
     <>
       <LiveAttendanceNotifier />
-      <header className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 border-b border-gray-100 dark:border-slate-800 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] z-20">
+      <header className="flex items-center justify-between bg-slate-900 p-3 border-b border-slate-800 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1)] z-20">
         <div className="flex items-center space-x-4">
           <div className="flex items-center">
             <img alt="MyTime Cloud logo" className="h-10" src="/logo22.png" />
@@ -160,8 +160,8 @@ export default function Header() {
           {filteredLinks.map((link) => {
             const isActive = link.href === pathname;
             const baseClasses = "text-sm font-medium";
-            const activeClasses = "text-primary dark:text-purple-400 rounded-md";
-            const inactiveClasses = "text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400";
+            const activeClasses = "text-purple-400 rounded-md";
+            const inactiveClasses = "text-gray-300 hover:text-purple-400";
 
             return (
               <Link
@@ -184,7 +184,7 @@ export default function Header() {
                   setShowDropdown((prev) => !prev);
                   setNotificationCount(0);
                 }}
-                className="relative p-2 text-slate-500 hover:text-primary transition-colors"
+                className="relative p-2 text-slate-400 hover:text-primary transition-colors"
                 title="Notifications"
               >
                 <Bell
@@ -259,7 +259,7 @@ export default function Header() {
             </div>
 
             <button onClick={() => router.push("/live-tracker")}
-              className="relative p-2 text-slate-500 hover:text-primary transition-colors"
+              className="relative p-2 text-slate-400 hover:text-primary transition-colors"
               title="Watch Tutorial"
             >
               <LocateFixed size={22} strokeWidth={1.8} />
@@ -267,7 +267,7 @@ export default function Header() {
             </button>
 
             <button
-              className="relative p-2 text-slate-500 hover:text-red-600 transition-colors"
+              className="relative p-2 text-slate-400 hover:text-red-600 transition-colors"
               title="Watch Tutorial"
             >
               <PlayCircle size={22} strokeWidth={1.8} />
@@ -275,7 +275,7 @@ export default function Header() {
 
             <button
               onClick={() => setIsDark(!isDark)}
-              className="relative p-2 text-slate-500 hover:text-amber-500 dark:text-slate-400 dark:hover:text-gold-glow transition-all duration-300 active-pop"
+              className="relative p-2 text-slate-400 hover:text-gold-glow transition-all duration-300 active-pop"
               title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               <span className="inline-flex transition-transform duration-500 rotate-0 dark:rotate-[360deg]">
@@ -290,10 +290,10 @@ export default function Header() {
             </button>
 
             <div className="text-right hidden sm:block">
-              <h2 className="text-sm font-bold text-gray-600 dark:text-gray-300 font-display">
+              <h2 className="text-sm font-bold text-gray-300 font-display">
                 {time}
               </h2>
-              <p className="text-[10px] text-gray-600 dark:text-gray-300">
+              <p className="text-[10px] text-gray-300">
                 {date}
               </p>
             </div>

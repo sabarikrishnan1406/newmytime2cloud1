@@ -13,7 +13,9 @@ export default function LayoutShell({ children }) {
   // Normalize: strip trailing slash so checks work whether `trailingSlash` is on or off.
   const path = pathname?.replace(/\/$/, "") || "";
   const isStaffRoute = path.startsWith("/staff");
-  const isLoginRoute = path === "/login" || path.startsWith("/login/");
+  // Only the actual /login screen renders without the admin shell.
+  // Sub-routes like /login/manager-login are admin CRUD pages and need the header/sidebar.
+  const isLoginRoute = path === "/login";
 
   // Staff and login pages render their own layout
   if (isStaffRoute || isLoginRoute) {

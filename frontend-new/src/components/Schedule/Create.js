@@ -429,6 +429,22 @@ const Create = ({ onSuccess = () => { } }) => {
                                                 </div>
                                             </div>
 
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-slate-700 dark:text-gray-200 ml-1">Auto Shift</label>
+                                                <div className="flex items-center gap-3 pt-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsAutoShift(v => !v)}
+                                                        className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors duration-300 ${isAutoShift ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-700'}`}
+                                                    >
+                                                        <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-300 ${isAutoShift ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                                    </button>
+                                                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                                                        {isAutoShift ? "Enabled — system picks shift per day based on punches" : "Disabled — use the selected shift every day"}
+                                                    </span>
+                                                </div>
+                                            </div>
+
                                         </div>
                                     </section>
 

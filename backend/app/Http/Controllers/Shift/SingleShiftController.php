@@ -120,6 +120,11 @@ class SingleShiftController extends Controller
                 return $beginning_in && $beginning_out && $record["time"] >= $beginning_in && $record["time"] <= $beginning_out;
             });
 
+            // Auto-shift only: fallback firstLog to first chronological log if strict window missed.
+            if ($isRequestFromAutoshift && !$firstLog && !empty($logs)) {
+                $firstLog = collect($logs)->first();
+            }
+
             // Last log: strictly from OUT window if defined
             $sampleShift = collect($logs)->first()["schedule"]["shift"] ?? [];
             $outStart = $sampleShift["ending_in"] ?? "---";
@@ -134,6 +139,17 @@ class SingleShiftController extends Controller
                 $lastLog = collect($logs)->last(function ($record) {
                     return in_array($record["log_type"], ["Out", "out", "Auto", "auto", null], true);
                 });
+            }
+
+            // Auto-shift only: fallback lastLog must be strictly AFTER IN window ends
+            // (prevents morning-only punches like 08:39+08:43 being paired as IN/OUT).
+            if ($isRequestFromAutoshift && !$lastLog && !empty($logs)) {
+                $inWindowEnd = $sampleShift["beginning_out"] ?? null;
+                if ($inWindowEnd && $inWindowEnd !== "---") {
+                    $lastLog = collect($logs)->last(function ($record) use ($inWindowEnd) {
+                        return $record["time"] > $inWindowEnd;
+                    });
+                }
             }
 
             $schedules = ScheduleEmployee::where("company_id", $params["company_id"])->where("employee_id", $key)->get()->toArray();

@@ -81,6 +81,10 @@ class ReportNotificationCrons extends Command
                 $company_id = $model->company->id;
                 $branchId = $model->branch_id;
 
+                // For Daily-frequency notifications, use the new consolidated daily report
+                // (one PDF per branch). For other frequencies, use the legacy per-shift-type files.
+                $isDaily = strcasecmp($model->frequency ?? '', 'Daily') === 0;
+                $filesForThisModel = $isDaily ? ['daily'] : $files;
 
 
                 foreach ($model->managers as $key => $manager) {
@@ -95,21 +99,23 @@ class ReportNotificationCrons extends Command
                             // }
 
                             Mail::to($email)
-                                ->queue(new ReportNotificationMail($model, $manager, $files));
+                                ->queue(new ReportNotificationMail($model, $manager, $filesForThisModel));
                         }
 
                         if (in_array("Whatsapp", $model->mediums ?? [])) {
                             if (!$accounts || !is_array($accounts) || empty($accounts[0]['clientId'])) {
                                 $this->info("No Whatsapp Client found.");
                             } else {
-                                foreach ($files as $file) {
-                                    $relativePath = "pdf/$yesterday/{$company_id}/summary_report_{$branchId}_{$file}.pdf";
+                                foreach ($filesForThisModel as $file) {
+                                    $relativePath = $isDaily
+                                        ? "pdf/$yesterday/{$company_id}/daily_report_{$branchId}.pdf"
+                                        : "pdf/$yesterday/{$company_id}/summary_report_{$branchId}_{$file}.pdf";
                                     $filePath = storage_path("app/public/" . $relativePath);
                                     $link = env("BASE_URL") . "/storage/" . $relativePath;
 
                                     if (file_exists($filePath)) {
 
-                                        $whatsappMessage = "*Summary Attendance Report*\n\n"
+                                        $whatsappMessage = ($isDaily ? "*Daily Attendance Report*\n\n" : "*Summary Attendance Report*\n\n")
                                             . "Your report is ready for download.\n"
                                             . "Download Link: $link";
 

@@ -126,12 +126,43 @@ app.post("/pdf", async (req, res) => {
     });
     console.log("Page info:", JSON.stringify(info));
 
-    const pdf = await page.pdf({
+    const isDailyReport = url.includes("daily-report");
+    // For daily-report, use the @page margins from the HTML (they reserve room for footer).
+    // For everything else, keep the legacy 5mm margins.
+    const pdfOptions = {
       format: format || "A4",
       landscape: isLandscapeView,
       printBackground: true,
-      margin: { top: "5mm", bottom: "5mm", left: "5mm", right: "5mm" },
-    });
+      preferCSSPageSize: isDailyReport,
+      margin: isDailyReport
+        ? undefined
+        : { top: "5mm", bottom: "5mm", left: "5mm", right: "5mm" },
+    };
+    if (isDailyReport) {
+      pdfOptions.displayHeaderFooter = true;
+      pdfOptions.headerTemplate = '<div></div>';
+      pdfOptions.footerTemplate = `
+        <div style="font-size: 8pt; color: #6b7280; width: 100%; padding: 0 10mm; font-family: Helvetica, Arial, sans-serif;">
+          <div style="border-top: 1px solid #64748b; padding-top: 5px; width: 100%;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="text-align: left; width: 40%;">
+                  <span style="color:#16a34a">P</span> = Present,
+                  <span style="color:#dc2626">A</span> = Absent,
+                  <span style="color:#2563eb">O</span> = WeekOff,
+                  <span style="color:#ca8a04">L</span> = Leave
+                </td>
+                <td style="text-align: center; width: 30%;">Powered by: <strong>MyTime2Cloud</strong></td>
+                <td style="text-align: right; width: 30%;">
+                  Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+    const pdf = await page.pdf(pdfOptions);
 
     console.log("PDF generated:", pdf.length, "bytes");
     res.set({ "Content-Type": "application/pdf", "Content-Disposition": "attachment" });

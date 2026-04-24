@@ -21,6 +21,9 @@ use App\Http\Controllers\Reports\AttendanceReportController;
 Route::get('/report/daily_pdf', [AttendanceReportController::class, 'dailyPDF']);
 Route::get('/report/monthly_detail_pdf', [AttendanceReportController::class, 'monthlyDetailPDF']);
 Route::get('/report/monthly_grid_pdf', [AttendanceReportController::class, 'monthlyGridPDF']);
+// Daily report data for Puppeteer HTML template (returns JSON, not a PDF)
+Route::get('/report/daily_json', [AttendanceReportController::class, 'dailyReportJson']);
+Route::post('/report/daily_json', [AttendanceReportController::class, 'dailyReportJson']);
 
 
 Route::get('/process_reports', [DailyController::class, 'process_reports']);

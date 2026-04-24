@@ -182,7 +182,16 @@ export default function LiveTeamStatus() {
           ...payloadData,
           lat: payloadData.lat ?? payloadData.latitude,
           lng: payloadData.lng ?? payloadData.lon ?? payloadData.longitude ?? payloadData.long,
-          user_id: payloadData.user_id ?? payloadData.employee_id ?? payloadData.employeeId ?? payloadData.id,
+          user_id: payloadData.user_id
+            ?? payloadData.employee_id
+            ?? payloadData.employeeId
+            ?? payloadData.UserID
+            ?? payloadData.userId,
+          name: payloadData.name
+            ?? payloadData.personName
+            ?? payloadData.full_name
+            ?? payloadData.fullName
+            ?? payloadData.short_name,
         };
 
         console.log(normalizedPayload);
@@ -416,28 +425,27 @@ export default function LiveTeamStatus() {
 
     const fetchInitialLocations = async () => {
       try {
-        const response = await fetch(`https://backend.mytime2cloud.com/api/user-locations?company_id=${targetCompanyId}`);
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://v2backend.mytime2cloud.com/api";
+        const response = await fetch(`${apiBase}/realtime_location?company_id=${targetCompanyId}`);
         if (!response.ok) throw new Error("Failed to fetch initial locations");
 
         const result = await response.json();
+        const rows = Array.isArray(result) ? result : (Array.isArray(result?.data) ? result.data : []);
 
-        if (Array.isArray(result)) {
-          const initialEmployees = result.map(item => ({
-            // Converting string IDs/Coords to Numbers to ensure map math works
-            id: item.user_id,
-            name: item.user_name || `Employee ${item.user_id}`,
+        if (rows.length) {
+          const initialEmployees = rows.map(item => ({
+            id: item.UserID,
+            name: item.full_name || `Employee ${item.UserID}`,
             location: "Last known location",
             mapPos: { top: "50%", left: "50%" },
-            lat: parseFloat(item.lat),
-            lng: parseFloat(item.lon), // Note: your API uses "lon"
+            lat: parseFloat(item.latitude),
+            lng: parseFloat(item.longitude),
             avatar: item.avatar || "",
-            timestamp: item.recorded_at,
+            timestamp: item.datetime,
           }));
 
           setEmployeesData(initialEmployees);
 
-          // Update the lastPositionsRef so the movement logic doesn't 
-          // trigger a "flicker" immediately on load
           initialEmployees.forEach(emp => {
             lastPositionsRef.current[emp.id] = { lat: emp.lat, lng: emp.lng };
           });

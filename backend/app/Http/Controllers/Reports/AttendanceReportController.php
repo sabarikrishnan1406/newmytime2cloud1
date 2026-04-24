@@ -43,6 +43,7 @@ class AttendanceReportController extends Controller
         $shiftTypeId = $request->shift_type_id;
         $isMultiShift = in_array($shiftTypeId, [2, '2']);
         $isSplitShift = in_array($shiftTypeId, [5, '5']);
+        $reportMode = $request->input('report_mode', 'monthly');
 
         $selectColumns = [
             'id', 'employee_id', 'company_id', 'date', 'shift_id', 'shift_type_id',
@@ -50,7 +51,7 @@ class AttendanceReportController extends Controller
             'status', 'device_id_in', 'device_id_out', 'is_manual_entry'
         ];
 
-        if ($isMultiShift || $isSplitShift) {
+        if ($isMultiShift || $isSplitShift || $reportMode === 'daily') {
             $selectColumns[] = 'logs';
         }
 
@@ -191,9 +192,13 @@ class AttendanceReportController extends Controller
 
         $filters = $this->buildFilterLabels($request, null, $fromDate, $toDate);
 
-        $reportMode = $request->input('report_mode', 'monthly');
+        // Daily mode: branch-grouped, shift-type-sectioned (single+night | split | multi)
+        // Monthly mode: per-employee block (existing behaviour)
+        $viewName = $reportMode === 'daily'
+            ? 'pdf.reports.daily-detail'
+            : 'pdf.reports.monthly-detail';
 
-        $pdf = Pdf::loadView('pdf.reports.monthly-detail', compact(
+        $pdf = Pdf::loadView($viewName, compact(
             'company', 'employees', 'fromDate', 'toDate', 'filters', 'isMultiShift', 'isSplitShift', 'reportMode'
         ));
 
@@ -228,6 +233,236 @@ class AttendanceReportController extends Controller
         return response($pdf->getDomPDF()->output(), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
+    }
+
+    /**
+     * Daily Attendance Report JSON — for Puppeteer HTML template
+     *
+     * Returns employees grouped by branch, then by shift category
+     * (single_night | split | multi). Auto shift is routed by pair count.
+     */
+    public function dailyReportJson(Request $request)
+    {
+        set_time_limit(180);
+        ini_set('memory_limit', '512M');
+
+        $request->merge([
+            'from_date' => $request->date ?? $request->from_date ?? date('Y-m-d'),
+            'to_date'   => $request->date ?? $request->to_date   ?? date('Y-m-d'),
+            'report_mode' => 'daily',
+        ]);
+
+        $companyId = $request->company_id;
+        $fromDate  = $request->from_date;
+
+        $company = Company::select('id', 'name', 'logo')->find($companyId);
+
+        $selectColumns = [
+            'id', 'employee_id', 'company_id', 'date', 'shift_id', 'shift_type_id',
+            'in', 'out', 'total_hrs', 'ot', 'late_coming', 'early_going',
+            'status', 'device_id_in', 'device_id_out', 'is_manual_entry', 'logs',
+        ];
+
+        $query = Attendance::select($selectColumns)
+            ->where('company_id', $companyId)
+            ->whereBetween('date', [$fromDate, $fromDate])
+            ->with([
+                'employee' => function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId)
+                      ->select('system_user_id', 'first_name', 'last_name', 'employee_id', 'department_id', 'branch_id', 'profile_picture', 'company_id')
+                      ->withOut('schedule');
+                },
+                'employee.department:id,name',
+                'employee.branch:id,branch_name',
+                'shift:id,name,on_duty_time,off_duty_time',
+                'shift_type:id,name',
+                'device_in:device_id,name',
+                'device_out:device_id,name',
+            ]);
+
+        if ($request->filled('branch_ids')) {
+            $branchIds = is_array($request->branch_ids) ? $request->branch_ids : explode(',', $request->branch_ids);
+            $query->whereHas('employee', fn($q) => $q->whereIn('branch_id', $branchIds));
+        }
+        if ($request->filled('department_ids')) {
+            $deptIds = is_array($request->department_ids) ? $request->department_ids : explode(',', $request->department_ids);
+            $query->whereHas('employee', fn($q) => $q->whereIn('department_id', $deptIds));
+        }
+        if ($request->filled('employee_ids')) {
+            $empIds = is_array($request->employee_ids) ? $request->employee_ids : explode(',', $request->employee_ids);
+            $query->whereIn('employee_id', $empIds);
+        }
+
+        $records = $query->orderBy('employee_id')->get();
+        AttendanceWeekOffService::recalculateForReport($records, (int) $companyId);
+
+        $shiftTypeMap = [1 => 'FILO', 2 => 'Multi', 3 => 'Auto', 4 => 'Night', 5 => 'Split', 6 => 'Single'];
+
+        // Category router: same logic as the Blade template
+        $categorize = function ($typeLabel, $logs, $in, $out) {
+            if (in_array($typeLabel, ['Single', 'Night', 'FILO'])) return 'single_night';
+            if ($typeLabel === 'Split') return 'split';
+            if ($typeLabel === 'Multi') return 'multi';
+            if ($typeLabel === 'Auto') {
+                $pairs = 0;
+                foreach (($logs ?? []) as $l) {
+                    $li = $l['in']  ?? null;
+                    $lo = $l['out'] ?? null;
+                    if (($li && $li !== '---') || ($lo && $lo !== '---')) $pairs++;
+                }
+                if ($pairs === 0 && (($in && $in !== '---') || ($out && $out !== '---'))) $pairs = 1;
+                if ($pairs <= 1) return 'single_night';
+                if ($pairs === 2) return 'split';
+                return 'multi';
+            }
+            return 'single_night';
+        };
+
+        // Group by branch, then by section
+        $byBranch = [];
+        foreach ($records as $r) {
+            $emp = $r->employee;
+            if (!$emp) continue;
+
+            $branchId   = $emp->branch_id ?? 0;
+            $branchName = $emp->branch->branch_name ?? 'No Branch';
+
+            // Compute missing-status correction (same as existing logic)
+            $status  = $r->status ?? '---';
+            $in      = $r->in  ?? '---';
+            $out     = $r->out ?? '---';
+            $logs    = $r->logs ?? [];
+
+            $hasIn  = $in  !== '---' && $in  !== '' && $in  !== null;
+            $hasOut = $out !== '---' && $out !== '' && $out !== null;
+
+            $typeLabel = $shiftTypeMap[$r->shift_type_id] ?? '---';
+            $isMulti = in_array($r->shift_type_id, [2, 3]); // Multi + Auto
+            $isSplit = $r->shift_type_id === 5;
+
+            if (!$isMulti && !$isSplit) {
+                if (($hasIn !== $hasOut) && in_array($status, ['P', 'A', 'LC', 'EG', '---'])) {
+                    $status = 'M';
+                }
+            } else {
+                foreach ($logs as $log) {
+                    $lhI = ($log['in']  ?? '---') !== '---' && !empty($log['in']);
+                    $lhO = ($log['out'] ?? '---') !== '---' && !empty($log['out']);
+                    if ($lhI !== $lhO && in_array($status, ['P', 'A', 'LC', 'EG', '---'])) {
+                        $status = 'M';
+                        break;
+                    }
+                }
+            }
+
+            $category = $categorize($typeLabel, $logs, $in, $out);
+
+            if (!isset($byBranch[$branchId])) {
+                $byBranch[$branchId] = [
+                    'branch_id'   => $branchId,
+                    'branch_name' => $branchName,
+                    'sections'    => [
+                        'single_night' => ['employees' => []],
+                        'split'        => ['employees' => []],
+                        'multi'        => ['employees' => []],
+                    ],
+                ];
+            }
+
+            // Build "HH:MM - HH:MM" from shift's on_duty_time/off_duty_time (strip seconds)
+            $shiftTime = null;
+            if ($r->shift) {
+                $bi = $r->shift->on_duty_time  ?? null;
+                $bo = $r->shift->off_duty_time ?? null;
+                if ($bi && $bo) {
+                    $shiftTime = substr($bi, 0, 5) . ' - ' . substr($bo, 0, 5);
+                }
+            }
+
+            // Bottom line: combine shift name + type, e.g. "Day Duty single", "Night Shift"
+            $shiftName = $r->shift->name ?? null;
+            $bottomLine = trim(($shiftName ?? '') . ' ' . ($typeLabel === '---' ? '' : $typeLabel));
+            if ($bottomLine === '') $bottomLine = '---';
+
+            $byBranch[$branchId]['sections'][$category]['employees'][] = [
+                'name'        => trim(($emp->first_name ?? '') . ' ' . ($emp->last_name ?? '')) ?: '---',
+                'employee_id' => $emp->employee_id ?? '---',
+                'department'  => $emp->department->name ?? null,
+                'profile'     => $emp->profile_picture ?? null,
+                'shift_time'  => $shiftTime,           // top line — "08:00 - 17:00" or null
+                'shift_name'  => $shiftName ?? '---',  // raw shift name (kept for compatibility)
+                'shift_label' => $bottomLine,          // bottom line — "Day Duty single" / "Night Shift"
+                'shift_type'  => $typeLabel,
+                'in'          => $hasIn  ? $in  : null,
+                'out'         => $hasOut ? $out : null,
+                'device_in'   => $r->device_in->name  ?? null,
+                'device_out'  => $r->device_out->name ?? null,
+                'late'        => ($r->late_coming && $r->late_coming !== '---' && $r->late_coming !== '00:00') ? $r->late_coming : null,
+                'early'       => ($r->early_going && $r->early_going !== '---' && $r->early_going !== '00:00') ? $r->early_going : null,
+                'ot'          => ($r->ot && $r->ot !== '---' && $r->ot !== '00:00') ? $r->ot : null,
+                'total_hrs'   => ($r->total_hrs && $r->total_hrs !== '---') ? $r->total_hrs : null,
+                'status'      => $status,
+                'is_manual'   => (bool) $r->is_manual_entry
+                                 || str_contains(strtolower($r->device_id_in ?? ''), 'manual')
+                                 || str_contains(strtolower($r->device_id_out ?? ''), 'manual'),
+                'logs'        => array_values(array_map(function ($log) {
+                    return [
+                        'in'         => ($log['in']  ?? null) === '---' ? null : ($log['in']  ?? null),
+                        'out'        => ($log['out'] ?? null) === '---' ? null : ($log['out'] ?? null),
+                        'device_in'  => $log['device_in']  ?? null,
+                        'device_out' => $log['device_out'] ?? null,
+                    ];
+                }, $logs)),
+            ];
+        }
+
+        // Compute per-section summary counts
+        foreach ($byBranch as &$b) {
+            foreach ($b['sections'] as $key => &$sec) {
+                $sum = ['present' => 0, 'absent' => 0, 'weekoff' => 0, 'leave' => 0, 'holiday' => 0, 'missing' => 0, 'manual' => 0];
+                foreach ($sec['employees'] as $e) {
+                    switch ($e['status']) {
+                        case 'P': case 'LC': case 'EG': $sum['present']++; break;
+                        case 'A': $sum['absent']++; break;
+                        case 'O': $sum['weekoff']++; break;
+                        case 'L': case 'V': $sum['leave']++; break;
+                        case 'H': $sum['holiday']++; break;
+                        case 'M': $sum['missing']++; break;
+                    }
+                    if ($e['is_manual']) $sum['manual']++;
+                }
+                $sec['summary'] = $sum;
+                $sec['count']   = count($sec['employees']);
+            }
+            unset($sec); // break inner reference to prevent foreach-reference gotcha
+        }
+        unset($b); // break outer reference — next foreach would overwrite last element otherwise
+
+        // Drop empty branches and order sections predictably
+        $branches = [];
+        foreach ($byBranch as $b) {
+            $hasAny = $b['sections']['single_night']['count'] > 0
+                   || $b['sections']['split']['count']        > 0
+                   || $b['sections']['multi']['count']        > 0;
+            if ($hasAny) $branches[] = $b;
+        }
+
+        $logoRaw = $company ? $company->getRawOriginal('logo') : null;
+        $logoUrl = $logoRaw ? url('upload/' . $logoRaw) : null;
+
+        return response()->json([
+            'company' => [
+                'name' => $company->name ?? 'Company',
+                'logo' => $logoUrl,
+            ],
+            'period' => [
+                'date' => Carbon::parse($fromDate)->format('d-M-Y'),
+                'day'  => Carbon::parse($fromDate)->format('l'),
+                'raw'  => $fromDate,
+            ],
+            'generated_at' => Carbon::now()->format('d-M-Y H:i'),
+            'branches'     => $branches,
         ]);
     }
 

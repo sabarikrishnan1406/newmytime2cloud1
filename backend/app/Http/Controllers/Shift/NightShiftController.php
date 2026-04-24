@@ -111,22 +111,31 @@ class NightShiftController extends Controller
 
             $logs = $logs->toArray() ?? [];
 
-            // $firstLog = collect($logs)->filter(function ($record) {
-            //     return isset($record["device"]["function"]) && ($record["device"]["function"] != "Out");
-            // })->first();
+            // Cross-day filter (auto-shift only): skip today's morning logs that
+            // belong to yesterday's Night Shift OUT so today's firstLog is correct.
+            if ($isRequestFromAutoshift) {
+                $prevDate = date("Y-m-d", strtotime($params['date'] . " -1 day"));
+                $prevAttendance = Attendance::where("company_id", $params["company_id"])
+                    ->where("employee_id", $key)
+                    ->where("date", $prevDate)
+                    ->first();
 
-            /*$firstLog = collect($logs)->filter(function ($record) {
-                return $record["log_type"] == "In";
-            })->first();
+                if ($prevAttendance && (int) $prevAttendance->shift_type_id === 4
+                    && !empty($prevAttendance->in) && $prevAttendance->in !== "---") {
+                    $prevShift = \App\Models\Shift::find($prevAttendance->shift_id);
+                    if ($prevShift && !empty($prevShift->ending_in) && !empty($prevShift->ending_out)) {
+                        $tolSec = 60 * 60;
+                        $windowStart = strtotime($params['date'] . ' ' . $prevShift->ending_in) - $tolSec;
+                        $windowEnd   = strtotime($params['date'] . ' ' . $prevShift->ending_out) + $tolSec;
 
-
-            if ($firstLog == null) {
-
-                $firstLog = collect($logs)->filter(function ($record) {
-                    return (isset($record["device"]["function"]) && ($record["device"]["function"] != "Out"));
-                })->first();
+                        $logs = array_values(array_filter($logs, function ($log) use ($windowStart, $windowEnd) {
+                            $logSec = strtotime($log['LogTime']);
+                            return !($logSec >= $windowStart && $logSec <= $windowEnd);
+                        }));
+                    }
+                }
             }
-*/
+
             $firstLog = null;
             $lastLog = null;
 
@@ -134,7 +143,47 @@ class NightShiftController extends Controller
                 return $record["log_type"] == "In" || $record["log_type"] == null || $record["log_type"] == "Auto";
             })->first();
 
-            if ($firstLog) {
+            // Smart lastLog (auto-shift only) — respects explicit "Out" type + next-day OUT window
+            if ($isRequestFromAutoshift && $firstLog) {
+                $scheduleShift = $firstLog["schedule"]["shift"] ?? null;
+                $nextDay = date("Y-m-d", strtotime($params['date'] . " +1 day"));
+                $outWinStart = null;
+                $outWinEnd   = null;
+                if ($scheduleShift && !empty($scheduleShift["ending_in"]) && !empty($scheduleShift["ending_out"])) {
+                    $outWinStart = strtotime($nextDay . ' ' . $scheduleShift["ending_in"]) - 60 * 60;
+                    $outWinEnd   = strtotime($nextDay . ' ' . $scheduleShift["ending_out"]) + 60 * 60;
+                }
+
+                // Priority 1: explicit "Out" in next-day OUT window
+                if ($outWinStart && $outWinEnd) {
+                    $lastLog = collect($logs)->filter(function ($record) use ($firstLog, $outWinStart, $outWinEnd) {
+                        $t = strtotime($record['LogTime']);
+                        return $record['log_type'] === 'Out'
+                            && $record['LogTime'] > $firstLog['LogTime']
+                            && $t >= $outWinStart && $t <= $outWinEnd;
+                    })->first();
+                }
+
+                // Priority 2: any log in next-day OUT window
+                if (!$lastLog && $outWinStart && $outWinEnd) {
+                    $lastLog = collect($logs)->filter(function ($record) use ($firstLog, $outWinStart, $outWinEnd) {
+                        $t = strtotime($record['LogTime']);
+                        return $record['LogTime'] > $firstLog['LogTime']
+                            && $t >= $outWinStart && $t <= $outWinEnd;
+                    })->first();
+                }
+
+                // Priority 3: explicit "Out" anywhere after firstLog
+                if (!$lastLog) {
+                    $lastLog = collect($logs)->filter(function ($record) use ($firstLog) {
+                        return $record['log_type'] === 'Out'
+                            && $record['LogTime'] > $firstLog['LogTime'];
+                    })->first();
+                }
+            }
+
+            // Fallback (existing behaviour): first log of Out/null/Auto/auto after firstLog
+            if (!$lastLog && $firstLog) {
                 $lastLog = collect($logs)->filter(function ($record) use ($firstLog) {
                     return ($record["log_type"] == "Out" || $record["log_type"] == null || $record["log_type"] == "Auto" || $record["log_type"] == "auto") && $record["LogTime"] > $firstLog['LogTime'];
                 })->first();
@@ -186,8 +235,21 @@ class NightShiftController extends Controller
             $beginningIn =  $params['date'] . ' ' . $shift["beginning_in"];
             $beginningOut = $params['date'] . ' ' . $shift["beginning_out"];
 
+            // Auto-shift only: 60-min IN window tolerance; bypass entirely if explicit "In".
+            if ($isRequestFromAutoshift) {
+                if (($firstLog['log_type'] ?? null) === 'In') {
+                    $inOutOfRange = false;
+                } else {
+                    $tolSec = 60 * 60;
+                    $beginningInSoft  = date("Y-m-d H:i:s", strtotime($beginningIn)  - $tolSec);
+                    $beginningOutSoft = date("Y-m-d H:i:s", strtotime($beginningOut) + $tolSec);
+                    $inOutOfRange = ($firstLog['LogTime'] < $beginningInSoft || $firstLog['LogTime'] > $beginningOutSoft);
+                }
+            } else {
+                $inOutOfRange = ($firstLog['LogTime'] < $beginningIn || $firstLog['LogTime'] > $beginningOut);
+            }
 
-            if ($firstLog['LogTime'] < $beginningIn || $firstLog['LogTime'] > $beginningOut) {
+            if ($inOutOfRange) {
                 $keys[] = $key;
                 $message .= "{$key} LogTime({$firstLog["LogTime"]}) OUT time  is out of range ({$beginningIn} to {$beginningOut})";
                 $message .= " Device: {$firstLog["DeviceID"]}";
@@ -261,8 +323,21 @@ class NightShiftController extends Controller
                 $endingIn =  date("Y-m-d", strtotime($params['date'] . " +1 day")) . " " . $lastLogShift["ending_in"];
                 $endingOut =  date("Y-m-d", strtotime($params['date'] . " +1 day")) . " " . $lastLogShift["ending_out"];
 
+                // Auto-shift only: 60-min OUT window tolerance; bypass if explicit "Out".
+                if ($isRequestFromAutoshift) {
+                    if (($lastLog['log_type'] ?? null) === 'Out') {
+                        $outOfRange = false;
+                    } else {
+                        $tolSec = 60 * 60;
+                        $endingInSoft  = date("Y-m-d H:i:s", strtotime($endingIn)  - $tolSec);
+                        $endingOutSoft = date("Y-m-d H:i:s", strtotime($endingOut) + $tolSec);
+                        $outOfRange = ($lastLog['LogTime'] < $endingInSoft || $lastLog['LogTime'] > $endingOutSoft);
+                    }
+                } else {
+                    $outOfRange = ($lastLog['LogTime'] < $endingIn || $lastLog['LogTime'] > $endingOut);
+                }
 
-                if ($lastLog['LogTime'] < $endingIn || $lastLog['LogTime'] > $endingOut) {
+                if ($outOfRange) {
                     $keys[] = $key;
                     $message .= "{$key} LogTime({$lastLog["LogTime"]}) IN time  is out of range ({$endingIn} to {$endingOut})";
                     $message .= " Device: {$lastLog["DeviceID"]}";

@@ -41,7 +41,59 @@ class ReportNotificationMail extends Mailable implements ShouldQueue
             ? date('D, F j, Y', strtotime($fromDate))
             : date('M j', strtotime($fromDate)) . ' – ' . date('M j, Y', strtotime($toDate));
 
-        // Generate Format B (monthly detail) PDF via AttendanceReportController
+        // For Daily-frequency notifications, attach the pre-generated Puppeteer daily PDF
+        // (created by GenerateDailyReportPDF job and saved to public/pdf/<date>/<company>/...)
+        if ($freq === 'daily') {
+            $dailyRelative = "public/pdf/{$fromDate}/{$companyId}/daily_report_{$branchId}.pdf";
+            $dailyAbsolute = storage_path("app/" . $dailyRelative);
+            if (file_exists($dailyAbsolute)) {
+                $this->attach($dailyAbsolute, [
+                    'as'   => "Daily_Attendance_Report_{$date}.pdf",
+                    'mime' => 'application/pdf',
+                ]);
+                $managerName = optional($this->manager)->name ?? 'Manager';
+                $companyName = optional($this->model->company)->name ?? 'N/A';
+                $bodyContent  = "Hi {$managerName},<br/><br/>";
+                $bodyContent .= "<b>Company: {$companyName}</b><br/>";
+                $bodyContent .= "Date: {$dateDisplay}<br/><br/>";
+                $bodyContent .= "Please find the attached Daily Attendance Report.<br/><br/>";
+                $bodyContent .= "Regards,<br/>MyTime2Cloud";
+                return $this->view('emails.report')->with(['body' => $bodyContent]);
+            }
+            \Log::warning("Daily PDF missing at $dailyAbsolute — falling back to Format B");
+        }
+
+        // For Weekly / Monthly — attach the pre-generated Format C PDFs from disk
+        // (created by GenerateFormatCReportPDF, one file per shift_type label)
+        if ($freq === 'weekly' || $freq === 'monthly') {
+            $attachedAny = false;
+            foreach ($this->files as $shiftLabel) {
+                // Skip the sentinel 'daily' label if it leaked through
+                if ($shiftLabel === 'daily') continue;
+                $relative = "public/pdf/{$toDate}/{$companyId}/summary_report_{$branchId}_{$shiftLabel}.pdf";
+                $absolute = storage_path("app/" . $relative);
+                if (file_exists($absolute)) {
+                    $this->attach($absolute, [
+                        'as'   => ucfirst($freq) . "_Attendance_Report_{$shiftLabel}_{$date}.pdf",
+                        'mime' => 'application/pdf',
+                    ]);
+                    $attachedAny = true;
+                }
+            }
+            if ($attachedAny) {
+                $managerName = optional($this->manager)->name ?? 'Manager';
+                $companyName = optional($this->model->company)->name ?? 'N/A';
+                $bodyContent  = "Hi {$managerName},<br/><br/>";
+                $bodyContent .= "<b>Company: {$companyName}</b><br/>";
+                $bodyContent .= "Period: {$dateDisplay}<br/><br/>";
+                $bodyContent .= "Please find the attached " . ucfirst($freq) . " Attendance Report.<br/><br/>";
+                $bodyContent .= "Regards,<br/>MyTime2Cloud";
+                return $this->view('emails.report')->with(['body' => $bodyContent]);
+            }
+            \Log::warning("Format C PDFs missing for company=$companyId branch=$branchId freq=$freq — falling back to Format B");
+        }
+
+        // Fallback: generate Format B (monthly detail) PDF inline if nothing else worked
         try {
             $req = Request::create('/api/report/monthly_detail_pdf', 'GET', [
                 'company_id'    => $companyId,

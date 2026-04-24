@@ -10,6 +10,8 @@ import VoicePanel from "./VoicePanel";
 
 const SILENCE_TIMEOUT = 8000;
 const WAKE_WORDS = ["hey mytime", "hi mytime", "hey my time", "hi my time"];
+const POSITION_STORAGE_KEY = "voiceButtonPosition";
+const DRAG_THRESHOLD_PX = 5;
 
 export default function VoiceButton() {
   const router = useRouter();
@@ -19,6 +21,8 @@ export default function VoiceButton() {
   const [voiceState, setVoiceState] = useState("idle"); // idle | waiting | listening | processing
   const [transcript, setTranscript] = useState("");
   const [debugLog, setDebugLog] = useState([]);
+  const [position, setPosition] = useState(null); // {x, y} | null (null = default bottom-right)
+  const [dragging, setDragging] = useState(false);
 
   const { speak } = useTextToSpeech();
   const recognitionRef = useRef(null);
@@ -27,6 +31,15 @@ export default function VoiceButton() {
   const manualStopRef = useRef(false);
   const panelOpenRef = useRef(false);
   const startListeningRef = useRef(null);
+  const buttonRef = useRef(null);
+  const dragStateRef = useRef({
+    isPointerDown: false,
+    didDrag: false,
+    startX: 0,
+    startY: 0,
+    originX: 0,
+    originY: 0,
+  });
 
   const isSupported = typeof window !== "undefined" && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
@@ -341,9 +354,49 @@ export default function VoiceButton() {
     };
   }, [clearSilenceTimer]);
 
+  // Hydrate saved position from localStorage (post-mount to avoid SSR mismatch)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(POSITION_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.x !== "number" || typeof parsed?.y !== "number") return;
+      const btnSize = 48;
+      const x = Math.max(0, Math.min(parsed.x, window.innerWidth - btnSize));
+      const y = Math.max(0, Math.min(parsed.y, window.innerHeight - btnSize));
+      setPosition({ x, y });
+    } catch {}
+  }, []);
+
+  // Re-clamp position on viewport resize so the button stays on-screen
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition((prev) => {
+        if (!prev) return prev;
+        const btn = buttonRef.current;
+        const w = btn?.offsetWidth || 48;
+        const h = btn?.offsetHeight || 48;
+        const x = Math.max(0, Math.min(prev.x, window.innerWidth - w));
+        const y = Math.max(0, Math.min(prev.y, window.innerHeight - h));
+        if (x === prev.x && y === prev.y) return prev;
+        try {
+          localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify({ x, y }));
+        } catch {}
+        return { x, y };
+      });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   if (!isSupported) return null;
 
   const handleMicClick = () => {
+    // Suppress click that fires immediately after a drag
+    if (dragStateRef.current.didDrag) {
+      dragStateRef.current.didDrag = false;
+      return;
+    }
     if (voiceState === "idle") {
       setPanelOpen(true);
       setResult(null);
@@ -356,6 +409,59 @@ export default function VoiceButton() {
     }
   };
 
+  const handlePointerDown = (e) => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    dragStateRef.current = {
+      isPointerDown: true,
+      didDrag: false,
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: rect.left,
+      originY: rect.top,
+    };
+    try { buttonRef.current.setPointerCapture(e.pointerId); } catch {}
+  };
+
+  const handlePointerMove = (e) => {
+    const ds = dragStateRef.current;
+    if (!ds.isPointerDown) return;
+    const dx = e.clientX - ds.startX;
+    const dy = e.clientY - ds.startY;
+    if (!ds.didDrag && Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) {
+      ds.didDrag = true;
+      setDragging(true);
+    }
+    if (ds.didDrag && buttonRef.current) {
+      const w = buttonRef.current.offsetWidth;
+      const h = buttonRef.current.offsetHeight;
+      const x = Math.max(0, Math.min(ds.originX + dx, window.innerWidth - w));
+      const y = Math.max(0, Math.min(ds.originY + dy, window.innerHeight - h));
+      setPosition({ x, y });
+    }
+  };
+
+  const handlePointerUp = (e) => {
+    const ds = dragStateRef.current;
+    if (!ds.isPointerDown) return;
+    ds.isPointerDown = false;
+    if (buttonRef.current?.hasPointerCapture?.(e.pointerId)) {
+      try { buttonRef.current.releasePointerCapture(e.pointerId); } catch {}
+    }
+    if (ds.didDrag && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      try {
+        localStorage.setItem(
+          POSITION_STORAGE_KEY,
+          JSON.stringify({ x: rect.left, y: rect.top })
+        );
+      } catch {}
+    }
+    setDragging(false);
+    // didDrag stays true until handleMicClick consumes it (suppresses the click)
+    // or until the next pointerdown resets it.
+  };
+
   const handleClose = () => {
     stopListening();
     setPanelOpen(false);
@@ -363,8 +469,12 @@ export default function VoiceButton() {
 
   const isActive = voiceState !== "idle";
 
+  const wrapperStyle = position
+    ? { left: position.x, top: position.y }
+    : { bottom: 24, right: 24 };
+
   return (
-    <div className="fixed bottom-6 right-6 z-[9999]">
+    <div className="fixed z-[9999]" style={wrapperStyle}>
       {/* Panel */}
       {panelOpen && (
         <VoicePanel
@@ -379,17 +489,23 @@ export default function VoiceButton() {
 
       {/* Floating Mic Button */}
       <button
+        ref={buttonRef}
         onClick={handleMicClick}
-        className={`group relative w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        style={{ touchAction: "none", cursor: dragging ? "grabbing" : "grab" }}
+        className={`group relative w-12 h-12 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
           isActive
             ? "bg-red-500 hover:bg-red-600 shadow-red-500/30"
             : "bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-indigo-500/30"
         }`}
       >
         {isActive ? (
-          <MicOff size={22} className="text-white" />
+          <MicOff size={18} className="text-white" />
         ) : (
-          <Mic size={22} className="text-white" />
+          <Mic size={18} className="text-white" />
         )}
 
         {isActive && (
@@ -399,7 +515,7 @@ export default function VoiceButton() {
           </>
         )}
 
-        {!panelOpen && (
+        {!panelOpen && !dragging && (
           <span className="absolute -top-10 right-0 bg-slate-900 text-white text-[10px] font-medium px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-white/10">
             {isActive ? "Stop Listening" : "Voice Assistant"}
           </span>

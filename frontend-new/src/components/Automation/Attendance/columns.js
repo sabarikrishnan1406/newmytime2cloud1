@@ -63,17 +63,41 @@ export default (deleteItem, editItem) => {
                 // Map: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
                 const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
                 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                const NAME_TO_INDEX = {
+                    sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+                    thursday: 4, friday: 5, saturday: 6,
+                };
 
-                let raw = e.days;
-                if (typeof raw === "string") {
-                    raw = raw.split(/[, ]+/).filter(Boolean);
+                const selected = new Set();
+
+                if (e.frequency === "Monthly" && e.date) {
+                    const day = Number(e.date);
+                    if (day >= 1 && day <= 31) {
+                        const now = new Date();
+                        const weekday = new Date(now.getFullYear(), now.getMonth(), day).getDay();
+                        selected.add(weekday);
+                    }
+                } else if (e.frequency === "Weekly" && e.day) {
+                    const key = String(e.day).toLowerCase();
+                    if (key in NAME_TO_INDEX) {
+                        selected.add(NAME_TO_INDEX[key]);
+                    } else if (!Number.isNaN(Number(e.day))) {
+                        selected.add(Number(e.day));
+                    }
+                } else {
+                    let raw = e.days;
+                    if (typeof raw === "string") {
+                        raw = raw.split(/[, ]+/).filter(Boolean);
+                    }
+                    if (Array.isArray(raw)) {
+                        raw.forEach((v) => selected.add(Number(v)));
+                    }
                 }
 
-                if (!Array.isArray(raw) || raw.length === 0) {
+                if (selected.size === 0) {
                     return <p className="text-sm text-slate-600 dark:text-slate-300">N/A</p>;
                 }
 
-                const selected = new Set(raw.map((v) => Number(v)));
                 // Display order: Mon, Tue, Wed, Thu, Fri, Sat, Sun
                 const order = [1, 2, 3, 4, 5, 6, 0];
 
@@ -85,10 +109,10 @@ export default (deleteItem, editItem) => {
                                 <span
                                     key={d}
                                     title={DAY_NAMES[d]}
-                                    className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold ${
+                                    className={`inline-flex items-center justify-center w-6 h-6 text-[11px] font-bold ${
                                         isOn
-                                            ? "bg-primary text-white"
-                                            : "bg-slate-200 text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+                                            ? "text-slate-700 dark:text-slate-100"
+                                            : "text-slate-300 dark:text-slate-600"
                                     }`}
                                 >
                                     {DAY_LETTERS[d]}

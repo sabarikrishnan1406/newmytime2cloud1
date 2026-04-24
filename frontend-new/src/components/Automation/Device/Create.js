@@ -342,7 +342,10 @@ export default function AttendanceAutomationDialog({
                                                 </label>
                                                 <DropDown
                                                     value={form.monthly_date}
-                                                    items={Array.from({ length: 31 }, (_, i) => ({ id: String(i + 1), name: String(i + 1) }))}
+                                                    items={Array.from(
+                                                        { length: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() },
+                                                        (_, i) => ({ id: String(i + 1), name: String(i + 1) })
+                                                    )}
                                                     onChange={(e) => setField("monthly_date", e)}
                                                 />
                                             </div>

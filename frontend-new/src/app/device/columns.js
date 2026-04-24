@@ -166,44 +166,45 @@ export default function Columns({ pageTitle, handleRowClick, onSuccess = (e) => 
     {
       key: "options",
       header: "Options",
-      render: (device) => {
-        const [open, setOpen] = useState(false);
-
-
-        const onDeleteDevice = async (id) => {
-          const confirmDelete = window.confirm("Are you sure you want to delete this item?");
-          if (!confirmDelete) return; // exit if user cancels
-          try {
-            await deleteDevice(id);
-            onSuccess({ title: `${pageTitle} Deleted`, description: `${pageTitle} Deleted successfully` }); actualSetOpen(false);
-            setOpenEdit(false); // close menu
-          } catch (error) {
-            console.log(parseApiError(error));
-          }
-        };
-
-        return (
-          <div className="relative">
-            {/* Three dots button */}
-            <MoreVertical className="text-gray-600 hover:text-gray-800" onClick={() => setOpen(!open)} />
-
-            {/* Dropdown menu */}
-            {open && (
-              <div className="absolute mt-2 w-24 bg-white border rounded shadow-lg z-10">
-                <button
-                  onClick={() => {
-                    onDeleteDevice(device.id);
-                    setOpen(false);
-                  }}
-                  className="flex items-center gap-2 w-full text-sm text-left px-3 py-2 hover:bg-gray-100 text-gray-600"
-                >
-                  <Trash2 size={14} /> Delete
-                </button>
-              </div>
-            )}
-          </div>
-        );
-      },
+      render: (device) => (
+        <OptionsCell device={device} pageTitle={pageTitle} onSuccess={onSuccess} />
+      ),
     }
   ];
+}
+
+function OptionsCell({ device, pageTitle, onSuccess }) {
+  const [open, setOpen] = useState(false);
+
+  const onDeleteDevice = async (id) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this item?");
+    if (!confirmDelete) return;
+    try {
+      await deleteDevice(id);
+      onSuccess({ title: `${pageTitle} Deleted`, description: `${pageTitle} Deleted successfully` });
+      setOpen(false);
+    } catch (error) {
+      console.log(parseApiError(error));
+    }
+  };
+
+  return (
+    <div className="relative">
+      <MoreVertical className="text-gray-600 hover:text-gray-800" onClick={() => setOpen(!open)} />
+
+      {open && (
+        <div className="absolute mt-2 w-24 bg-white border rounded shadow-lg z-10">
+          <button
+            onClick={() => {
+              onDeleteDevice(device.id);
+              setOpen(false);
+            }}
+            className="flex items-center gap-2 w-full text-sm text-left px-3 py-2 hover:bg-gray-100 text-gray-600"
+          >
+            <Trash2 size={14} /> Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }

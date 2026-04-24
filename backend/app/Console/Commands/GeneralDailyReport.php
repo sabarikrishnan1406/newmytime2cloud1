@@ -2,6 +2,8 @@
 namespace App\Console\Commands;
 
 use App\Jobs\GenerateAttendanceSummaryReport;
+use App\Jobs\GenerateDailyReportPDF;
+use App\Jobs\GenerateFormatCReportPDF;
 use App\Models\Company;
 use App\Models\Shift;
 use Illuminate\Console\Command;
@@ -34,7 +36,7 @@ class GeneralDailyReport extends Command
             })
             ->with(['report_notifications' => function ($query) {
                 $query->where('type', 'attendance');
-                $query->select('id', 'company_id', "branch_id");
+                $query->select('id', 'company_id', "branch_id", "frequency");
                 $query->with('branch:id,branch_name');
             }])
             ->whereHas('shifts')
@@ -73,23 +75,55 @@ class GeneralDailyReport extends Command
             "to_date"     => $to_date,
         ];
 
-        foreach ($shift_types as $shift_type) {
+        // Route by frequency:
+        //   Daily            → new consolidated daily report (Puppeteer)
+        //   Weekly / Monthly → Format C (Puppeteer), one file per branch × shift_type
+        $dailyNotifications = $report_notifications->filter(fn($n) => strcasecmp($n->frequency ?? '', 'Daily') === 0);
+        $otherNotifications = $report_notifications->reject(fn($n) => strcasecmp($n->frequency ?? '', 'Daily') === 0);
 
-            foreach ($report_notifications as $report_notification) {
+        // ---- Daily — one consolidated PDF per branch ----
+        foreach ($dailyNotifications as $notification) {
+            $branchName = $notification?->branch?->branch_name ?? 'N/A';
+            $branchId   = (int) ($notification?->branch_id ?? 0);
+            $name       = $company['name'] ?? 'Unknown';
 
-                $branchName = $report_notification?->branch?->branch_name ?? 'N/A';
-                $branchId   = $report_notification?->branch_id ?? 'N/A';
-                $name       = $company['name'] ?? 'Unknown';
+            $this->info("Daily-format report for Company $name (id=$company_id) Branch $branchName (id=$branchId)");
 
-                $this->info("Process Type for Company $name with Id = $company_id on Branch $branchName with Branch id = $branchId and with $shift_type");
+            GenerateDailyReportPDF::dispatch($company_id, $branchId, $from_date);
+        }
 
+        // ---- Weekly / Monthly — Format C via Puppeteer (one file per branch × shift_type) ----
+        $shiftTypeIdMap = ['General' => null, 'Multi' => 2, 'Split' => 5]; // label → shift_type_id for employee filter
+        foreach ($otherNotifications as $notification) {
+            $branchName = $notification?->branch?->branch_name ?? 'N/A';
+            $branchId   = (int) ($notification?->branch_id ?? 0);
+            $name       = $company['name'] ?? 'Unknown';
+            $freq       = strtolower($notification->frequency ?? 'weekly');
 
-                $this->info(env("APP_ENV"));
+            // Compute the date range per frequency
+            if ($freq === 'monthly') {
+                $rangeFrom = date('Y-m-01', strtotime('first day of last month'));
+                $rangeTo   = date('Y-m-t', strtotime('last day of last month'));
+            } else {
+                // weekly — last 7 days ending yesterday
+                $rangeFrom = date('Y-m-d', strtotime('-7 days'));
+                $rangeTo   = date('Y-m-d', strtotime('-1 day'));
+            }
 
+            foreach ($shift_types as $shift_type_label) {
+                $shift_type_id = $shiftTypeIdMap[$shift_type_label] ?? null;
 
-                GenerateAttendanceSummaryReport::dispatch($shift_type, $company_id, $branchId, $company);
+                $this->info("Format C report ($freq) for $name / Branch $branchName / shift=$shift_type_label range=$rangeFrom..$rangeTo");
 
-                // $this->info(showJson($company));
+                GenerateFormatCReportPDF::dispatch(
+                    $company_id,
+                    $branchId,
+                    $rangeFrom,
+                    $rangeTo,
+                    $shift_type_label,
+                    $shift_type_id,
+                    $name
+                );
             }
         }
     }

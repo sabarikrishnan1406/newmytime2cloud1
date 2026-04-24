@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\RealTimeLocation\StoreRequest;
 use App\Models\Employee;
 use App\Models\RealTimeLocation;
+use App\Services\Notify;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -12,34 +13,108 @@ class RealTimeLocationController extends Controller
 {
     public function index(Request $request)
     {
-        $model = RealTimeLocation::query();
-        $model->where("company_id", $request->company_id);
-        $model->where("UserID", $request->UserID);
-        $model->where("date", $request->date ?? date("Y-m-d"));
-        return $model->paginate($request->per_page ?? 100);
+        if (! $request->filled('company_id')) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'company_id is required',
+            ], 422);
+        }
+
+        $companyId = (int) $request->company_id;
+
+        // Single-user trail mode: return ordered pings for that user on one day.
+        if ($request->filled('UserID')) {
+            $date = $request->date ?? date('Y-m-d');
+            return RealTimeLocation::query()
+                ->where('company_id', $companyId)
+                ->where('UserID', $request->UserID)
+                ->where('date', $date)
+                ->orderBy('id', 'asc')
+                ->paginate($request->per_page ?? 100);
+        }
+
+        // Live-tracker mode: latest ping per user for the company.
+        // When `date` is supplied, restrict to that day; otherwise return the most
+        // recent row per user regardless of age so stale pings still appear.
+        $latestIdsQuery = RealTimeLocation::query()
+            ->selectRaw('MAX(id) as id')
+            ->where('company_id', $companyId)
+            ->groupBy('UserID');
+
+        if ($request->filled('date')) {
+            $latestIdsQuery->where('date', $request->date);
+        }
+
+        $latestIds = $latestIdsQuery->pluck('id');
+
+        $rows = RealTimeLocation::query()
+            ->whereIn('id', $latestIds)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $userIds = $rows->pluck('UserID')->filter()->unique()->values();
+        $avatars = Employee::where('company_id', $companyId)
+            ->whereIn('system_user_id', $userIds)
+            ->get(['system_user_id', 'profile_picture'])
+            ->keyBy('system_user_id')
+            ->map(fn ($e) => $e->profile_picture);
+
+        return $rows->map(function ($row) use ($avatars) {
+            $data = $row->toArray();
+            $data['avatar'] = $avatars[$row->UserID] ?? null;
+            return $data;
+        });
     }
 
     public function store(StoreRequest $request)
     {
         try {
+            $exists = RealTimeLocation::query()
+                ->where("company_id", $request->company_id)
+                ->where("device_id", $request->device_id)
+                ->where("UserID", $request->UserID)
+                ->where("latitude", $request->latitude)
+                ->where("longitude", $request->longitude)
+                ->exists();
 
-            $model = RealTimeLocation::query();
-
-            $model->where("company_id", $request->company_id);
-            $model->where("device_id", $request->device_id);
-            $model->where("UserID", $request->UserID);
-            $model->where("latitude", $request->latitude);
-            $model->where("longitude", $request->longitude);;
-
-            if ($model->exists()) {
+            if ($exists) {
                 return $this->response('Location already exist.', null, true);
             }
-            $data = $request->validated();
-            $data["date"] = date("Y-m-d");
-            $data["datetime"] = date("Y-m-d H:i:s");
-            $model->create($data);
+
+            $loggedAt = $request->filled('logged_at')
+                ? date('Y-m-d H:i:s', strtotime($request->logged_at))
+                : date('Y-m-d H:i:s');
+
+            $employee = Employee::where('company_id', $request->company_id)
+                ->where('system_user_id', $request->UserID)
+                ->first(['first_name', 'last_name', 'profile_picture']);
+
+            $fullName = $request->input('full_name');
+            if (empty($fullName) && $employee) {
+                $fullName = trim(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? ''));
+            }
+            $avatar = $employee?->profile_picture;
+
+            $row = RealTimeLocation::create([
+                'company_id' => $request->company_id,
+                'UserID'     => $request->UserID,
+                'device_id'  => $request->device_id,
+                'latitude'   => (string) $request->latitude,
+                'longitude'  => (string) $request->longitude,
+                'status'     => $request->input('status'),
+                'date'       => substr($loggedAt, 0, 10),
+                'datetime'   => $loggedAt,
+                'full_name'  => $fullName,
+                'short_name' => $request->input('short_name'),
+            ]);
+
+            $payload = $row->toArray();
+            $payload['avatar'] = $avatar;
+            Notify::push($row->company_id, "map", "new location recorded", $payload);
+
             return $this->response('Realtime location added.', null, true);
         } catch (\Throwable $th) {
+            \Log::error('realtime_location store failed', ['error' => $th->getMessage()]);
             return $this->response('Realtime location cannot add.', null, false);
         }
     }
@@ -87,7 +162,7 @@ class RealTimeLocationController extends Controller
         // Tenancy gate — the employee must exist under the posted company.
         $employee = Employee::where('company_id', $companyId)
             ->where('system_user_id', $employeeId)
-            ->first(['id', 'system_user_id', 'first_name', 'last_name', 'branch_id', 'department_id']);
+            ->first(['id', 'system_user_id', 'first_name', 'last_name', 'branch_id', 'department_id', 'profile_picture']);
 
         if (! $employee) {
             return response()->json([
@@ -111,6 +186,10 @@ class RealTimeLocationController extends Controller
             'datetime'   => $loggedAt,
             'full_name'  => trim(($employee->first_name ?? '') . ' ' . ($employee->last_name ?? '')),
         ]);
+
+        $payload = $row->toArray();
+        $payload['avatar'] = $employee->profile_picture;
+        Notify::push($companyId, "map", "new location recorded", $payload);
 
         return response()->json([
             'status'  => true,

@@ -76,18 +76,21 @@ class RenderController extends Controller
 
         if ($request->shift_type_id == 2) {
             $r = (new MultiShiftController)->renderData($request);
+            $this->gapFillMissingRows($request);
             $this->dispatchWeekoffForRange($request);
             return $r;
         }
 
         if ($request->shift_type_id == 5) {
             $r = (new SplitShiftController)->renderData($request);
+            $this->gapFillMissingRows($request);
             $this->dispatchWeekoffForRange($request);
             return $r;
         }
 
         if ($request->shift_type_id == 4) {
             $r = (new NightShiftController)->renderData($request);
+            $this->gapFillMissingRows($request);
             $this->dispatchWeekoffForRange($request);
             return $r;
         }
@@ -97,6 +100,7 @@ class RenderController extends Controller
             try { $results = array_merge($results, (new AutoShiftController)->renderData($request)); } catch (\Exception $e) {}
             try { $results = array_merge($results, (new SingleShiftController)->renderData($request)); } catch (\Exception $e) {}
             try { $results = array_merge($results, (new NightShiftController)->renderData($request)); } catch (\Exception $e) {}
+            $this->gapFillMissingRows($request);
             $this->dispatchWeekoffForRange($request);
             return $results;
         }
@@ -104,6 +108,7 @@ class RenderController extends Controller
         if ($request->shift_type_id == 1) {
             $results = [];
             try { $results = (new FiloShiftController)->renderData($request); } catch (\Exception $e) {}
+            $this->gapFillMissingRows($request);
             $this->dispatchWeekoffForRange($request);
             return $results;
         }
@@ -111,6 +116,7 @@ class RenderController extends Controller
         if ($request->shift_type_id == 6) {
             $results = [];
             try { $results = (new SingleShiftController)->renderData($request); } catch (\Exception $e) {}
+            $this->gapFillMissingRows($request);
             $this->dispatchWeekoffForRange($request);
             return $results;
         }
@@ -121,6 +127,7 @@ class RenderController extends Controller
         try { $results = array_merge($results, (new FiloShiftController)->renderData($request)); } catch (\Exception $e) {}
         try { $results = array_merge($results, (new SingleShiftController)->renderData($request)); } catch (\Exception $e) {}
         try { $results = array_merge($results, (new NightShiftController)->renderData($request)); } catch (\Exception $e) {}
+        $this->gapFillMissingRows($request);
         $this->dispatchWeekoffForRange($request);
         return $results;
     }
@@ -149,6 +156,127 @@ class RenderController extends Controller
                 try { RenderWeekOffJob::dispatchSync($companyId, $ym, $empId); } catch (\Throwable $e) {}
             }
         }
+    }
+
+    /**
+     * Insert Attendance rows for (employee, date) pairs in the requested range
+     * that have an active schedule but no existing attendance row.
+     * Runs AFTER the shift-type controllers. Never overwrites existing rows.
+     */
+    protected function gapFillMissingRows(Request $request): int
+    {
+        $companyId   = (int) ($request->company_id ?? 0);
+        $employeeIds = (array) ($request->employee_ids ?? []);
+        $dates       = (array) ($request->dates ?? []);
+
+        if (!$companyId || !$employeeIds || !$dates) {
+            return 0;
+        }
+
+        try {
+            $fromDate = Carbon::parse($dates[0])->startOfDay();
+            $toDate   = Carbon::parse($dates[1] ?? $dates[0])->startOfDay();
+        } catch (\Throwable $e) {
+            return 0;
+        }
+
+        if ($fromDate->diffInDays($toDate) > 366) {
+            return 0;
+        }
+
+        $validEmployeeIds = Employee::where('company_id', $companyId)
+            ->whereIn('system_user_id', $employeeIds)
+            ->pluck('system_user_id')
+            ->map(fn($v) => (string) $v)
+            ->all();
+
+        if (empty($validEmployeeIds)) {
+            return 0;
+        }
+
+        $inserted = 0;
+
+        $cursor = $fromDate->copy();
+        while ($cursor->lessThanOrEqualTo($toDate)) {
+            $dateStr = $cursor->format('Y-m-d');
+
+            $existing = Attendance::where('company_id', $companyId)
+                ->where('date', $dateStr)
+                ->whereIn('employee_id', $validEmployeeIds)
+                ->pluck('employee_id')
+                ->map(fn($v) => (string) $v)
+                ->all();
+            $existingSet = array_flip($existing);
+
+            $missingIds = array_values(array_filter(
+                $validEmployeeIds,
+                fn($eid) => !isset($existingSet[(string) $eid])
+            ));
+            if (empty($missingIds)) {
+                $cursor->addDay();
+                continue;
+            }
+
+            $schedulesByEmp = ScheduleEmployee::where('company_id', $companyId)
+                ->whereIn('employee_id', $missingIds)
+                ->where('from_date', '<=', $dateStr)
+                ->where('to_date',   '>=', $dateStr)
+                ->orderByDesc('updated_at')
+                ->get(['employee_id', 'shift_id', 'shift_type_id'])
+                ->groupBy(fn($s) => (string) $s->employee_id);
+
+            $logEmployees = AttendanceLog::where('company_id', $companyId)
+                ->whereIn('UserID', $missingIds)
+                ->whereDate('LogTime', $dateStr)
+                ->distinct('UserID')
+                ->pluck('UserID')
+                ->map(fn($v) => (string) $v)
+                ->all();
+            $logsSet = array_flip($logEmployees);
+
+            $toInsert = [];
+            foreach ($missingIds as $empId) {
+                $empKey = (string) $empId;
+                $sched  = $schedulesByEmp->get($empKey)?->first();
+                if (!$sched) {
+                    continue;
+                }
+
+                $hasLogs = isset($logsSet[$empKey]);
+
+                $toInsert[] = [
+                    'company_id'    => $companyId,
+                    'employee_id'   => $empKey,
+                    'date'          => $dateStr,
+                    'shift_id'      => $sched->shift_id ?? 0,
+                    'shift_type_id' => $sched->shift_type_id ?? 0,
+                    'status'        => $hasLogs ? 'M' : 'A',
+                    'in'            => '---',
+                    'out'           => '---',
+                    'total_hrs'     => '---',
+                    'ot'            => '---',
+                    'late_coming'   => '---',
+                    'early_going'   => '---',
+                    'device_id_in'  => '---',
+                    'device_id_out' => '---',
+                    'created_at'    => now(),
+                    'updated_at'    => now(),
+                ];
+            }
+
+            if (!empty($toInsert)) {
+                try {
+                    Attendance::insert($toInsert);
+                    $inserted += count($toInsert);
+                } catch (\Throwable $e) {
+                    // per-date insert failures are swallowed; continue
+                }
+            }
+
+            $cursor->addDay();
+        }
+
+        return $inserted;
     }
 
     public function renderMultiInOut(Request $request)

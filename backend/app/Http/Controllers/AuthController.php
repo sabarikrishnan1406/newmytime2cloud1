@@ -142,6 +142,7 @@ class AuthController extends Controller
     }
     public function login(Request $request)
     {
+        info($request->all());
         try {
             // Check database connection
             DB::connection()->getPdo();

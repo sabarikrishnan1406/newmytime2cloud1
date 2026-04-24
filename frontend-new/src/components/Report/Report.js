@@ -337,28 +337,42 @@ export default function AttendanceTable() {
       //   return;
       // }
 
-      // 1. Handle Template4 (Format A) and Template5 (Format C) - Puppeteer PDF
-      if ((selectedReportTemplate === "Template4" || selectedReportTemplate === "Template5") && actionType !== "EXCEL") {
+      // 1. Handle Template4 (Format A), Template5 (Format C), and Template3 (Daily) - Puppeteer PDF
+      if ((selectedReportTemplate === "Template4" || selectedReportTemplate === "Template5" || selectedReportTemplate === "Template3") && actionType !== "EXCEL") {
         const PDF_SERVICE = process.env.NEXT_PUBLIC_PDF_SERVICE_URL || 'http://localhost:3002';
         const user = getUser();
-        const t4Params = new URLSearchParams({
+
+        // Daily report uses a single date and passes branch/department filters too
+        const isDaily = selectedReportTemplate === "Template3";
+        const paramsObj = {
           employee_ids: selectedEmployeeIds.join(","),
           company_id: company_id,
-          from_date: fromDate,
-          to_date: toDate,
+          from_date: isDaily ? fromDate : fromDate,
+          to_date: isDaily ? fromDate : toDate,
           shift_type_id: shiftTypeId,
           api_base: API_BASE_URL,
           company_name: user?.company_name || user?.company?.name || 'Company',
-        });
+        };
+        if (isDaily) {
+          if (selectedBranchIds?.length)     paramsObj.branch_ids     = selectedBranchIds.join(",");
+          if (selectedDepartmentIds?.length) paramsObj.department_ids = selectedDepartmentIds.join(",");
+        }
+        const t4Params = new URLSearchParams(paramsObj);
 
         const SUMMARY_BASE = process.env.NEXT_PUBLIC_SUMMARY_REPORT_URL || PDF_SERVICE;
-        const templatePath = selectedReportTemplate === "Template5" ? "attendance-report/format-c.html" : "attendance-report/";
+        let templatePath;
+        if (selectedReportTemplate === "Template5")      templatePath = "attendance-report/format-c.html";
+        else if (selectedReportTemplate === "Template3") templatePath = "daily-report/";
+        else                                             templatePath = "attendance-report/";
         let templateUrl = `${SUMMARY_BASE}/${templatePath}?${t4Params.toString()}`;
 
         setIsPdfDownloading(true);
         setPdfProgress(0);
         try {
-          await downloadReport(templateUrl, `Attendance-Report-${fromDate}-to-${toDate}.pdf`, (p) => setPdfProgress(p));
+          const filename = isDaily
+            ? `Daily-Attendance-Report-${fromDate}.pdf`
+            : `Attendance-Report-${fromDate}-to-${toDate}.pdf`;
+          await downloadReport(templateUrl, filename, (p) => setPdfProgress(p));
         } catch (err) {
           await notify("Error", `Download failed: ${err.message}`, "error");
         } finally {
@@ -402,16 +416,7 @@ export default function AttendanceTable() {
         setPdfProgress(0);
 
         try {
-          if (selectedReportTemplate === 'Template3') {
-            // Daily report uses the same Format C blade as monthly detail,
-            // with report_mode='daily' so all employees flow on the same page.
-            await downloadMonthlyDetailPDF({
-              ...pdfParams,
-              from_date: fromDate,
-              to_date: fromDate,
-              report_mode: 'daily',
-            });
-          } else if (selectedReportTemplate === 'Template2') {
+          if (selectedReportTemplate === 'Template2') {
             await downloadMonthlyDetailPDF(pdfParams);
           } else {
             await downloadMonthlyGridPDF(pdfParams);

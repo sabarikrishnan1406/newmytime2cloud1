@@ -246,6 +246,9 @@ class AutoShiftController extends Controller
         if (count($shifts) == 1) {
             return $shifts[0];
         }
+
+        $firstEligibleTime = null;
+
         foreach ($logs as $log) {
             $logType = strtolower($log['log_type'] ?? '');
             $deviceFunction = strtolower($log['device']['function'] ?? '');
@@ -258,12 +261,44 @@ class AutoShiftController extends Controller
                 }));
 
                 if (!empty($matchingShift)) {
-                    return $matchingShift[0]; // Return the first matching shift
+                    return $matchingShift[0];
+                }
+
+                if ($firstEligibleTime === null) {
+                    $firstEligibleTime = $currentTime;
                 }
             }
         }
 
-        return null; // No matching shift found
+        // Fallback: pick the shift whose on_duty_time is nearest to the first log,
+        // using circular time distance (handles 20:01 → Night Shift 18:00).
+        if ($firstEligibleTime !== null && !empty($shifts)) {
+            $toMinutes = function ($hhmm) {
+                $p = explode(':', $hhmm);
+                return ((int) ($p[0] ?? 0)) * 60 + ((int) ($p[1] ?? 0));
+            };
+            $logMinutes = $toMinutes($firstEligibleTime);
+            $best = null;
+            $bestDiff = PHP_INT_MAX;
+            foreach ($shifts as $shift) {
+                $ref = $shift['on_duty_time'] ?? $shift['beginning_in'] ?? null;
+                if (!$ref || $ref === '---') {
+                    continue;
+                }
+                $shiftMinutes = $toMinutes(date('H:i', strtotime($ref)));
+                $direct = abs($logMinutes - $shiftMinutes);
+                $diff = min($direct, 1440 - $direct);
+                if ($diff < $bestDiff) {
+                    $bestDiff = $diff;
+                    $best = $shift;
+                }
+            }
+            if ($best !== null) {
+                return $best;
+            }
+        }
+
+        return null;
     }
 
 
@@ -450,6 +485,36 @@ class AutoShiftController extends Controller
                 continue;
             }
 
+            // Cross-day filter: if yesterday's attendance was Night Shift with an IN,
+            // today's early-morning logs in the previous day's OUT window belong to
+            // THAT pairing — skip them so today's shift selection is correct.
+            $prevDate = date("Y-m-d", strtotime($date . " -1 day"));
+            $prevAttendance = Attendance::where("company_id", $params["company_id"])
+                ->where("employee_id", $UserID)
+                ->where("date", $prevDate)
+                ->first();
+
+            if ($prevAttendance && (int) $prevAttendance->shift_type_id === 4
+                && !empty($prevAttendance->in) && $prevAttendance->in !== "---") {
+                $prevShift = Shift::find($prevAttendance->shift_id);
+                if ($prevShift && !empty($prevShift->ending_in) && !empty($prevShift->ending_out)) {
+                    $tolSec = 60 * 60;
+                    $windowStart = strtotime($date . ' ' . $prevShift->ending_in) - $tolSec;
+                    $windowEnd   = strtotime($date . ' ' . $prevShift->ending_out) + $tolSec;
+
+                    $rowArr = is_object($row) ? $row->toArray() : $row;
+                    $row = array_values(array_filter($rowArr, function ($log) use ($windowStart, $windowEnd) {
+                        $logSec = strtotime($log['LogTime']);
+                        return !($logSec >= $windowStart && $logSec <= $windowEnd);
+                    }));
+
+                    if (empty($row)) {
+                        $message .= "[" . $date . "] Cron:SyncAuto $UserID: all today's logs belong to prev-day Night Shift OUT.\n";
+                        continue;
+                    }
+                }
+            }
+
             $shifts = ((new Shift)->getAutoShiftsAll($params["company_id"], $row[0]["employee"]["branch_id"]));
 
             //return $row;
@@ -496,21 +561,26 @@ class AutoShiftController extends Controller
                 // $arr["shifts"] = $shifts;
                 // return $items[] = $arr;
 
-                // ScheduleEmployee::where("company_id", $params['company_id'])
-                //     ->where("employee_id", $UserID)
-                //     ->where("isAutoShift", true)
-                //     ->update([
-                //         /////////  "from_date" => $params['date'],
-                //         //"to_date" => $params['date'],
-                //         ///// "to_date" =>  date("Y-m-d", strtotime(date("Y-m-d") . " +1 day")),
-
-                //         "shift_type_id" => $nearestShift['shift_type_id'],
-                //         "shift_id" => $nearestShift['id'],
-                //     ]);
-
-
+                // Schedule dance (ported from old software): before delegating, update the
+                // auto-shift schedule to the picked shift's type/id so the delegated
+                // controller (Single/Night/Filo/etc.) loads it via its type filter. Reset
+                // back to shift_type_id=3 after, so the employee stays in the auto pool.
+                ScheduleEmployee::where("company_id", $params['company_id'])
+                    ->where("employee_id", $UserID)
+                    ->where("isAutoShift", true)
+                    ->update([
+                        "shift_type_id" => $nearestShift['shift_type_id'],
+                        "shift_id"      => $nearestShift['id'],
+                    ]);
 
                 $result = $this->renderRelatedShiftype($nearestShift['shift_type_id'], $UserID, $params, $channel);
+
+                ScheduleEmployee::where("company_id", $params['company_id'])
+                    ->where("employee_id", $UserID)
+                    ->where("isAutoShift", true)
+                    ->update([
+                        "shift_type_id" => 3,
+                    ]);
 
                 $message .= "[" . $date . "] Cron:SyncAuto The Log(s) has been rendered against " . $UserID . " SYSTEM USER ID.\n";
 
