@@ -20,7 +20,43 @@ class AttendanceLogController extends Controller
 {
     public function index(AttendanceLog $model, Request $request)
     {
-        return $model->filter($request)->orderBy("LogTime", "desc")->paginate($request->per_page);
+        $paginator = $model->filter($request)->orderBy("LogTime", "desc")->paginate($request->per_page);
+
+        if ($request->boolean('with_shift_type')) {
+            $logs = $paginator->getCollection();
+
+            // AttendanceLog->date is a "d-M-y" accessor and Attendance->date is "d M y" via cast+accessor.
+            // Both bypass the actual stored Y-m-d. Re-derive Y-m-d from LogTime and query attendances
+            // via DB::table to get the raw stored date string for safe keying.
+            $employeeIds = $logs->pluck('UserID')->unique()->filter()->values();
+            $normalizedDates = $logs->map(fn ($log) => date('Y-m-d', strtotime($log->LogTime)))
+                ->unique()
+                ->values();
+
+            if ($employeeIds->isNotEmpty() && $normalizedDates->isNotEmpty()) {
+                $companyId = $request->company_id;
+
+                $attendanceRows = DB::table('attendances')
+                    ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
+                    ->whereIn('employee_id', $employeeIds)
+                    ->whereIn('date', $normalizedDates)
+                    ->get(['employee_id', 'date', 'shift_type_id']);
+
+                $attendanceMap = [];
+                foreach ($attendanceRows as $a) {
+                    $attendanceMap[$a->employee_id . '|' . $a->date] = $a->shift_type_id;
+                }
+
+                $logs->transform(function ($log) use ($attendanceMap) {
+                    $normDate = date('Y-m-d', strtotime($log->LogTime));
+                    $key = $log->UserID . '|' . $normDate;
+                    $log->shift_type_id = $attendanceMap[$key] ?? null;
+                    return $log;
+                });
+            }
+        }
+
+        return $paginator;
     }
 
     public function getAttendanceLogs(AttendanceLog $model, Request $request)

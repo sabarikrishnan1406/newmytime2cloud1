@@ -158,7 +158,7 @@ function LocationCell({ log }) {
       <span
         className="block cursor-pointer hover:text-blue-500"
         title="View on map"
-        onClick={e => {
+        onClick={(e) => {
           e.stopPropagation();
           setShowMap(true);
         }}
@@ -168,52 +168,45 @@ function LocationCell({ log }) {
       <span title={locationName} className="max-w-[220px] truncate">{locationName}</span>
       {showMap && (
         <div
-          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.4)', zIndex: 9999 }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/65"
           onClick={() => setShowMap(false)}
         >
           <div
-            className=" bg-white/5 dark:bg-slate-900 p-3"
-            style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', borderRadius: 8, minWidth: 320 }}
-            onClick={e => e.stopPropagation()}
+            className="w-[620px] max-w-[95vw] rounded-xl overflow-hidden shadow-2xl flex flex-col bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700"
+            onClick={(e) => e.stopPropagation()}
           >
-            <style>{`
-              .rotate-cw-hover {
-                transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
-              }
-              .rotate-cw-hover:hover {
-                transform: rotate(360deg);
-              }
-            `}</style>
-            <div className="flex justify-end items-center mb-4 text-gray-600 dark:text-gray-300">
-              <XIcon className="bg-primary rounded-full p-1 -mt-9 -mr-7 cursor-pointer rotate-cw-hover" size={24} onClick={() => setShowMap(false)} />
+            <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-100">
+                <MapPin size={16} className="text-primary" />
+                <span>Location</span>
+              </div>
+              <button
+                onClick={() => setShowMap(false)}
+                title="Close"
+                className="flex items-center justify-center p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-200 transition"
+              >
+                <XIcon size={16} />
+              </button>
             </div>
             {(() => {
               const hasCoords = log?.lat && log?.lon;
-              const query = hasCoords
-                ? `${log.lat},${log.lon}`
-                : encodeURIComponent(locationName);
+              const query = hasCoords ? `${log.lat},${log.lon}` : encodeURIComponent(locationName);
               return (
                 <>
-                  <div style={{ position: 'relative', width: 600, height: 600 }}>
+                  <div className="relative w-full h-[480px]">
                     <iframe
                       title="Map"
-                      width="600"
-                      height="600"
-                      style={{ border: 0, display: 'block' }}
+                      width="100%"
+                      height="100%"
+                      className="border-0 block"
                       loading="lazy"
                       allowFullScreen
                       referrerPolicy="no-referrer-when-downgrade"
                       src={`https://maps.google.com/maps?q=${query}&z=16&output=embed`}
                     />
                     <div
-                      style={{
-                        position: 'absolute',
-                        left: '50%',
-                        top: '50%',
-                        transform: 'translate(-50%, -100%)',
-                        pointerEvents: 'none',
-                        filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
-                      }}
+                      style={{ transform: 'translate(-50%, -100%)', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}
+                      className="absolute left-1/2 top-1/2 pointer-events-none"
                     >
                       <svg width="32" height="40" viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20c0-6.6-5.4-12-12-12z" fill="#dc2626" />
@@ -221,12 +214,12 @@ function LocationCell({ log }) {
                       </svg>
                     </div>
                   </div>
-                  <div className="mt-3 px-3 py-2 bg-white/90 dark:bg-slate-800 rounded text-sm text-slate-700 dark:text-slate-200 w-[600px]">
-                    <div className="flex items-start gap-2">
+                  <div className="px-4 py-3 bg-gray-50 dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-200">
+                    <div className="flex items-start gap-2.5">
                       <MapPin size={16} className="mt-0.5 shrink-0 text-primary" />
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate" title={locationName}>{locationName}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                           {hasCoords ? `${log.lat}, ${log.lon}` : "Coordinates unavailable"}
                           {log?.date && log?.time ? <span className="ml-2">• {log.date} {log.time}</span> : null}
                         </p>

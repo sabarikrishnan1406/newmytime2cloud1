@@ -67,7 +67,7 @@ class ThemeController extends Controller
     }
     public function dashboardCount(Request $request)
     {
-        return $this->getCounts($request->company_id, $request);
+        return $this->getDashboardCounts($request->company_id, $request);
     }
 
     public function dashboardShortViewCount(Request $request)
@@ -222,8 +222,85 @@ class ThemeController extends Controller
             "leaveCount"     => $leaveCount,
             "vaccationCount" => $vaccationCount,
             "additional"     => $this->getAdditionalCount($request),
-            "offlineDevices"   => $offlineDevices,
+            "offlineDevices" => $offlineDevices,
+        ];
+    }
 
+    /**
+     * Dashboard-only counts: "Present" means anyone with at least one attendance
+     * log today (any device). Used by the dashboard cards via dashboardCount().
+     * Other callers (Theme cards, WhatsApp stats, etc.) keep using getCounts().
+     */
+    public function getDashboardCounts($companyId = 0, $request)
+    {
+        $branch_id = $request->input('branch_id', 0);
+        $department_id = $request->input('department_id', 0);
+
+        $employeeCount = Employee::where("company_id", $companyId)
+            ->when($branch_id, fn($q) => $q->where("branch_id", $branch_id))
+            ->when($department_id, fn($q) => $q->where("department_id", $department_id))
+            ->when($request->filled("branch_ids"), function ($q) use ($request) {
+                $q->whereIn("branch_id", $request->branch_ids);
+            })
+            ->when($request->filled("department_ids"), function ($q) use ($request) {
+                $q->whereIn("department_id", $request->department_ids);
+            })
+            ->count() ?? 0;
+
+        // Present Today = unique employees who logged at least once today (any device)
+        $presentCount = AttendanceLog::where('company_id', $companyId)
+            ->whereDate('LogTime', date('Y-m-d'))
+            ->whereHas('employee', function ($q) use ($branch_id, $department_id, $request) {
+                $q->where('company_id', $request->company_id);
+                if ($branch_id) $q->where('branch_id', $branch_id);
+                if ($department_id) $q->where('department_id', $department_id);
+                if ($request->filled('branch_ids')) $q->whereIn('branch_id', $request->branch_ids);
+                if ($request->filled('department_ids')) $q->whereIn('department_id', $request->department_ids);
+            })
+            ->distinct('UserID')
+            ->count('UserID');
+
+        // Leave/Vacation/Offline counts come from the existing Attendance/Device tables
+        $attendances = Attendance::where('company_id', $companyId)
+            ->when($branch_id, function ($q) use ($branch_id) {
+                $q->whereHas('employee', fn(Builder $q) => $q->where('branch_id', $branch_id));
+            })
+            ->when($department_id, function ($q) use ($department_id) {
+                $q->whereHas('employee', fn(Builder $q) => $q->where('department_id', $department_id));
+            })
+            ->when($request->filled("branch_ids"), function ($q) use ($request) {
+                $q->whereHas("employee", fn($q) => $q->whereIn("branch_id", $request->branch_ids));
+            })
+            ->when($request->filled("department_ids"), function ($q) use ($request) {
+                $q->whereHas("employee", fn($q) => $q->whereIn("department_id", $request->department_ids));
+            })
+            ->whereDate('date', date("Y-m-d"))
+            ->select('status')
+            ->get();
+
+        $leaveCount = $attendances->where('status', 'L')->count();
+        $vaccationCount = $attendances->where('status', 'V')->count();
+
+        $offlineDevices = Device::where('company_id', $companyId)
+            ->when($branch_id, function ($q) use ($branch_id) {
+                $q->whereHas('branch', fn(Builder $q) => $q->where('branch_id', $branch_id));
+            })
+            ->when($request->filled("branch_ids"), function ($q) use ($request) {
+                $q->whereIn("branch_id", $request->branch_ids);
+            })
+            ->where('status_id', 2)
+            ->where('device_id', "!=", "Manual")
+            ->count();
+
+        return [
+            "employeeCount"  => $employeeCount,
+            "presentCount"   => $presentCount,
+            "absentCount"    => max(0, $employeeCount - ($presentCount + $leaveCount + $vaccationCount)),
+            "leaveCount"     => $leaveCount,
+            "vacationCount"  => $vaccationCount,
+            "vaccationCount" => $vaccationCount, // legacy key
+            "additional"     => $this->getAdditionalCount($request),
+            "offlineDevices" => $offlineDevices,
         ];
     }
     public function dashboardGetCountDepartment(Request $request)

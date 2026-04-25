@@ -1,4 +1,4 @@
-export function createAvatarOverlay({ maps, employee, pos, map, openPanel, bwMode, moving }) {
+export function createAvatarOverlay({ maps, employee, pos, map, openPanel, openHistory, bwMode, moving }) {
   class AvatarOverlay extends maps.OverlayView {
     constructor() {
       super();
@@ -69,48 +69,104 @@ export function createAvatarOverlay({ maps, employee, pos, map, openPanel, bwMod
           ping.style.animation = "";
           ping.style.background = "transparent";
         }, 5000);
+      // Compact horizontal card — small avatar on the left, name + subtitle + timestamp on the right
       const glass = document.createElement("div");
-      glass.className = "glass-panel rounded-xl p-3 w-48 shadow-2xl";
-      glass.style.width = "12rem";
+      glass.className = "glass-panel rounded-xl shadow-2xl";
+      glass.style.display = "flex";
+      glass.style.alignItems = "center";
+      glass.style.gap = "10px";
+      glass.style.padding = "10px 14px";
+      glass.style.background = "rgba(15,23,42,0.92)";
+      glass.style.border = "1px solid rgba(148,163,184,0.15)";
       glass.style.fontSize = "12px";
+      glass.style.whiteSpace = "nowrap";
 
-      const titleRow = document.createElement("div");
-      titleRow.className = "flex items-start justify-between mb-2";
-      const titleBlk = document.createElement("div");
-      const h4 = document.createElement("h4");
-      h4.className = "text-xs font-bold text-white";
-      h4.textContent = this.employee.name || "";
-      const p = document.createElement("p");
-      p.className = "text-[10px] text-slate-400";
-      p.textContent = this.employee.location || "";
-      titleBlk.appendChild(h4);
-      titleBlk.appendChild(p);
-      titleRow.appendChild(titleBlk);
+      const thumbWrap = document.createElement("div");
+      thumbWrap.style.width = "44px";
+      thumbWrap.style.height = "44px";
+      thumbWrap.style.borderRadius = "10px";
+      thumbWrap.style.overflow = "hidden";
+      thumbWrap.style.flexShrink = "0";
+      thumbWrap.style.background = "#334155";
+      const thumbImg = document.createElement("img");
+      thumbImg.src = this.employee.avatar || "";
+      thumbImg.alt = this.employee.name || "";
+      thumbImg.style.width = "100%";
+      thumbImg.style.height = "100%";
+      thumbImg.style.objectFit = "cover";
+      thumbWrap.appendChild(thumbImg);
 
-      const ico = document.createElement("svg");
-      ico.setAttribute("viewBox", "0 0 24 24");
-      ico.setAttribute("fill", "currentColor");
-      ico.className = "w-4 h-4 text-green-400 flex-shrink-0";
-      ico.innerHTML = '<path d="M23 12l-2.44-2.78.34-3.68-3.61-.82-1.89-3.18L12 3 8.6 1.54 6.71 4.72l-3.61.81.34 3.68L1 12l2.44 2.78-.34 3.69 3.61.82 1.89 3.18L12 21l3.4 1.46 1.89-3.18 3.61-.82-.34-3.68L23 12zm-10 3h-2v-2h2v2zm0-4h-2V7h2v4z"/>';
-      titleRow.appendChild(ico);
+      const textBlk = document.createElement("div");
+      textBlk.style.display = "flex";
+      textBlk.style.flexDirection = "column";
+      textBlk.style.lineHeight = "1.3";
 
-      // show single avatar preview in tooltip (no separate ref/live images)
-      const previewWrap = document.createElement("div");
-      previewWrap.className = "mb-2 rounded-lg overflow-hidden bg-slate-700";
-      previewWrap.style.height = "8rem";
-      previewWrap.style.width = "100%";
-      const previewImg = document.createElement("img");
-      previewImg.src = this.employee.avatar || "";
-      previewImg.alt = this.employee.name || "";
-      previewImg.style.width = "100%";
-      previewImg.style.height = "100%";
-      previewImg.style.objectFit = "cover";
-      previewWrap.appendChild(previewImg);
+      const nameEl = document.createElement("div");
+      nameEl.style.fontWeight = "600";
+      nameEl.style.color = "white";
+      nameEl.style.fontSize = "13px";
+      nameEl.textContent = this.employee.name || "";
 
-      glass.appendChild(titleRow);
-      glass.appendChild(previewWrap);
+      const subEl = document.createElement("div");
+      subEl.style.color = "#94a3b8";
+      subEl.style.fontSize = "11px";
+      subEl.textContent = this.employee.location || "Last known location";
+
+      textBlk.appendChild(nameEl);
+      textBlk.appendChild(subEl);
+
+      if (this.employee.timestamp) {
+        const timeEl = document.createElement("div");
+        timeEl.style.color = "#64748b";
+        timeEl.style.fontSize = "11px";
+        timeEl.style.marginTop = "2px";
+        const d = new Date(this.employee.timestamp);
+        if (!isNaN(d.getTime())) {
+          const pad = (n) => String(n).padStart(2, "0");
+          timeEl.textContent =
+            d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+            " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+        } else {
+          timeEl.textContent = String(this.employee.timestamp);
+        }
+        textBlk.appendChild(timeEl);
+      }
+
+      glass.appendChild(thumbWrap);
+      glass.appendChild(textBlk);
+
+      // "View History" button
+      const historyBtn = document.createElement("button");
+      historyBtn.textContent = "History";
+      historyBtn.style.marginLeft = "10px";
+      historyBtn.style.background = "#3b82f6";
+      historyBtn.style.color = "white";
+      historyBtn.style.border = "0";
+      historyBtn.style.borderRadius = "6px";
+      historyBtn.style.padding = "6px 10px";
+      historyBtn.style.fontSize = "11px";
+      historyBtn.style.fontWeight = "600";
+      historyBtn.style.cursor = "pointer";
+      historyBtn.style.flexShrink = "0";
+      historyBtn.style.pointerEvents = "auto";
+      historyBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        try {
+          if (typeof openHistory === "function") openHistory(this.employee);
+        } catch (err) {}
+      });
+      historyBtn.addEventListener("mouseenter", () => {
+        historyBtn.style.background = "#2563eb";
+      });
+      historyBtn.addEventListener("mouseleave", () => {
+        historyBtn.style.background = "#3b82f6";
+      });
+      glass.appendChild(historyBtn);
 
       tooltip.appendChild(glass);
+
+      // Tooltip stays interactive so the button is clickable
+      tooltip.style.pointerEvents = "auto";
 
       this.div.appendChild(container);
       this.div.appendChild(tooltip);

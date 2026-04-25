@@ -62,14 +62,22 @@ export default function DatePicker({
   const updateCoords = () => {
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      // 380px is a safe estimate for your calendar height + padding
-      const overflowBottom = rect.bottom + 380 > window.innerHeight;
+      const popoverWidth = 360; // min-width of calendar popover + padding
+      const popoverHeight = 380;
+
+      const overflowBottom = rect.bottom + popoverHeight > window.innerHeight;
+      const overflowRight = rect.left + popoverWidth > window.innerWidth;
+
+      // If the popover would overflow off the right edge, right-align it to the trigger
+      const left = overflowRight
+        ? Math.max(8, rect.right - popoverWidth) + window.scrollX
+        : rect.left + window.scrollX;
 
       setCoords({
         top: overflowBottom
-          ? rect.top + window.scrollY - 10 // Position above
-          : rect.bottom + window.scrollY + 10, // Position below
-        left: rect.left + window.scrollX,
+          ? rect.top + window.scrollY - 10
+          : rect.bottom + window.scrollY + 10,
+        left,
         width: rect.width,
         isAbove: overflowBottom,
       });

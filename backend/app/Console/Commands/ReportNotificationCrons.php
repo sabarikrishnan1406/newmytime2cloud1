@@ -68,14 +68,46 @@ class ReportNotificationCrons extends Command
 
             foreach ($models as $model) {
 
-                // Day-of-week filter (days stored as ["1","2",...] where 1=Mon..7=Sun, matches ISO-8601)
-                $days = is_array($model->days) ? $model->days : (json_decode($model->days ?? '[]', true) ?: []);
-                if (!empty($days)) {
-                    $todayIso = (int) date('N'); // 1=Mon .. 7=Sun
-                    if (!in_array((string) $todayIso, array_map('strval', $days), true)) {
-                        $this->info("Skipping notification {$model->id} (today={$todayIso} not in configured days)");
-                        continue;
+                // Frequency-aware scheduling filter.
+                // Scheduler (Kernel) runs this command every day at $model->time, so each
+                // notification must self-filter based on its configured frequency.
+                $frequency = strtolower(trim($model->frequency ?? 'daily'));
+                $shouldSend = false;
+                $skipReason = '';
+
+                if ($frequency === 'weekly') {
+                    // $model->day stores the day name (e.g. "Monday"). Fire only when today matches.
+                    $configuredDay = trim((string) ($model->day ?? ''));
+                    $todayName = date('l'); // "Monday" .. "Sunday"
+                    $shouldSend = $configuredDay !== '' && strcasecmp($configuredDay, $todayName) === 0;
+                    $skipReason = "weekly: today={$todayName}, configured={$configuredDay}";
+                } elseif ($frequency === 'monthly') {
+                    // $model->date stores day-of-month (1..31). Fire only on that day.
+                    $configuredDate = (int) ($model->date ?? 0);
+                    $todayDom = (int) date('j');
+                    $shouldSend = $configuredDate > 0 && $configuredDate === $todayDom;
+                    $skipReason = "monthly: today={$todayDom}, configured={$configuredDate}";
+                } else {
+                    // Daily (default): respect $model->days array if provided, else fire every day.
+                    // Frontend stores weekdays as "0".."6" with Sunday=0, so normalize to match both
+                    // ISO-8601 (1..7, Sunday=7) and JS convention (0..6, Sunday=0).
+                    $days = is_array($model->days) ? $model->days : (json_decode($model->days ?? '[]', true) ?: []);
+                    if (empty($days)) {
+                        $shouldSend = true;
+                        $skipReason = "daily: no days filter";
+                    } else {
+                        $todayIso = (int) date('N');    // 1=Mon..7=Sun
+                        $todayJs = (int) date('w');     // 0=Sun..6=Sat
+                        $normalized = array_map('strval', $days);
+                        $shouldSend = in_array((string) $todayIso, $normalized, true)
+                            || in_array((string) $todayJs, $normalized, true);
+                        $skipReason = "daily: todayIso={$todayIso}, todayJs={$todayJs}, days=" . implode(',', $normalized);
                     }
+                }
+
+                if (!$shouldSend) {
+                    $this->info("Skipping notification {$model->id} ({$skipReason})");
+                    continue;
                 }
 
                 $company_id = $model->company->id;
@@ -83,7 +115,7 @@ class ReportNotificationCrons extends Command
 
                 // For Daily-frequency notifications, use the new consolidated daily report
                 // (one PDF per branch). For other frequencies, use the legacy per-shift-type files.
-                $isDaily = strcasecmp($model->frequency ?? '', 'Daily') === 0;
+                $isDaily = $frequency === 'daily';
                 $filesForThisModel = $isDaily ? ['daily'] : $files;
 
 

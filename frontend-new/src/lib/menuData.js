@@ -54,6 +54,7 @@ const reportMenu = [
   { href: "/report", icon: FileText, label: "Reports" },
   { href: "/logs", icon: History, label: "Device Logs" },
   { href: "/manual-logs", icon: Clipboard, label: "Manual Logs" },
+  { href: "/tracker-history", icon: LocateFixed, label: "Tracker History" },
 ];
 
 const companyMenu = [
@@ -91,6 +92,7 @@ const employeesMenu = [
   { href: "/employees/employee_photo_upload", icon: Upload, label: "Employee Upload" },
   { href: "/leaves", icon: FileText, label: "Leaves Requests" },
   { href: "/document-expiry", icon: FileText, label: "Document Expiry" },
+  { href: "/logs", icon: History, label: "Device Logs" },
 ];
 
 const visitorMenu = [
@@ -130,6 +132,8 @@ export const leftNavLinks = {
 
   "/report": reportMenu,
   "/manual-logs": reportMenu,
+  "/logs": reportMenu,
+  "/tracker-history": reportMenu,
 
   "/shift": attendanceMenu,
   "/schedule": attendanceMenu,

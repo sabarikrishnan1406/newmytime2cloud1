@@ -6,6 +6,7 @@ import distanceMeters from "@/hooks/useDistance";
 import { darkMapStyle } from "./mapData";
 import { loadGoogleMaps } from "./googleMapsLoader";
 import { createAvatarOverlay } from "./createAvatarOverlay";
+import HistoryReplay from "./HistoryReplay";
 import { getUser } from "@/config";
 import useSse from "@/hooks/useSse";
 
@@ -29,6 +30,7 @@ export default function LiveTeamStatus() {
   const [bwMode, setBwMode] = useState(false);
   const [mapError, setMapError] = useState("");
   const [mapReady, setMapReady] = useState(false);
+  const [historyEmployee, setHistoryEmployee] = useState(null);
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef({});
@@ -371,6 +373,7 @@ export default function LiveTeamStatus() {
           pos,
           map: mapRef.current,
           openPanel,
+          openHistory: (e) => setHistoryEmployee(e),
           bwMode,
           moving: movingMap[emp.id],
         });
@@ -520,6 +523,15 @@ export default function LiveTeamStatus() {
       </main>
 
       {/* Side panel removed */}
+
+      {historyEmployee && (
+        <HistoryReplay
+          employee={historyEmployee}
+          companyId={companyId}
+          apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""}
+          onClose={() => setHistoryEmployee(null)}
+        />
+      )}
     </div>
   );
 }

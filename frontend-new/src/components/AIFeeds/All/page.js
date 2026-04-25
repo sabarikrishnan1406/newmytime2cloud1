@@ -42,16 +42,6 @@ export default function AIFeedAll() {
 
     return (
         <>
-            <div className="my-1 flex justify-end">
-                <Input
-                    icon="search"
-                    type="text"
-                    placeholder="Search description..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="w-full max-w-xs p-2 text-sm"
-                />
-            </div>
             <div className="overflow-auto">
                 <table className="w-full table-fixed text-left border-collapse min-w-[500px]">
                     <colgroup>

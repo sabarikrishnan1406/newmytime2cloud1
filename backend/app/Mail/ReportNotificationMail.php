@@ -3,6 +3,8 @@
 namespace App\Mail;
 
 use App\Http\Controllers\Reports\AttendanceReportController;
+use App\Jobs\GenerateDailyReportPDF;
+use App\Jobs\GenerateFormatCReportPDF;
 use App\Models\Attendance;
 use App\Models\Employee;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -41,18 +43,30 @@ class ReportNotificationMail extends Mailable implements ShouldQueue
             ? date('D, F j, Y', strtotime($fromDate))
             : date('M j', strtotime($fromDate)) . ' – ' . date('M j, Y', strtotime($toDate));
 
-        // For Daily-frequency notifications, attach the pre-generated Puppeteer daily PDF
-        // (created by GenerateDailyReportPDF job and saved to public/pdf/<date>/<company>/...)
+        $companyName = optional($this->model->company)->name ?? 'N/A';
+
+        // For Daily-frequency notifications, attach the pre-generated Puppeteer daily PDF.
+        // If it doesn't exist (e.g. notification was added after the 05:00 generation
+        // window), generate it inline so the email always carries the right PDF.
         if ($freq === 'daily') {
             $dailyRelative = "public/pdf/{$fromDate}/{$companyId}/daily_report_{$branchId}.pdf";
             $dailyAbsolute = storage_path("app/" . $dailyRelative);
+
+            if (!file_exists($dailyAbsolute)) {
+                \Log::info("Daily PDF missing — generating inline for company={$companyId} branch={$branchId} date={$fromDate}");
+                try {
+                    (new GenerateDailyReportPDF($companyId, (int) $branchId, $fromDate))->handle();
+                } catch (\Throwable $e) {
+                    \Log::warning("Inline Daily PDF generation failed: " . $e->getMessage());
+                }
+            }
+
             if (file_exists($dailyAbsolute)) {
                 $this->attach($dailyAbsolute, [
                     'as'   => "Daily_Attendance_Report_{$date}.pdf",
                     'mime' => 'application/pdf',
                 ]);
                 $managerName = optional($this->manager)->name ?? 'Manager';
-                $companyName = optional($this->model->company)->name ?? 'N/A';
                 $bodyContent  = "Hi {$managerName},<br/><br/>";
                 $bodyContent .= "<b>Company: {$companyName}</b><br/>";
                 $bodyContent .= "Date: {$dateDisplay}<br/><br/>";
@@ -60,18 +74,44 @@ class ReportNotificationMail extends Mailable implements ShouldQueue
                 $bodyContent .= "Regards,<br/>MyTime2Cloud";
                 return $this->view('emails.report')->with(['body' => $bodyContent]);
             }
-            \Log::warning("Daily PDF missing at $dailyAbsolute — falling back to Format B");
+            \Log::warning("Daily PDF still missing after inline generation at $dailyAbsolute — falling back to Format B");
         }
 
-        // For Weekly / Monthly — attach the pre-generated Format C PDFs from disk
-        // (created by GenerateFormatCReportPDF, one file per shift_type label)
+        // For Weekly / Monthly — attach the pre-generated Format C PDFs from disk.
+        // If a Format C PDF is missing (notification added mid-day, or 05:00 cron failed),
+        // generate it inline for the configured period so the email always carries the
+        // correct Weekly/Monthly summary instead of a generic Format B fallback.
         if ($freq === 'weekly' || $freq === 'monthly') {
+            // Maps shift type label → DB shift_type_id used by the Format C job to scope
+            // employees. Must mirror GeneralDailyReport's $shiftTypeIdMap.
+            $shiftTypeIdMap = ['General' => null, 'Multi' => 2, 'Split' => 5];
             $attachedAny = false;
+
             foreach ($this->files as $shiftLabel) {
                 // Skip the sentinel 'daily' label if it leaked through
                 if ($shiftLabel === 'daily') continue;
+
                 $relative = "public/pdf/{$toDate}/{$companyId}/summary_report_{$branchId}_{$shiftLabel}.pdf";
                 $absolute = storage_path("app/" . $relative);
+
+                if (!file_exists($absolute)) {
+                    \Log::info("Format C PDF missing — generating inline for company={$companyId} branch={$branchId} shift={$shiftLabel} range={$fromDate}..{$toDate}");
+                    try {
+                        $shiftTypeId = $shiftTypeIdMap[$shiftLabel] ?? null;
+                        (new GenerateFormatCReportPDF(
+                            $companyId,
+                            (int) $branchId,
+                            $fromDate,
+                            $toDate,
+                            $shiftLabel,
+                            $shiftTypeId,
+                            $companyName
+                        ))->handle();
+                    } catch (\Throwable $e) {
+                        \Log::warning("Inline Format C generation failed: " . $e->getMessage());
+                    }
+                }
+
                 if (file_exists($absolute)) {
                     $this->attach($absolute, [
                         'as'   => ucfirst($freq) . "_Attendance_Report_{$shiftLabel}_{$date}.pdf",
@@ -80,9 +120,9 @@ class ReportNotificationMail extends Mailable implements ShouldQueue
                     $attachedAny = true;
                 }
             }
+
             if ($attachedAny) {
                 $managerName = optional($this->manager)->name ?? 'Manager';
-                $companyName = optional($this->model->company)->name ?? 'N/A';
                 $bodyContent  = "Hi {$managerName},<br/><br/>";
                 $bodyContent .= "<b>Company: {$companyName}</b><br/>";
                 $bodyContent .= "Period: {$dateDisplay}<br/><br/>";
@@ -90,7 +130,7 @@ class ReportNotificationMail extends Mailable implements ShouldQueue
                 $bodyContent .= "Regards,<br/>MyTime2Cloud";
                 return $this->view('emails.report')->with(['body' => $bodyContent]);
             }
-            \Log::warning("Format C PDFs missing for company=$companyId branch=$branchId freq=$freq — falling back to Format B");
+            \Log::warning("Format C PDFs still missing after inline generation for company=$companyId branch=$branchId freq=$freq — falling back to Format B");
         }
 
         // Fallback: generate Format B (monthly detail) PDF inline if nothing else worked

@@ -53,15 +53,22 @@ class RealTimeLocationController extends Controller
             ->get();
 
         $userIds = $rows->pluck('UserID')->filter()->unique()->values();
-        $avatars = Employee::where('company_id', $companyId)
+        $employees = Employee::where('company_id', $companyId)
             ->whereIn('system_user_id', $userIds)
-            ->get(['system_user_id', 'profile_picture'])
-            ->keyBy('system_user_id')
-            ->map(fn ($e) => $e->profile_picture);
+            ->with(['branch:id,branch_name', 'department:id,name'])
+            ->get(['system_user_id', 'profile_picture', 'first_name', 'last_name', 'branch_id', 'department_id'])
+            ->keyBy('system_user_id');
 
-        return $rows->map(function ($row) use ($avatars) {
+        return $rows->map(function ($row) use ($employees) {
             $data = $row->toArray();
-            $data['avatar'] = $avatars[$row->UserID] ?? null;
+            $emp = $employees[$row->UserID] ?? null;
+            $data['avatar'] = $emp?->profile_picture;
+            $data['first_name'] = $emp?->first_name;
+            $data['last_name'] = $emp?->last_name;
+            $data['branch_id'] = $emp?->branch_id;
+            $data['branch_name'] = $emp?->branch?->branch_name;
+            $data['department_id'] = $emp?->department_id;
+            $data['department_name'] = $emp?->department?->name;
             return $data;
         });
     }
