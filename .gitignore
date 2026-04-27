@@ -3,6 +3,20 @@ camera-service/models/models/
 *.onnx
 *.zip
 
+# Environment files (NEVER commit secrets)
+.env
+.env.live
+.env.local
+.env.production
+.env.development
+.env.staging
+**/.env
+**/.env.live
+**/.env.local
+**/.env.production
+**/.env.development
+**/.env.staging
+
 # OS
 .DS_Store
 Thumbs.db
