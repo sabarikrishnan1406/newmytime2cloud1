@@ -9,7 +9,7 @@ const Label = ({ children }) => (
 );
 
 const SectionTitle = ({ icon, title }) => (
-  <h3 className="text-xs font-bold text-primary uppercase tracking-wider mb-4 flex items-center gap-2 mb-5">
+  <h3 className="text-xs font-bold text-primary dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2 mb-5">
     {icon} {title}
     <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1 ml-2"></div>
   </h3>

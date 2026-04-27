@@ -75,7 +75,7 @@ function computeSpeedKmh(from, to) {
   return distKm / hours;
 }
 
-export default function HistoryReplay({ employee, companyId, apiKey, onClose, date, layout = "modal" }) {
+export default function HistoryReplay({ employee, companyId, apiKey, onClose, date, layout = "modal", fromTime, toTime }) {
   const [trail, setTrail] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -103,9 +103,18 @@ export default function HistoryReplay({ employee, companyId, apiKey, onClose, da
     return 0;
   };
 
-  const [selectedDate, setSelectedDate] = useState(date || new Date().toISOString().slice(0, 10));
+  const normaliseDate = (raw) => {
+    if (!raw) return new Date().toISOString().slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+    return new Date().toISOString().slice(0, 10);
+  };
+  const [selectedDate, setSelectedDate] = useState(normaliseDate(date));
   useEffect(() => {
-    if (date && date !== selectedDate) setSelectedDate(date);
+    const normalised = normaliseDate(date);
+    if (normalised !== selectedDate) setSelectedDate(normalised);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
   const today = selectedDate;
 

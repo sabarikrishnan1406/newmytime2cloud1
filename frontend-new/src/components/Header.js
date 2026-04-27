@@ -156,7 +156,7 @@ export default function Header() {
           </div>
         </div>
 
-        <nav className="hidden md:flex items-center space-x-6">
+        <nav className="hidden md:flex items-center space-x-6 lg:space-x-10 xl:space-x-14">
           {filteredLinks.map((link) => {
             const isActive = link.href === pathname;
             const baseClasses = "text-sm font-medium";

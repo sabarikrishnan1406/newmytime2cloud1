@@ -97,6 +97,10 @@ class AttendanceReportController extends Controller
         // Recalculate weekoff statuses (converts some "A" to "O" in-memory)
         AttendanceWeekOffService::recalculateForReport($allRecords, (int) $companyId);
 
+        // Repair employee relations for legacy rows where attendances.employee_id holds
+        // the badge value instead of system_user_id. Without this they render as '---'.
+        Attendance::rehydrateEmployeesByBadge($allRecords, (int) $companyId);
+
         $employees = $allRecords->groupBy('employee_id')->map(function ($records) use ($isMultiShift, $isSplitShift) {
             $employee = $records->first()->employee;
 
@@ -296,6 +300,10 @@ class AttendanceReportController extends Controller
 
         $records = $query->orderBy('employee_id')->get();
         AttendanceWeekOffService::recalculateForReport($records, (int) $companyId);
+
+        // Repair employee relations for legacy rows where attendances.employee_id holds
+        // the badge value instead of system_user_id. Without this they render as '---'.
+        Attendance::rehydrateEmployeesByBadge($records, (int) $companyId);
 
         $shiftTypeMap = [1 => 'FILO', 2 => 'Multi', 3 => 'Auto', 4 => 'Night', 5 => 'Split', 6 => 'Single'];
 

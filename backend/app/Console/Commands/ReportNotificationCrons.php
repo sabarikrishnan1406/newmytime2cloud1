@@ -23,7 +23,7 @@ class ReportNotificationCrons extends Command
      *
      * @var string
      */
-    protected $signature = 'task:report_notification_crons {company_id}';
+    protected $signature = 'task:report_notification_crons {company_id} {notification_id?}';
 
     /**
      * The console command description.
@@ -40,6 +40,7 @@ class ReportNotificationCrons extends Command
     public function handle()
     {
         $company_id = $this->argument("company_id");
+        $notification_id = $this->argument("notification_id");
 
 
         $script_name = "ReportNotificationCrons";
@@ -60,11 +61,21 @@ class ReportNotificationCrons extends Command
 
         try {
 
-            $models = ReportNotification::where("type", "attendance")
+            $modelsQuery = ReportNotification::where("type", "attendance")
                 ->with(["managers", "company.company_mail_content"])
                 ->with("managers", function ($query) use ($company_id) {
                     $query->where("company_id", $company_id);
-                })->where("company_id", $company_id)->get();
+                })->where("company_id", $company_id);
+
+            // When the scheduler passes a specific notification_id, only process that one
+            // rule. Each rule is now scheduled independently in Kernel::schedule(), so the
+            // handler must scope to its caller — otherwise every cron run would re-send
+            // every rule that matches today's day filter, regardless of time.
+            if ($notification_id) {
+                $modelsQuery->where("id", $notification_id);
+            }
+
+            $models = $modelsQuery->get();
 
             foreach ($models as $model) {
 

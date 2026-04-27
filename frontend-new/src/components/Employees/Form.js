@@ -268,7 +268,11 @@ const Form = ({ action = "Add", payload }) => {
 
                             <div className="col-span-4">
                                 <Label>Date Of Birth</Label>
-                                <DatePicker value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e })} />
+                                <DatePicker
+                                    value={form.date_of_birth}
+                                    onChange={(e) => setForm({ ...form, date_of_birth: e })}
+                                    maxDate={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d; })()}
+                                />
                             </div>
 
 

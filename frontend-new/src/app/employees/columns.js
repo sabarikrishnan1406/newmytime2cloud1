@@ -26,8 +26,8 @@ export default (deleteEmployee, editEmployee) => [
       <div className="flex items-center space-x-3">
         <ProfilePicture src={e.profile_picture} />
         <div>
-          <p className="font-medium text-sm text-slate-600 dark:text-slate-300">{e?.first_name}</p>
-          <p className="text-xs text-slate-400 dark:text-slate-500">
+          <p className="font-medium text-sm text-slate-600 dark:text-stone-100">{e?.first_name}</p>
+          <p className="text-xs text-slate-400 dark:text-stone-100">
             ID: {e.employee_id}
           </p>
         </div>
@@ -36,11 +36,21 @@ export default (deleteEmployee, editEmployee) => [
   },
   {
     key: "branch",
-    header: "Branch / Department",
+    header: "Branch",
     align: "left",
     render: (employee) => (
-      <div className="text-sm text-slate-600 dark:text-slate-300">
-        {employee.branch?.branch_name || "N/A"} / {employee.department?.name || "N/A"}
+      <div className="text-sm text-slate-600 dark:text-stone-100">
+        {employee.branch?.branch_name || "N/A"}
+      </div>
+    ),
+  },
+  {
+    key: "department",
+    header: "Department",
+    align: "left",
+    render: (employee) => (
+      <div className="text-sm text-slate-600 dark:text-stone-100">
+        {employee.department?.name || "N/A"}
       </div>
     ),
   },
@@ -49,7 +59,7 @@ export default (deleteEmployee, editEmployee) => [
     header: "Position",
     align: "center",
     render: (employee) => (
-      <div className="text-sm text-slate-600 dark:text-slate-300 text-center">
+      <div className="text-sm text-slate-600 dark:text-stone-100 text-center">
         {employee.designation?.name || "N/A"}
       </div>
     ),
@@ -60,8 +70,8 @@ export default (deleteEmployee, editEmployee) => [
     align: "center",
     render: (employee) => (
       <div className="text-sm text-center">
-        <p className="text-slate-600 dark:text-slate-300">{employee.user?.email || "—"}</p>
-        <p className="text-xs text-slate-400 dark:text-slate-500">{employee.phone_number || "—"}</p>
+        <p className="text-slate-600 dark:text-stone-100">{employee.user?.email || "—"}</p>
+        <p className="text-xs text-slate-600 dark:text-stone-100">{employee.phone_number || "—"}</p>
       </div>
     ),
   },
@@ -70,7 +80,7 @@ export default (deleteEmployee, editEmployee) => [
     header: "Join Date",
     align: "center",
     render: (employee) => (
-      <div className="text-sm text-slate-600 dark:text-slate-300 text-center">
+      <div className="text-sm text-slate-600 dark:text-stone-100 text-center">
         {employee.show_joining_date || "N/A"}
       </div>
     ),
@@ -91,7 +101,7 @@ export default (deleteEmployee, editEmployee) => [
       const isFace = profile_picture;
 
       return (
-        <div className="flex items-center justify-center space-x-2 text-[#15803D] dark:text-slate-600">
+        <div className="flex items-center justify-center space-x-2 text-[#15803D] dark:text-stone-100">
           {isFace && <ScanFace className="w-5 h-5 hover:text-indigo-600 transition-colors" title="Face" />}
           {isCardNumberSet && <QrCode className="w-5 h-5 hover:text-indigo-600 transition-colors" title="Card" />}
           {isFingerPrint && <Fingerprint className="w-5 h-5 hover:text-indigo-600 transition-colors" title="Fingerprint" />}
@@ -113,7 +123,7 @@ export default (deleteEmployee, editEmployee) => [
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-2 rounded-full cursor-pointer w-fit">
-              <MoreVertical className="w-5 h-5 text-gray-400" />
+              <MoreVertical className="w-5 h-5 text-gray-400 dark:text-stone-100" />
             </div>
           </DropdownMenuTrigger>
 

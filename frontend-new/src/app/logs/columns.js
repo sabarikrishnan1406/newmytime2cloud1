@@ -11,7 +11,7 @@ const baseIcons = {
   Manual: <Edit3 size={16} title="Manual" />,
   Repeated: <RefreshCw size={16} title="Repeated" />,
   Mobile: <Smartphone size={16} title="Mobile" />,
-  Device: <Monitor size={16} title="Monitor" />,
+  Device: <ScanFace size={16} title="Face Scan" />,
 };
 
 // 2. Define how each mode maps to those icons
@@ -101,30 +101,6 @@ export default [
     render: (log) => (
       <p className="font-medium text-sm text-slate-600 dark:text-slate-300 hidden xl:table-cell">{log?.device?.name || "—"}</p>
     ),
-  },
-
-  {
-    key: "device_type",
-    header: "Device Type",
-    render: (log) => {
-      const deviceType = log?.device?.device_type || "—";
-      const typeLabel = deviceType === "all" ? "All" : deviceType === "Attendance" ? "Attendance" : deviceType === "Access Control" ? "Access Control" : deviceType;
-      return (
-        <p className="font-medium text-sm text-slate-600 dark:text-slate-300 hidden xl:table-cell">{typeLabel}</p>
-      );
-    },
-  },
-
-  {
-    key: "function",
-    header: "Function",
-    render: (log) => {
-      const functionValue = log?.device?.function || "—";
-      const functionLabel = functionValue === "auto" ? "Auto" : functionValue === "In" ? "In" : functionValue === "Out" ? "Out" : functionValue;
-      return (
-        <p className="font-medium text-sm text-slate-600 dark:text-slate-300 hidden xl:table-cell">{functionLabel}</p>
-      );
-    },
   },
 
   {

@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { getDocumentExpiry } from '@/lib/endpoint/document_expiry';
 import ProfilePicture from '@/components/ProfilePicture';
 
 
 export default function DocumentExpiryAll() {
 
+    const router = useRouter();
     const [dailyAttendanceRows, setDailyAttendanceRows] = useState([]);
 
     const fetchAllData = async () => {
@@ -49,7 +51,15 @@ export default function DocumentExpiryAll() {
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-900">
                         {dailyAttendanceRows.length > 0 ? dailyAttendanceRows.map((row) => (
-                            <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors group relative">
+                            <tr
+                                key={row.id}
+                                onClick={() => {
+                                    const empId = row?.employee?.id || row?.employee_id;
+                                    if (empId) router.push(`/employees/edit?id=${empId}&tab=Document`);
+                                }}
+                                className="hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors group relative cursor-pointer"
+                                title="Open employee documents"
+                            >
                                 <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">{row?.branch?.branch_name || 'N/A'}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">
                                     <div className="flex items-center space-x-3">

@@ -9,21 +9,34 @@ import EmployeeProfileTest from './Edit/Education';
 import EmployeeDocuments from './Edit/Document';
 import EmployeeContact from './Edit/Contact';
 import Profile from './Edit/Profile';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import SETTINGRFIDLOGIN from './SETTINGRFIDLOGIN';
 
 const EditEmployeeRecord = ({ selectedEmployee }) => {
 
     const router = useRouter();
-
-    const [activeTab, setActiveTab] = useState('Personal');
-    const [payload, setPayload] = useState(null);
+    const searchParams = useSearchParams();
 
     const tabs = ['Personal', 'Contact', 'Payroll', 'Document', 'Banking', 'Settings'];
 
+    const tabFromUrl = (() => {
+        const t = (searchParams?.get?.("tab") || "").toLowerCase();
+        const match = tabs.find((x) => x.toLowerCase() === t);
+        return match || "Personal";
+    })();
+
+    const [activeTab, setActiveTab] = useState(tabFromUrl);
+    const [payload, setPayload] = useState(null);
+
     useEffect(() => {
         setPayload(selectedEmployee);
-    }, [selectedEmployee])
+    }, [selectedEmployee]);
+
+    // Re-sync if the URL tab changes (e.g., user navigates from Document Expiry feed)
+    useEffect(() => {
+        if (tabFromUrl && tabFromUrl !== activeTab) setActiveTab(tabFromUrl);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tabFromUrl]);
 
 
     if (!selectedEmployee) return;
@@ -65,7 +78,7 @@ const EditEmployeeRecord = ({ selectedEmployee }) => {
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`pb-3 px-1 text-sm font-bold tracking-wide uppercase transition-colors border-b-[3px] ${activeTab === tab
-                                ? 'border-[#7f19e6] text-[#7f19e6]'
+                                ? 'border-[#7f19e6] text-[#7f19e6] dark:border-[#c084fc] dark:text-white'
                                 : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-200'
                                 }`}
                         >

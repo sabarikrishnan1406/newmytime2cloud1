@@ -43,7 +43,12 @@ export default function DatePicker({
   placeholder = "Pick a date",
   className = "",
   disabled = false,
+  maxDate = null,
 }) {
+  const maxDateNorm = maxDate
+    ? new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate())
+    : null;
+  const isAfterMax = (d) => maxDateNorm && d > maxDateNorm;
   const [open, setOpen] = useState(false);
   const [viewDate, setViewDate] = useState(new Date());
   const [yearPickerOpen, setYearPickerOpen] = useState(false);
@@ -89,7 +94,11 @@ export default function DatePicker({
       updateCoords();
       window.addEventListener("scroll", updateCoords);
       window.addEventListener("resize", updateCoords);
-      setViewDate(displayDate || new Date());
+      const initialView =
+        displayDate && (!maxDateNorm || displayDate <= maxDateNorm)
+          ? displayDate
+          : maxDateNorm || new Date();
+      setViewDate(initialView);
     }
     return () => {
       window.removeEventListener("scroll", updateCoords);
@@ -118,18 +127,8 @@ export default function DatePicker({
   const monthItems = useMemo(
     () =>
       [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
       ].map((name, idx) => ({ id: idx, name })),
     [],
   );
@@ -137,8 +136,12 @@ export default function DatePicker({
   const yearGridPage = useMemo(() => {
     const centerYear = viewDate.getFullYear();
     const startYear = centerYear - (centerYear % 10) - 1;
-    return Array.from({ length: 12 }, (_, i) => startYear + i);
-  }, [viewDate]);
+    const all = Array.from({ length: 12 }, (_, i) => startYear + i);
+    if (maxDateNorm) {
+      return all.filter((y) => y <= maxDateNorm.getFullYear());
+    }
+    return all;
+  }, [viewDate, maxDateNorm]);
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(viewDate));
@@ -147,6 +150,7 @@ export default function DatePicker({
   }, [viewDate]);
 
   const handleDateSelect = (date) => {
+    if (isAfterMax(date)) return;
     onChange(formatDate(date));
     setOpen(false);
     setYearPickerOpen(false);
@@ -229,12 +233,20 @@ export default function DatePicker({
                   </button>
                   <button
                     type="button"
+                    disabled={
+                      maxDateNorm &&
+                      (yearPickerOpen
+                        ? viewDate.getFullYear() + 10 > maxDateNorm.getFullYear()
+                        : viewDate.getFullYear() > maxDateNorm.getFullYear() ||
+                          (viewDate.getFullYear() === maxDateNorm.getFullYear() &&
+                            viewDate.getMonth() >= maxDateNorm.getMonth()))
+                    }
                     onClick={() =>
                       yearPickerOpen
                         ? setViewDate(new Date(viewDate.getFullYear() + 10, viewDate.getMonth(), 1))
                         : setViewDate(addMonths(viewDate, 1))
                     }
-                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                   >
                     <ChevronRight className="w-4 h-4 text-slate-500" />
                   </button>
@@ -250,7 +262,11 @@ export default function DatePicker({
                         key={year}
                         type="button"
                         onClick={() => {
-                          setViewDate(new Date(year, viewDate.getMonth(), 1));
+                          const month =
+                            maxDateNorm && year === maxDateNorm.getFullYear() && viewDate.getMonth() > maxDateNorm.getMonth()
+                              ? maxDateNorm.getMonth()
+                              : viewDate.getMonth();
+                          setViewDate(new Date(year, month, 1));
                           setYearPickerOpen(false);
                         }}
                         className={`h-10 rounded-xl text-sm font-medium transition-all
@@ -274,14 +290,17 @@ export default function DatePicker({
                     {days.map((day, idx) => {
                       const isSelected = displayDate && isSameDay(day, displayDate);
                       const isCurrentMonth = isSameMonth(day, viewDate);
+                      const isDisabled = isAfterMax(day);
                       return (
                         <button
                           key={idx}
                           type="button"
+                          disabled={isDisabled}
                           onClick={() => handleDateSelect(day)}
                           className={`h-9 w-9 flex items-center justify-center rounded-xl text-sm font-medium transition-all
                             ${!isCurrentMonth ? "text-slate-300 dark:text-slate-700 opacity-30" : "text-slate-600 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/30"}
                             ${isSelected ? "!bg-blue-600 !text-white" : ""}
+                            ${isDisabled ? "opacity-30 cursor-not-allowed hover:bg-transparent" : ""}
                           `}
                         >
                           {day.getDate()}

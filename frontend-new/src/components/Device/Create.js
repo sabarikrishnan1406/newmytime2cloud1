@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getBranches, createDevice, testCameraConnection } from "@/lib/api";
-import { notify, parseApiError } from "@/lib/utils";
+import { compressImage, notify, parseApiError } from "@/lib/utils";
 import Input from "../Theme/Input";
 import TextArea from "../Theme/TextArea";
 import DropDown from "../ui/DropDown";
@@ -32,6 +32,7 @@ let defaultPayload = {
   camera_sdk_url: "",
   admin_username: "admin",
   admin_password: "admin1234",
+  device_photo: null,
 };
 
 const DeviceCreate = ({ onSuccess = () => { } }) => {
@@ -204,6 +205,47 @@ const DeviceCreate = ({ onSuccess = () => { } }) => {
                   value={form.branch_id}
                   onChange={(value) => handleChange("branch_id", value)}
                   items={branches} />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-slate-400">
+                  Device Photo
+                </label>
+                <div className="flex items-center gap-4">
+                  <label className="cursor-pointer">
+                    <div className="w-24 h-24 rounded-xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden hover:border-primary transition-colors">
+                      {form.device_photo ? (
+                        <img src={form.device_photo} alt="Device" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="material-symbols-outlined text-slate-400 text-3xl">add_a_photo</span>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const compressed = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.8 });
+                          handleChange("device_photo", compressed);
+                        } catch (err) {
+                          notify("Error", "Could not load image", "error");
+                        }
+                      }}
+                    />
+                  </label>
+                  {form.device_photo && (
+                    <button
+                      type="button"
+                      onClick={() => handleChange("device_photo", null)}
+                      className="text-xs text-red-500 hover:text-red-600"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -161,7 +161,7 @@ class AttendanceLog extends Model
 
             ->with('device', function ($q) use ($request) {
                 $q->where('company_id', $request->company_id)
-                  ->select('id', 'device_id', 'name', 'location', 'device_type', 'function', 'company_id', 'status_id', 'model_number', 'short_name');
+                  ->select('id', 'device_id', 'name', 'location', 'device_type', 'function', 'company_id', 'status_id', 'model_number', 'short_name', 'device_photo');
             })
             ->with('approver')
             ->when($request->from_date, function ($query) use ($request) {

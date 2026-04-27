@@ -51,7 +51,12 @@ class GenerateFormatCReportPDF implements ShouldQueue
 
     public function handle(): void
     {
-        // Collect all active employees in this branch (optionally filtered by shift type)
+        // Collect all active employees in this branch (optionally filtered by shift type).
+        // Pluck system_user_id (NOT employee_id badge) — that's the FK that attendance rows
+        // actually reference (see Attendance::employee belongsTo with foreignKey=employee_id
+        // and ownerKey=system_user_id). Using badge values would miss any modern attendance
+        // rows written under the system_user_id, which is the bug that made employees with
+        // employee_id != system_user_id appear ABSENT in Format C reports.
         $empQuery = Employee::where('company_id', $this->companyId)
             ->where('branch_id', $this->branchId)
             ->where('status', 1);
@@ -61,7 +66,7 @@ class GenerateFormatCReportPDF implements ShouldQueue
                 $q->where('shift_type_id', $this->shiftTypeId);
             });
         }
-        $employeeIds = $empQuery->pluck('employee_id')->filter()->implode(',');
+        $employeeIds = $empQuery->pluck('system_user_id')->filter()->implode(',');
 
         if ($employeeIds === '') {
             echo "[GenerateFormatCReportPDF] No employees found for company={$this->companyId} branch={$this->branchId} — skipping.\n";

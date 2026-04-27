@@ -4,25 +4,41 @@ import { Camera, AlertCircle, CheckCircle2 } from "lucide-react";
 import { compressImage, notify } from "@/lib/utils";
 import axios from "axios";
 import { FACE_VALIDATOR_URL } from "@/config";
+import { replaceBackgroundWithWhite, prewarmBackgroundRemoval } from "@/lib/backgroundRemoval";
+import { cropFaceWithPadding, prewarmFaceDetector } from "@/lib/faceCrop";
 
 const ImageUploader = ({ onImageSet = () => {}, existingImage = null }) => {
   const [qualityScore, setQualityScore] = useState(0);
   const [preview, setPreview] = useState(null);
   const [reasons, setReasons] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [stage, setStage] = useState(""); // "validating" | "removing-bg"
 
   useEffect(() => {
-    if (existingImage) {
-      setPreview(existingImage);
-      setQualityScore(100);
-    }
+    if (!existingImage) return;
+    setPreview(existingImage);
+    setQualityScore(100);
+    // Existing photos were already face-cropped + cleaned at upload time.
+    // Re-running the bg-removal AI here would load a ~10MB model and block
+    // the main thread for several seconds, freezing the edit page. So we
+    // simply show the saved photo as-is.
   }, [existingImage]);
+
+  // Pre-warm the bg-removal and face-detector modules so the first upload is fast.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      prewarmBackgroundRemoval().catch(() => {});
+      prewarmFaceDetector();
+    }, 800);
+    return () => clearTimeout(id);
+  }, []);
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setLoading(true);
+    setStage("validating");
     setReasons([]);
 
     try {
@@ -33,22 +49,38 @@ const ImageUploader = ({ onImageSet = () => {}, existingImage = null }) => {
       });
 
       let url = `${FACE_VALIDATOR_URL}/validate-passport`;
-
-      console.log(url);
-
       const { data } = await axios.post(url, {
         image_base64: clientCompressed,
       });
 
-      // Destructure based on your actual response
-      const { status, message, cropped_image, meta } = data;
+      const { status, message } = data;
 
       if (status) {
-        // Since the API says 'true', we treat quality as 100% or 'Pass'
         setQualityScore(100);
-        setPreview(cropped_image);
-        onImageSet(cropped_image);
-        await notify("Success", "Passport photo enhanced!", "success");
+        // 1) AI face detection picks the face bbox from the original photo and
+        //    crops with passport-style padding (face ~50% of frame, hair on
+        //    top, shoulders on bottom).
+        // 2) Lenient bg removal then replaces only the clear backdrop with
+        //    white, preserving every hair/edge pixel.
+        let cropped;
+        try {
+          cropped = await cropFaceWithPadding(clientCompressed);
+        } catch (cropErr) {
+          console.warn("Face-detect crop failed, using full image:", cropErr);
+          cropped = clientCompressed;
+        }
+        setPreview(cropped);
+        setStage("removing-bg");
+        try {
+          const cleaned = await replaceBackgroundWithWhite(cropped);
+          setPreview(cleaned);
+          onImageSet(cleaned);
+          await notify("Success", "Photo enhanced and background removed!", "success");
+        } catch (bgErr) {
+          console.warn("Background removal failed, using cropped image:", bgErr);
+          onImageSet(cropped);
+          await notify("Success", "Photo enhanced!", "success");
+        }
       } else {
         setQualityScore(0);
         setReasons([message || "Face validation failed"]);
@@ -61,6 +93,7 @@ const ImageUploader = ({ onImageSet = () => {}, existingImage = null }) => {
       await notify("Service Offline", "Server error occurred.", "error");
     } finally {
       setLoading(false);
+      setStage("");
     }
   };
 
@@ -68,7 +101,7 @@ const ImageUploader = ({ onImageSet = () => {}, existingImage = null }) => {
     <div className="flex flex-col items-center gap-4 w-full max-w-sm">
       <label className="relative group cursor-pointer block w-fit">
         <div
-          className={`w-40 h-40 rounded-full border-4 border-border shadow-xl overflow-hidden flex items-center justify-center transition-all duration-300 transform group-hover:scale-105 
+          className={`w-40 h-40 rounded-full bg-white border-4 border-border shadow-xl overflow-hidden flex items-center justify-center transition-all duration-300 transform group-hover:scale-105
           ${loading ? "animate-pulse border-primary-500" : "border-slate-300 dark:border-white/20"}
           ${qualityScore >= 70 ? "border-emerald-500" : ""}`}
         >
@@ -76,7 +109,7 @@ const ImageUploader = ({ onImageSet = () => {}, existingImage = null }) => {
             <img
               src={preview}
               alt="Enhanced Passport"
-              className="object-cover w-full h-full"
+              className="object-cover w-full h-full rounded-full"
             />
           ) : (
             <div className="text-center">
@@ -88,8 +121,11 @@ const ImageUploader = ({ onImageSet = () => {}, existingImage = null }) => {
           )}
 
           {loading && (
-            <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-2">
               <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+              <span className="text-[10px] text-white font-semibold">
+                {stage === "removing-bg" ? "Removing background…" : "Validating…"}
+              </span>
             </div>
           )}
         </div>

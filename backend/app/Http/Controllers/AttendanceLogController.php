@@ -24,33 +24,45 @@ class AttendanceLogController extends Controller
 
         if ($request->boolean('with_shift_type')) {
             $logs = $paginator->getCollection();
-
-            // AttendanceLog->date is a "d-M-y" accessor and Attendance->date is "d M y" via cast+accessor.
-            // Both bypass the actual stored Y-m-d. Re-derive Y-m-d from LogTime and query attendances
-            // via DB::table to get the raw stored date string for safe keying.
             $employeeIds = $logs->pluck('UserID')->unique()->filter()->values();
             $normalizedDates = $logs->map(fn ($log) => date('Y-m-d', strtotime($log->LogTime)))
                 ->unique()
                 ->values();
 
-            if ($employeeIds->isNotEmpty() && $normalizedDates->isNotEmpty()) {
+            if ($employeeIds->isNotEmpty()) {
                 $companyId = $request->company_id;
 
-                $attendanceRows = DB::table('attendances')
-                    ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
-                    ->whereIn('employee_id', $employeeIds)
-                    ->whereIn('date', $normalizedDates)
-                    ->get(['employee_id', 'date', 'shift_type_id']);
-
+                // Per-date attendance has the most accurate shift_type for past dates,
+                // but isn't populated for "today" until the nightly calculation runs.
                 $attendanceMap = [];
-                foreach ($attendanceRows as $a) {
-                    $attendanceMap[$a->employee_id . '|' . $a->date] = $a->shift_type_id;
+                if ($normalizedDates->isNotEmpty()) {
+                    $rows = DB::table('attendances')
+                        ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
+                        ->whereIn('employee_id', $employeeIds)
+                        ->whereIn('date', $normalizedDates)
+                        ->get(['employee_id', 'date', 'shift_type_id']);
+                    foreach ($rows as $a) {
+                        $attendanceMap[$a->employee_id . '|' . $a->date] = $a->shift_type_id;
+                    }
                 }
 
-                $logs->transform(function ($log) use ($attendanceMap) {
+                // Fallback: latest schedule_employees row per employee (works for any date including today).
+                $scheduleMap = [];
+                $scheduleRows = DB::table('schedule_employees')
+                    ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
+                    ->whereIn('employee_id', $employeeIds)
+                    ->orderBy('updated_at', 'desc')
+                    ->get(['employee_id', 'shift_type_id']);
+                foreach ($scheduleRows as $s) {
+                    if (!isset($scheduleMap[$s->employee_id])) {
+                        $scheduleMap[$s->employee_id] = $s->shift_type_id;
+                    }
+                }
+
+                $logs->transform(function ($log) use ($attendanceMap, $scheduleMap) {
                     $normDate = date('Y-m-d', strtotime($log->LogTime));
                     $key = $log->UserID . '|' . $normDate;
-                    $log->shift_type_id = $attendanceMap[$key] ?? null;
+                    $log->shift_type_id = $attendanceMap[$key] ?? ($scheduleMap[$log->UserID] ?? null);
                     return $log;
                 });
             }

@@ -25,6 +25,7 @@ export default function DateRangeSelect({
   onChange = () => {},
   numberOfMonths = 2,
   showOutsideDays = false,
+  single = false,
 }) {
   const [date, setDate] = useState({ from: null, to: null });
   const [draftDate, setDraftDate] = useState(date);
@@ -86,7 +87,13 @@ export default function DateRangeSelect({
             )}
           >
             <CalendarIcon className="h-4 w-4" />
-            {date?.from ? (
+            {single ? (
+              date?.from ? (
+                format(date.from, "LLL dd, y")
+              ) : (
+                <span>Pick a date</span>
+              )
+            ) : date?.from ? (
               date.to ? (
                 <>
                   {format(date.from, "LLL dd, y")} -{" "}
@@ -124,30 +131,32 @@ export default function DateRangeSelect({
                 <span className="material-icons ml-1 text-base align-middle">expand_more</span>
               </button>
             </div>
-            <div className="flex gap-1">
-              <button
-                type="button"
-                onClick={() =>
-                  yearPickerOpen
-                    ? setViewMonth(new Date(viewMonth.getFullYear() - 10, viewMonth.getMonth(), 1))
-                    : setViewMonth(subMonths(viewMonth, 1))
-                }
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-              >
-                <ChevronLeft className="w-4 h-4 text-slate-500" />
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  yearPickerOpen
-                    ? setViewMonth(new Date(viewMonth.getFullYear() + 10, viewMonth.getMonth(), 1))
-                    : setViewMonth(addMonths(viewMonth, 1))
-                }
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-              >
-                <ChevronRight className="w-4 h-4 text-slate-500" />
-              </button>
-            </div>
+            {!single && (
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    yearPickerOpen
+                      ? setViewMonth(new Date(viewMonth.getFullYear() - 10, viewMonth.getMonth(), 1))
+                      : setViewMonth(subMonths(viewMonth, 1))
+                  }
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                >
+                  <ChevronLeft className="w-4 h-4 text-slate-500" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    yearPickerOpen
+                      ? setViewMonth(new Date(viewMonth.getFullYear() + 10, viewMonth.getMonth(), 1))
+                      : setViewMonth(addMonths(viewMonth, 1))
+                  }
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                >
+                  <ChevronRight className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+            )}
           </div>
 
           {yearPickerOpen ? (
@@ -177,16 +186,30 @@ export default function DateRangeSelect({
               </div>
             </div>
           ) : (
-            <Calendar
-              initialFocus
-              mode="range"
-              month={viewMonth}
-              onMonthChange={setViewMonth}
-              selected={draftDate}
-              onSelect={setDraftDate}
-              numberOfMonths={numberOfMonths}
-              showOutsideDays={showOutsideDays}
-            />
+            single ? (
+              <Calendar
+                initialFocus
+                mode="single"
+                month={viewMonth}
+                onMonthChange={setViewMonth}
+                selected={draftDate?.from || undefined}
+                onSelect={(d) => setDraftDate({ from: d || null, to: d || null })}
+                numberOfMonths={numberOfMonths}
+                showOutsideDays={showOutsideDays}
+                classNames={{ month_caption: "hidden", nav: "hidden" }}
+              />
+            ) : (
+              <Calendar
+                initialFocus
+                mode="range"
+                month={viewMonth}
+                onMonthChange={setViewMonth}
+                selected={draftDate}
+                onSelect={setDraftDate}
+                numberOfMonths={numberOfMonths}
+                showOutsideDays={showOutsideDays}
+              />
+            )
           )}
 
           {/* Action Buttons */}
@@ -204,7 +227,7 @@ export default function DateRangeSelect({
               className="bg-white dark:bg-primary"
               size="sm"
               onClick={handleApply}
-              disabled={!draftDate?.from || !draftDate.to}
+              disabled={single ? !draftDate?.from : !draftDate?.from || !draftDate.to}
             >
               <Check className="h-4 w-4" />
               Apply

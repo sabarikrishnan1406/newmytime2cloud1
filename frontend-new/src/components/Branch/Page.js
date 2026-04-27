@@ -6,6 +6,7 @@ import { getBranchesForTable } from "@/lib/api";
 import Pagination from "@/lib/Pagination";
 import Columns from "./columns";
 import Create from "@/components/Branch/Create";
+import Edit from "@/components/Branch/Edit";
 import { useRouter } from "next/navigation";
 import { parseApiError } from "@/lib/utils";
 
@@ -18,6 +19,8 @@ import {
 
 export default function Branch() {
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingBranch, setEditingBranch] = useState(null);
   const [records, setRecords] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -51,7 +54,8 @@ export default function Branch() {
   const router = useRouter();
 
   const handleRowClick = (item) => {
-    router.push(`/branch/short-list`);
+    setEditingBranch(item);
+    setEditOpen(true);
   };
 
   const handleSuccess = () => {
@@ -159,6 +163,23 @@ export default function Branch() {
           <Create setOpen={setOpen} onSuccess={handleSuccess} />
         </DialogContent>
       </Dialog>
+
+      {/* Edit Dialog (controlled by row click) */}
+      {editingBranch && (
+        <Edit
+          controlledOpen={editOpen}
+          controlledSetOpen={(v) => {
+            setEditOpen(v);
+            if (!v) setEditingBranch(null);
+          }}
+          initialData={editingBranch}
+          onSuccess={() => {
+            setEditOpen(false);
+            setEditingBranch(null);
+            fetchRecords();
+          }}
+        />
+      )}
     </>
   );
 }

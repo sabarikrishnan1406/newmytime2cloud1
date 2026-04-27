@@ -518,11 +518,18 @@ export default function AttendanceTable() {
         <div className="flex flex-col min-w-[240px]">
           <DateRangeSelect
             value={{ from, to }}
-            onChange={({ from, to }) => {
-              setFrom(from);
-              setTo(to);
-            }
-            } />
+            single={selectedReportTemplate === "Template3"}
+            numberOfMonths={selectedReportTemplate === "Template3" ? 1 : 2}
+            onChange={({ from: newFrom, to: newTo }) => {
+              if (selectedReportTemplate === "Template3") {
+                const single = newFrom || newTo;
+                setFrom(single);
+                setTo(single);
+              } else {
+                setFrom(newFrom);
+                setTo(newTo);
+              }
+            }} />
         </div>
 
         {/* Refresh Button */}

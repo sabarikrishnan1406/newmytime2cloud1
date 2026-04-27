@@ -78,32 +78,60 @@ export default function MultiDropDown({
       );
     }
 
-    const badges = itemsToDisplay.map((item) => (
-      <Badge
-        key={item.id}
-        variant="secondary"
-        className="flex items-center gap-1"
-      >
-        {item.name}
-        <X
-          className="h-3 w-3 cursor-pointer hover:text-destructive"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleRemove(item.id);
-          }}
-        />
-      </Badge>
-    ));
-
-    if (overflowCount > 0) {
-      badges.push(
-        <Badge key="overflow" variant="secondary">
-          +{overflowCount} more
-        </Badge>,
+    // Collapse to a single "Select All" pill when every item is selected
+    if (isAllSelected) {
+      return (
+        <div className="flex flex-wrap gap-1">
+          <Badge variant="secondary" className="flex items-center gap-1">
+            Select All
+            <X
+              className="h-3 w-3 cursor-pointer hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange([]);
+              }}
+            />
+          </Badge>
+        </div>
       );
     }
 
-    return <div className="flex flex-wrap gap-1">{badges}</div>;
+    // Multiple but not all selected → show first item + count pill, e.g. "Front Office (3)"
+    if (selectedItems.length > 1) {
+      const first = selectedItems[0];
+      return (
+        <div className="flex flex-wrap gap-1">
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <span className="truncate max-w-[110px]">{first.name}</span>
+            <span className="text-[10px] font-bold opacity-80">({selectedItems.length})</span>
+            <X
+              className="h-3 w-3 cursor-pointer hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange([]);
+              }}
+            />
+          </Badge>
+        </div>
+      );
+    }
+
+    // Single selection — show with its own remove X
+    const item = selectedItems[0];
+    return (
+      <div className="flex flex-wrap gap-1">
+        <Badge variant="secondary" className="flex items-center gap-1">
+          {item.name}
+          <X
+            className="h-3 w-3 cursor-pointer hover:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRemove(item.id);
+            }}
+          />
+        </Badge>
+      </div>
+    );
   };
 
   return (
@@ -144,13 +172,7 @@ export default function MultiDropDown({
               onSelect={() => handleSelect("Select All")}
             >
               <Checkbox
-                checked={
-                  isAllSelected
-                    ? true
-                    : isSomeSelected
-                      ? "indeterminate"
-                      : false
-                }
+                checked={isAllSelected}
                 onCheckedChange={() => handleSelect("Select All")}
               />
               <span className="font-medium">Select All ({items.length})</span>

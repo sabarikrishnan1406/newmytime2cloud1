@@ -14,20 +14,21 @@ import {
   User,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLiveAttendance } from "@/context/LiveAttendanceContext";
 
 // 1. Define the base icon mapping
 const baseIcons = {
-  Card: <Contact size={16} title="Card" />,
-  Fing: <Fingerprint size={16} title="Fingerprint" />,
-  Face: <ScanFace size={16} title="Face" />,
-  Pin: <Hash size={16} title="PIN" />,
-  Manual: <Edit3 size={16} title="Manual" />,
-  Repeated: <RefreshCw size={16} title="Repeated" />,
-  Mobile: <Smartphone size={16} title="Mobile" />,
-  Device: <Monitor size={16} title="Monitor" />,
+  Card: <Contact size={18} title="Card" />,
+  Fing: <Fingerprint size={18} title="Fingerprint" />,
+  Face: <ScanFace size={18} title="Face" />,
+  Pin: <Hash size={18} title="PIN" />,
+  Manual: <Edit3 size={18} title="Manual" />,
+  Repeated: <RefreshCw size={18} title="Repeated" />,
+  Mobile: <Smartphone size={18} title="Mobile" />,
+  Device: <ScanFace size={18} title="Face Scan" />,
 };
 
 // 2. Define how each mode maps to those icons
@@ -92,6 +93,7 @@ function LiveFeed({ branch_ids, department_ids }) {
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   // Fetch device logs API
   const fetchRecords = async () => {
@@ -169,6 +171,8 @@ function LiveFeed({ branch_ids, department_ids }) {
           id: e?.employee?.employee_id,
           name: employeeName,
           dept: branchDept,
+          branchName: e?.employee?.branch?.branch_name || "—",
+          departmentName: e?.employee?.department?.name || "—",
           deviceName,
           deviceLocation,
           deviceFunction: resolvedFunction,
@@ -245,95 +249,87 @@ function LiveFeed({ branch_ids, department_ids }) {
       <div className="p-5 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
         <div className="flex items-center gap-3">
           <div className="size-2 rounded-full bg-emerald-500 animate-pulse"></div>
-          <h3 className="text-base font-bold text-gray-600 dark:text-gray-300 font-display tracking-wide">
+          <h3 className="text-lg font-bold text-gray-600 dark:text-gray-300 font-display tracking-wide">
             Live Recognition Feed
           </h3>
 
           <RefreshCw
             className={`${isLoading ? "animate-spin" : ""}`}
             onClick={fetchRecords}
-            size={14}
+            size={16}
           />
         </div>
         <div className="flex gap-4 items-center">
           <button
             onClick={() => router.push("/logs")}
-            className="text-xs font-bold text-primary hover:text-gray-600 dark:text-gray-300 transition-colors uppercase tracking-wider"
+            className="text-sm font-bold text-primary hover:text-gray-600 dark:text-gray-300 transition-colors uppercase tracking-wider"
           >
             View Full Log
           </button>
         </div>
       </div>
 
-      {/* Table Header - Fixed column sizes to match body */}
-      <div className="grid grid-cols-12 px-6 py-3 border-y border-gray-200 dark:border-white/5 text-[11px] font-bold text-slate-500 uppercase tracking-wider bg-white/[0.02]">
-        <div className="col-span-1">Date</div>
-        <div className="col-span-2">Employee</div>
-        <div className="col-span-2">Branch / Dept</div>
-        <div className="col-span-1">Mode</div>
-        <div className="col-span-1">Device</div>
-        <div className="col-span-1">Device Type</div>
-        <div className="col-span-1">Function</div>
-        <div className="col-span-1">Time</div>
-        <div className="col-span-2 text-right pr-2">Status</div>
+      {/* Table Header - Equal-width columns */}
+      <div className="overflow-x-auto">
+      <div className="grid grid-cols-8 px-6 py-3 gap-4 border-y border-gray-200 dark:border-white/5 text-[11px] font-bold text-slate-500 uppercase tracking-wider bg-white/[0.02] min-w-[1100px]">
+        <div className="text-center">#</div>
+        <div className="text-left">Employee</div>
+        <div className="text-center">Branch</div>
+        <div className="text-center">Department</div>
+        <div className="text-center">Date & Time</div>
+        <div className="text-center">In/Out</div>
+        <div className="text-center">Mode</div>
+        <div className="text-center">Device Name</div>
       </div>
 
       {/* List Body */}
-      <div className="flex-1 overflow-y-auto px-4">
+      <div className="flex-1 overflow-y-auto min-w-[1100px]">
         {pagedRecords.map((item, index) => (
           <div
             key={index}
-            className={`grid grid-cols-12 py-4 items-center cursor-pointer group gap-2 transition-colors hover:bg-slate-50 dark:hover:bg-white/5 ${index !== pagedRecords.length - 1
+            onClick={() => setSelectedEmployee(item)}
+            className={`grid grid-cols-8 px-6 py-3 gap-4 items-center min-h-[64px] cursor-pointer group transition-colors hover:bg-slate-50 dark:hover:bg-white/5 ${index !== pagedRecords.length - 1
               ? "border-b border-gray-100 dark:border-white/5"
               : ""
               }`}
           >
-            {/* Date & Day */}
-            <div className="col-span-1 pl-2">
-              <span className="text-[11px] font-medium text-gray-600 dark:text-gray-300 block">
-                {item.date}
-              </span>
-              <span className="text-[10px] text-slate-500">
-                {new Date(item.edit_date).toLocaleDateString("en-US", { weekday: "short" })}
-              </span>
+            {/* # */}
+            <div className="text-sm text-slate-600 dark:text-slate-300 text-center">
+              {startIdx + index + 1}
             </div>
+
             {/* Employee */}
-            <div className="col-span-2 flex gap-3 pl-2">
-              <div className="size-8 min-w-[32px] rounded-full overflow-hidden relative border border-border flex items-center justify-center">
+            <div className="flex gap-3 min-w-0">
+              <div className="size-9 min-w-[36px] rounded-full overflow-hidden relative border border-border flex items-center justify-center">
                 <ProfilePicture src={item?.profile_picture} />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 group-hover:text-slate-950 dark:group-hover:text-white transition-colors truncate">
+                <span className="text-xs font-bold text-gray-600 dark:text-gray-300 group-hover:text-slate-950 dark:group-hover:text-white transition-colors truncate">
                   {item.name}
                 </span>
-                <span className="text-xs text-slate-600 dark:text-slate-300">
+                <span className="text-sm text-slate-600 dark:text-slate-300">
                   ID: {item.id}
                 </span>
               </div>
             </div>
-            {/* Branch/Department */}
-            <div className="col-span-2 text-xs text-slate-600 dark:text-slate-300">
-              {item.dept}
+
+            {/* Branch */}
+            <div className="text-sm text-slate-600 dark:text-slate-300 text-center truncate">
+              {item.branchName}
             </div>
 
-            {/* Mode */}
-            <div className="col-span-1 flex items-center text-slate-600 dark:text-slate-300">
-              {item?.modes?.map((icon, idx) => (
-                <span key={idx}>{icon}</span>
-              ))}
+            {/* Department */}
+            <div className="text-sm text-slate-600 dark:text-slate-300 text-center truncate">
+              {item.departmentName}
             </div>
 
-            {/* Device */}
-            <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300 truncate">
-              {item.deviceName}
+            {/* Date & Time */}
+            <div className="text-sm text-slate-600 dark:text-slate-300 text-center">
+              {item.date} {item.time}
             </div>
-            {/* Device Type */}
-            <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300">
-              {item.deviceType === "all" ? "All" : item.deviceType === "Attendance" ? "Attendance" : item.deviceType === "Access Control" ? "Access Control" : item.deviceType || "—"}
-            </div>
-            {/* Function — collapse "option" → "Auto" for the dashboard display only.
-                Values we render: In / Out / Auto. Raw DB value is untouched. */}
-            <div className="col-span-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+
+            {/* In/Out — Function from device, "option/auto/all/mobile" collapse to Auto */}
+            <div className="text-sm font-medium text-slate-600 dark:text-slate-300 text-center">
               {(() => {
                 const f = String(item.deviceFunction || "").trim().toLowerCase();
                 if (f === "in") return "In";
@@ -342,25 +338,28 @@ function LiveFeed({ branch_ids, department_ids }) {
                 return item.deviceFunction || "—";
               })()}
             </div>
-            {/* Time */}
-            <div className="col-span-1 text-xs text-slate-600 dark:text-slate-300">
-              {item.time}
+
+            {/* Mode */}
+            <div className="flex items-center justify-center text-slate-600 dark:text-slate-300">
+              {item?.modes?.map((icon, idx) => (
+                <span key={idx}>{icon}</span>
+              ))}
             </div>
-            {/* Status */}
-            <div className="col-span-2 text-right pr-2">
-              <span
-                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full font-medium text-[9px] border ${getStatusStyles(item.status)}`}
-              >
-                {item.statusType !== "neutral" && (
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${item.status === "Allowed" ? "bg-emerald-500" : "bg-amber-500"}`}
-                  ></span>
-                )}
-                {item.status}
-              </span>
+
+            {/* Device Name + Location */}
+            <div className="min-w-0 text-center">
+              <div className="text-sm font-medium text-slate-600 dark:text-slate-300 truncate" title={item.deviceName}>
+                {item.deviceName}
+              </div>
+              {item.deviceLocation && item.deviceLocation !== "---" ? (
+                <div className="text-xs text-slate-500 dark:text-slate-400 truncate" title={item.deviceLocation}>
+                  {item.deviceLocation}
+                </div>
+              ) : null}
             </div>
           </div>
         ))}
+      </div>
       </div>
 
       {/* Pagination Footer */}
@@ -399,6 +398,208 @@ function LiveFeed({ branch_ids, department_ids }) {
           </button>
         </div>
       </div>
+
+      {selectedEmployee && (
+        <EmployeeDetailModal
+          employee={selectedEmployee}
+          onClose={() => setSelectedEmployee(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function EmployeeDetailModal({ employee, onClose }) {
+  const [logs, setLogs] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+
+  const employeeId = employee?.employee?.employee_id || employee?.id;
+
+  React.useEffect(() => {
+    const run = async () => {
+      try {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - 9);
+        const params = {
+          page: 1,
+          per_page: 500,
+          from_date: start.toISOString().slice(0, 10),
+          to_date: end.toISOString().slice(0, 10),
+        };
+        const res = await getDeviceLogs(params);
+        const all = Array.isArray(res?.data) ? res.data : [];
+        const mine = all.filter(
+          (l) => String(l?.employee?.employee_id || l?.UserID || "") === String(employeeId || "")
+        );
+        mine.sort((a, b) =>
+          String(`${b.date} ${b.time}`).localeCompare(String(`${a.date} ${a.time}`))
+        );
+        setLogs(mine);
+      } catch (_) {
+        setLogs([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    run();
+  }, [employeeId]);
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const isSameDayFmt = (raw) => {
+    if (!raw) return false;
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10) === todayStr;
+    return false;
+  };
+  const todayLogs = logs.filter((l) => isSameDayFmt(l.edit_date || l.date));
+  const firstInToday = todayLogs
+    .filter((l) => String(l.log_type || "").toLowerCase() === "in")
+    .sort((a, b) => String(a.time).localeCompare(String(b.time)))[0]?.time;
+  const lastOutToday = todayLogs
+    .filter((l) => String(l.log_type || "").toLowerCase() === "out")
+    .sort((a, b) => String(b.time).localeCompare(String(a.time)))[0]?.time;
+
+  const workMinutes = (() => {
+    if (!firstInToday || !lastOutToday) return 0;
+    const [h1, m1] = firstInToday.split(":").map(Number);
+    const [h2, m2] = lastOutToday.split(":").map(Number);
+    return Math.max(0, h2 * 60 + m2 - (h1 * 60 + m1));
+  })();
+  const fmtHM = (mins) => `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+  const workTime = fmtHM(workMinutes);
+  const remaining = Math.max(0, 9 * 60 - workMinutes);
+  const overTime = Math.max(0, workMinutes - 9 * 60);
+
+  // 10-day stats
+  const dateSet = new Set();
+  logs.forEach((l) => {
+    const d = l.edit_date || l.date;
+    if (d) dateSet.add(d);
+  });
+  const presents = dateSet.size;
+  const absence = Math.max(0, 10 - presents);
+  const incomplete = (() => {
+    const byDate = new Map();
+    logs.forEach((l) => {
+      const d = l.edit_date || l.date;
+      if (!d) return;
+      if (!byDate.has(d)) byDate.set(d, { hasIn: false, hasOut: false });
+      const t = String(l.log_type || "").toLowerCase();
+      if (t === "in") byDate.get(d).hasIn = true;
+      if (t === "out") byDate.get(d).hasOut = true;
+    });
+    let c = 0;
+    byDate.forEach((v) => { if (v.hasIn !== v.hasOut) c += 1; });
+    return c;
+  })();
+  const manualEntry = logs.filter((l) => String(l?.DeviceID || "").toLowerCase() === "manual").length;
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/65"
+      onClick={onClose}
+    >
+      <div
+        className="w-[560px] max-w-[95vw] max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-end px-4 pt-3">
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition"
+            title="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-[160px_1fr] gap-x-4 gap-y-3 px-4 pb-4">
+          {/* Row 1: Avatar+name | Stat boxes */}
+          <div className="flex flex-col items-center text-center">
+            <div className="w-20 h-20 rounded-full overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <img
+                src={employee?.profile_picture && employee.profile_picture !== "undefined" ? employee.profile_picture : "/avatar-placeholder.png"}
+                alt={employee?.name || "Employee"}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  if (!e.target.src.endsWith("/avatar-placeholder.png")) {
+                    e.target.src = "/avatar-placeholder.png";
+                  }
+                }}
+              />
+            </div>
+            <div className="mt-1.5 text-[13px] font-bold text-slate-800 dark:text-white uppercase tracking-wide">
+              {employee?.name || "Employee"}
+            </div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500">---</div>
+            <div className="text-[10px] text-slate-400 dark:text-slate-500">---</div>
+
+            {/* Sidebar stats stacked under avatar */}
+            <div className="w-full text-xs space-y-2 text-slate-700 dark:text-slate-200 mt-3 text-left">
+              <StatRow label="Presents" value={presents} />
+              <StatRow label="Absence" value={absence} />
+              <StatRow label="Incomplete" value={incomplete} />
+              <StatRow label="Manual Entry" value={manualEntry} />
+              <StatRow label="Leaves" value={0} />
+              <StatRow label="Holidays" value={0} />
+            </div>
+          </div>
+
+          {/* Right side: stat cards on top, table below */}
+          <div className="flex flex-col gap-3 min-w-0">
+            <div className="grid grid-cols-3 gap-3">
+              <StatBox label="Work Time" value={workTime} />
+              <StatBox label="Remaing Hours" value={fmtHM(remaining)} />
+              <StatBox label="OverTime" value={fmtHM(overTime)} />
+            </div>
+
+            <div className="text-[12px]">
+              <div className="grid grid-cols-[28px_1fr_60px_70px] gap-x-3 text-slate-500 dark:text-slate-400 font-semibold text-[11px] pb-1 border-b border-slate-100 dark:border-slate-800">
+                <div>#</div>
+                <div>Date Time</div>
+                <div>In/Out</div>
+                <div>Device</div>
+              </div>
+              {loading ? (
+                <div className="py-3 text-center text-slate-500 dark:text-slate-400">Loading…</div>
+              ) : logs.length === 0 ? (
+                <div className="py-3 text-center text-slate-500 dark:text-slate-400">No logs in last 10 days.</div>
+              ) : logs.slice(0, 10).map((log, i) => {
+                const t = String(log.log_type || "").toLowerCase();
+                const label = t === "in" ? "In" : t === "out" ? "Out" : (log.log_type || "—");
+                const color = t === "in" ? "text-emerald-600 dark:text-emerald-400" : t === "out" ? "text-rose-600 dark:text-rose-400" : "text-slate-500";
+                return (
+                  <div key={log.id || i} className="grid grid-cols-[28px_1fr_60px_70px] gap-x-3 py-1 text-slate-700 dark:text-slate-200 leading-tight">
+                    <div>{i + 1}</div>
+                    <div className="whitespace-nowrap">{log.date} {log.time}</div>
+                    <div className={`font-semibold ${color}`}>{label}</div>
+                    <div>{log?.device?.name || "—"}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatBox({ label, value }) {
+  return (
+    <div className="rounded-md border border-slate-200 dark:border-slate-700 px-3 py-2.5 text-center">
+      <div className="text-base font-bold text-slate-800 dark:text-white">{value}</div>
+      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{label}</div>
+    </div>
+  );
+}
+
+function StatRow({ label, value }) {
+  return (
+    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
+      <span className="text-slate-600 dark:text-slate-300">{label}</span>
+      <span className="font-semibold text-slate-800 dark:text-white tabular-nums">{value}</span>
     </div>
   );
 }

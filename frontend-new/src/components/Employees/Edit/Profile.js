@@ -62,29 +62,35 @@ const Profile = ({ action = "Add", payload }) => {
         }
     };
 
-    const fetchDesignations = async () => {
-        try {
-            let data = (await getDesignations());
-
-            console.log(`designations:`, data.data);
-
-
-            setDesignations(data.data);
-        } catch (error) {
-            await notify("Oops!", parseApiError(error), "error")
-        }
-    };
-
     useEffect(() => {
         fetchBranches();
-        fetchDesignations();
     }, []);
+
+    useEffect(() => {
+        const fetchDesignations = async () => {
+            if (!form.branch_id) {
+                setDesignations([]);
+                return;
+            }
+            try {
+                let data = (await getDesignations({ branch_id: form.branch_id, per_page: 1000 }));
+                setDesignations(data.data || []);
+            } catch (error) {
+                await notify("Oops!", parseApiError(error), "error")
+            }
+        };
+        fetchDesignations();
+    }, [form.branch_id]);
 
 
     useEffect(() => {
         const fetchDepartments = async () => {
+            if (!form.branch_id) {
+                setDepartments([]);
+                return;
+            }
             try {
-                const result = await getDepartments();
+                const result = await getDepartments(form.branch_id);
                 setDepartments(result.data || result);
             } catch (error) {
                 console.error("Error fetching departments:", error);
@@ -262,7 +268,11 @@ const Profile = ({ action = "Add", payload }) => {
 
                             <div className="col-span-4">
                                 <Label>Date Of Birth</Label>
-                                <DatePicker value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e })} />
+                                <DatePicker
+                                    value={form.date_of_birth}
+                                    onChange={(e) => setForm({ ...form, date_of_birth: e })}
+                                    maxDate={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d; })()}
+                                />
                             </div>
 
 

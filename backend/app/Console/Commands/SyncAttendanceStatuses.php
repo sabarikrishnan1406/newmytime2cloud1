@@ -80,7 +80,13 @@ class SyncAttendanceStatuses extends Command
                 $shiftTypeId = $employee->schedule?->shift?->shift_type_id ?? null;
 
                 $payload = [
-                    'employee_id'   => $employee->employee_id,
+                    // Use system_user_id (not the badge `employee_id`) — `attendances.employee_id`
+                    // is the FK that joins to `employees.system_user_id` (see Attendance::employee
+                    // relation). Writing the badge here was the source of the long-running bug
+                    // where employees with employee_id != system_user_id (legacy data) showed as
+                    // ABSENT in every report: this every-minute job kept overwriting their real
+                    // recalculated rows with empty placeholder rows under the wrong key.
+                    'employee_id'   => $employee->system_user_id,
                     'company_id'    => $employee->company_id,
                     'branch_id'     => $employee->branch_id,
                     'date'          => $dateString,

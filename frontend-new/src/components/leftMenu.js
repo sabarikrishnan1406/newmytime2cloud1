@@ -6,11 +6,13 @@ import { useEffect, useState } from "react";
 import { leftNavLinks } from '../lib/menuData';
 import { LogOut, User } from "lucide-react";
 import { getUser } from "@/config";
+import { getCompanyLogo } from "@/lib/endpoint/company";
 
 export default function LeftMenu() {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState(null);
+  const [companyLogo, setCompanyLogo] = useState(null);
 
   useEffect(() => {
     const load = () => {
@@ -21,14 +23,53 @@ export default function LeftMenu() {
     return () => window.removeEventListener("userUpdated", load);
   }, []);
 
+  useEffect(() => {
+    if (!user?.company_id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await getCompanyLogo();
+        if (cancelled) return;
+        const logo = data?.logo || data?.url || data?.path || (typeof data === "string" ? data : null);
+        if (logo) setCompanyLogo(logo);
+      } catch (_) {
+        // ignore — fallback to initials
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.company_id]);
+
   if (pathname === "/login") return null;
 
   const primaryPath = '/' + pathname.split('/')[1];
   const links = leftNavLinks[primaryPath] || leftNavLinks['/'];
 
-  const displayName = user?.name || user?.first_name || user?.user_name || user?.company_name || user?.email || "User";
-  const subline = user?.email || user?.company_name || "";
-  const avatar = user?.profile_picture || user?.avatar || user?.logo || null;
+  const displayName =
+    user?.name ||
+    [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim() ||
+    user?.user_name ||
+    user?.company?.name ||
+    user?.company_name ||
+    user?.email ||
+    "User";
+  const subline = user?.email || user?.company?.name || user?.company_name || "";
+  const avatar =
+    companyLogo ||
+    user?.company?.logo ||
+    user?.company_logo ||
+    user?.logo ||
+    user?.profile_picture ||
+    user?.profile_picture_raw ||
+    user?.avatar ||
+    user?.employee?.profile_picture ||
+    null;
+  const initials = (() => {
+    const src = displayName || "U";
+    const parts = String(src).trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "U";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  })();
 
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
@@ -82,19 +123,21 @@ export default function LeftMenu() {
               alt={displayName}
               title={displayName}
               className="w-10 h-10 rounded-full object-cover border-2 border-slate-700 shrink-0"
+              onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
             />
-          ) : (
-            <div title={displayName} className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
-              <User size={18} className="text-slate-300" />
-            </div>
-          )}
+          ) : null}
+          <div
+            title={displayName}
+            className={`w-10 h-10 rounded-full bg-gradient-to-br from-primary/80 to-purple-600 text-white flex items-center justify-center shrink-0 text-sm font-bold ${avatar ? 'hidden' : ''}`}
+          >
+            {initials}
+          </div>
           <button
             type="button"
             onClick={handleLogout}
             title="Log out"
-            className="hidden group-hover:flex items-center gap-2 px-3 h-9 rounded-lg text-slate-300 hover:bg-red-500/10 hover:text-red-400 transition-colors text-sm font-medium"
+            className="hidden group-hover:flex items-center px-3 h-9 rounded-lg text-slate-300 hover:bg-red-500/10 hover:text-red-400 transition-colors text-sm font-medium"
           >
-            <LogOut size={16} />
             <span>Logout</span>
           </button>
         </div>

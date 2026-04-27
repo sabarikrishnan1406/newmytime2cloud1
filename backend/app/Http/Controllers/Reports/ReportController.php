@@ -54,6 +54,10 @@ class ReportController extends Controller
         // Weekoff is now computed and persisted by RenderWeekOffJob (daily cron + manual runs).
         // The DB is the single source of truth — no in-memory override needed.
 
+        // Repair employee relations for legacy rows where attendances.employee_id holds
+        // the badge value instead of system_user_id. Without this they render as '---'.
+        Attendance::rehydrateEmployeesByBadge($data->items(), (int) $request->company_id);
+
         $showTabs = json_decode($request->showTabs, true) ?: [];
 
         // only for multi in/out

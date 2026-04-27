@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { getAnnouncementList } from '@/lib/endpoint/announcements';
 import { Badge } from '../ui/badge';
 
@@ -69,7 +70,7 @@ const statusBadge = (start_date, end_date) => {
 };
 
 export default function AnnouncementsPage() {
-
+    const router = useRouter();
     const [rows, setRows] = useState([]);
 
     const fetchAllData = async () => {
@@ -104,7 +105,12 @@ export default function AnnouncementsPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-900">
                     {rows.length > 0 ? rows.map((row) => (
-                        <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors group relative">
+                        <tr
+                            key={row.id}
+                            onClick={() => router.push('/announcements')}
+                            className="hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors group relative cursor-pointer"
+                            title="Go to Announcements"
+                        >
                             <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-slate-700 dark:text-slate-200 max-w-[200px] truncate" title={row.title}>{row.title || 'N/A'}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">{row?.branch?.branch_name || 'All'}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">{categoryBadge(row.category)}</td>

@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { getReportNotifications } from '@/lib/endpoint/automation';
 
 
 export default function ExecutiveAttendanceDashboardPage() {
-
+    const router = useRouter();
     const [dailyAttendanceRows, setDailyAttendanceRows] = useState([]);
 
     const fetchAllData = async () => {
@@ -48,7 +49,12 @@ export default function ExecutiveAttendanceDashboardPage() {
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-900">
                         {dailyAttendanceRows.length > 0 ? dailyAttendanceRows.map((row) => (
-                            <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors group relative">
+                            <tr
+                                key={row.id}
+                                onClick={() => router.push('/automation')}
+                                className="hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors group relative cursor-pointer"
+                                title="Go to Automation"
+                            >
                                 <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">{row?.branch?.branch_name || 'N/A'}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">{row?.type || 'N/A'}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">{row?.subject || 'N/A'}</td>

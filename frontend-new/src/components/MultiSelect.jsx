@@ -109,6 +109,24 @@ export default function EmployeeMultiSelect({
       return <span className="text-gray-500">Select Employee(s)</span>;
     }
 
+    // Collapse to a single "Select All" pill when every employee is selected
+    if (employees.length > 0 && selectedEmployees.length === employees.length) {
+      return (
+        <div className="flex flex-wrap gap-1">
+          <Badge variant="secondary" className="mr-1 hover:bg-gray-200">
+            Select All
+            <X
+              className="ml-1 h-3 w-3 cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange([]);
+              }}
+            />
+          </Badge>
+        </div>
+      );
+    }
+
     // Display the initial badges
     const badges = employeesToDisplay.map((employee) => (
       <Badge
@@ -126,19 +144,6 @@ export default function EmployeeMultiSelect({
         />
       </Badge>
     ));
-
-    // Add an overflow badge if necessary
-    if (overflowCount > 0) {
-      badges.push(
-        <Badge
-          key="overflow-count"
-          variant="outline"
-          className="ml-1 bg-gray-100 text-gray-700"
-        >
-          +{overflowCount} more
-        </Badge>
-      );
-    }
 
     return <div className="flex flex-wrap gap-1">{badges}</div>;
   };

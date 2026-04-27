@@ -112,6 +112,72 @@ class Attendance extends Model
         ]);
     }
 
+    /**
+     * Resolve employee relations that came back as the default '---' fallback.
+     *
+     * Background: attendances.employee_id should reference employees.system_user_id, but
+     * some legacy rows (mostly older employees where employee_id != system_user_id) hold
+     * the badge value (employees.employee_id) instead. The default belongsTo() join then
+     * fails and the report shows '---' name / no department / no profile.
+     *
+     * This walks an iterable of Attendance records, finds ones whose loaded `employee`
+     * is the default placeholder, and re-attaches the real Employee by matching on the
+     * badge field. Lookups are batched into one query to avoid N+1.
+     *
+     * Safe to call on a Collection, LengthAwarePaginator, or any iterable of Attendance.
+     */
+    public static function rehydrateEmployeesByBadge($records, $companyId, ?array $employeeColumns = null, array $employeeWith = ['department:id,name', 'branch:id,branch_name'])
+    {
+        if (empty($records)) {
+            return $records;
+        }
+
+        // Collect attendance.employee_id values whose employee relation didn't resolve.
+        $missingIds = [];
+        foreach ($records as $r) {
+            $emp = $r->getRelation('employee');
+            if (!$emp || ($emp->first_name ?? null) === '---') {
+                $eid = $r->employee_id;
+                if ($eid !== null && $eid !== '') {
+                    $missingIds[(string) $eid] = true;
+                }
+            }
+        }
+
+        if (!$missingIds) {
+            return $records;
+        }
+
+        $columns = $employeeColumns ?: [
+            'system_user_id', 'employee_id', 'first_name', 'last_name',
+            'full_name', 'display_name', 'department_id', 'branch_id',
+            'designation_id', 'profile_picture', 'company_id',
+        ];
+
+        $map = Employee::where('company_id', $companyId)
+            ->whereIn('employee_id', array_keys($missingIds))
+            ->with($employeeWith)
+            ->get($columns)
+            ->keyBy(fn($e) => (string) $e->employee_id);
+
+        if ($map->isEmpty()) {
+            return $records;
+        }
+
+        foreach ($records as $r) {
+            $emp = $r->getRelation('employee');
+            if ($emp && ($emp->first_name ?? null) !== '---') {
+                continue;
+            }
+            $real = $map->get((string) $r->employee_id);
+            if ($real) {
+                $r->setRelation('employee', $real);
+            }
+        }
+
+        return $records;
+    }
+
     public function employee_report_only()
     {
         return $this->belongsTo(EmployeeReportOnly::class, "employee_id", "system_user_id")->withOut("schedule")->withDefault([

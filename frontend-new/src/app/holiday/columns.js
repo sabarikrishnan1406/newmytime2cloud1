@@ -22,7 +22,7 @@ export default (deleteItem, editItem) => [
   },
   {
     key: "branch",
-    header: "Branch / Dept",
+    header: "Branch",
     render: ({ branch }) => (
       <div className="text-sm text-slate-600 dark:text-slate-300 hidden xl:table-cell">
         {branch?.branch_name || "-"}
@@ -31,11 +31,21 @@ export default (deleteItem, editItem) => [
   },
 
   {
-    key: "duration",
-    header: "Duration",
-    render: ({ start_date, end_date }) => (
+    key: "from",
+    header: "From",
+    render: ({ start_date }) => (
       <div className="text-sm text-slate-600 dark:text-slate-300 hidden xl:table-cell">
-        {start_date} - {end_date}
+        {start_date}
+      </div>
+    ),
+  },
+
+  {
+    key: "to",
+    header: "To",
+    render: ({ end_date }) => (
+      <div className="text-sm text-slate-600 dark:text-slate-300 hidden xl:table-cell">
+        {end_date}
       </div>
     ),
   },

@@ -212,7 +212,7 @@ const EmployeeContact = ({ action = "Add", payload }) => {
                             <SectionTitle icon={<MapPin size={14} />} title="Present Address" />
 
                             <label
-                                className="px-4 py-2 border border-border text-primary hover:bg-primary-700 text-xs font-bold uppercase tracking-wide rounded-lg shadow-lg shadow-primary-200 dark:shadow-none flex items-center gap-2 cursor-pointer transition-all has-[:disabled]:opacity-50 has-[:disabled]:cursor-not-allowed has-[:disabled]:bg-gray-400"
+                                className="px-4 py-2 border border-border text-primary dark:text-white hover:bg-primary-700 text-xs font-bold uppercase tracking-wide rounded-lg shadow-lg shadow-primary-200 dark:shadow-none flex items-center gap-2 cursor-pointer transition-all has-[:disabled]:opacity-50 has-[:disabled]:cursor-not-allowed has-[:disabled]:bg-gray-400"
                             >
                                 <Checkbox
                                     id="permanent-address"

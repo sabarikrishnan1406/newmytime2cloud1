@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { getHolidays } from '@/lib/endpoint/holidays';
 import { getBranches } from '@/lib/api';
 import { api } from '@/lib/api';
@@ -32,6 +33,7 @@ const statusBadge = (startDate) => {
 };
 
 export default function HolidaysPage() {
+    const router = useRouter();
     const [rows, setRows] = useState([]);
 
     useEffect(() => {
@@ -148,7 +150,12 @@ export default function HolidaysPage() {
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-900">
                     {rows.length > 0 ? (
                         rows.map((row) => (
-                            <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors group relative">
+                            <tr
+                                key={row.id}
+                                onClick={() => router.push('/holiday')}
+                                className="hover:bg-slate-50 dark:hover:bg-slate-800/70 transition-colors group relative cursor-pointer"
+                                title="Go to Holidays"
+                            >
                                 <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">{row?.branch?.branch_name || 'N/A'}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">{row?.name || 'N/A'}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300">

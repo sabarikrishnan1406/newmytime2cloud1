@@ -21,6 +21,7 @@ class StoreRequest extends FormRequest
             'automation' => 'nullable',
             'subject' => 'required',
             // 'body' => 'nullable',
+            'email_body' => 'nullable|string|max:5000',
             'day' => 'nullable',
             'date' => 'nullable',
             'company_id' => 'required',

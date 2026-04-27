@@ -264,7 +264,7 @@ class Kernel extends ConsoleKernel
         foreach ($models as $model) {
             $companyId = $model->company_id;
             $schedule
-                ->command("task:report_notification_crons $companyId")
+                ->command("task:report_notification_crons $companyId $model->id")
                 ->dailyAt($model->time)
                 ->runInBackground();
         }

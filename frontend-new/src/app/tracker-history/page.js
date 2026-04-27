@@ -9,6 +9,7 @@ import { MapPin, Search, Smartphone } from "lucide-react";
 import ProfilePicture from "@/components/ProfilePicture";
 import DatePicker from "@/components/ui/DatePicker";
 import DropDown from "@/components/ui/DropDown";
+import { groupRows } from "./groupRows";
 
 function TrackerHistoryInner() {
   const router = useRouter();
@@ -26,6 +27,8 @@ function TrackerHistoryInner() {
 
   const userId = params.get("user_id");
   const dateParam = params.get("date");
+  const fromTime = params.get("from_time");
+  const toTime = params.get("to_time");
   const name = params.get("name") || `Employee ${userId || ""}`;
   const avatar = params.get("avatar") || "";
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -41,6 +44,8 @@ function TrackerHistoryInner() {
         companyId={companyId}
         apiKey={apiKey}
         date={dateParam}
+        fromTime={fromTime}
+        toTime={toTime}
         layout="page"
         onClose={() => router.push("/tracker-history")}
       />
@@ -69,6 +74,7 @@ function TrackerHistoryPicker({ router, initialDate }) {
       device_ids: ["Mobile"],
       from_date: selectedDate,
       to_date: selectedDate,
+      with_shift_type: 1,
     })
       .then((result) => {
         const rows = Array.isArray(result?.data) ? result.data : [];
@@ -109,7 +115,7 @@ function TrackerHistoryPicker({ router, initialDate }) {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return logs.filter((l) => {
+    const filteredLogs = logs.filter((l) => {
       const bId = l?.employee?.branch?.id;
       const dId = l?.employee?.department?.id;
       if (branchFilter && String(bId) !== String(branchFilter)) return false;
@@ -120,18 +126,32 @@ function TrackerHistoryPicker({ router, initialDate }) {
       }
       return true;
     });
+
+    return groupRows(filteredLogs);
   }, [logs, branchFilter, deptFilter, search]);
 
-  const openHistory = (log) => {
-    const emp = log?.employee || {};
-    const fullName = [emp.first_name, emp.last_name].filter(Boolean).join(" ").trim() || `Employee ${log?.UserID || ""}`;
-    const p = new URLSearchParams({
-      user_id: String(log?.UserID || ""),
-      date: selectedDate,
+  const toIsoDate = (raw) => {
+    if (!raw) return selectedDate;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+    return selectedDate;
+  };
+
+  const openHistory = (row) => {
+    const anyLog = row?.inLog || row?.outLog;
+    const emp = anyLog?.employee || {};
+    const fullName = [emp.first_name, emp.last_name].filter(Boolean).join(" ").trim() || `Employee ${anyLog?.UserID || ""}`;
+    const isoDate = anyLog?.edit_date || toIsoDate(anyLog?.date);
+    const params = {
+      user_id: String(anyLog?.UserID || ""),
+      date: isoDate,
       name: fullName,
       avatar: emp.profile_picture || "",
-    });
-    router.push(`/tracker-history?${p.toString()}`);
+    };
+    if (row?.inLog?.time) params.from_time = row.inLog.time;
+    if (row?.outLog?.time) params.to_time = row.outLog.time;
+    router.push(`/tracker-history?${new URLSearchParams(params).toString()}`);
   };
 
   const ctl = "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-gray-300 dark:border-slate-700 rounded-xl px-4 h-11 text-sm w-[180px] focus:outline-none focus:ring-2 focus:ring-primary/40";
@@ -196,49 +216,96 @@ function TrackerHistoryPicker({ router, initialDate }) {
               <tr>
                 <Th>Personnel</Th>
                 <Th>Branch / Department</Th>
-                <Th>Date Time</Th>
-                <Th>Log Type</Th>
+                <Th>Date</Th>
+                <Th>Login</Th>
+                <Th>Logout</Th>
+                <Th>Shift</Th>
                 <Th>Mode</Th>
-                <Th>Device</Th>
                 <Th>Location</Th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={7} className="p-6 text-center text-slate-500 dark:text-slate-400">Loading logs…</td></tr>
+                <tr><td colSpan={8} className="p-6 text-center text-slate-500 dark:text-slate-400">Loading logs…</td></tr>
               )}
               {!loading && error && (
-                <tr><td colSpan={7} className="p-6 text-center text-red-500">{error}</td></tr>
+                <tr><td colSpan={8} className="p-6 text-center text-red-500">{error}</td></tr>
               )}
               {!loading && !error && filtered.length === 0 && (
-                <tr><td colSpan={7} className="p-6 text-center text-slate-500 dark:text-slate-400">No mobile clock-ins found for {selectedDate}.</td></tr>
+                <tr><td colSpan={8} className="p-6 text-center text-slate-500 dark:text-slate-400">No mobile clock-ins found for {selectedDate}.</td></tr>
               )}
-              {!loading && !error && filtered.map((log) => {
-                const emp = log?.employee || {};
+              {!loading && !error && filtered.map((row) => {
+                const anyLog = row.inLog || row.outLog;
+                const emp = anyLog?.employee || {};
                 const fullName = [emp.first_name, emp.last_name].filter(Boolean).join(" ").trim();
                 const branchName = emp?.branch?.branch_name || "—";
                 const deptName = emp?.department?.name || "—";
+                const inLoc = row?.inLog?.gps_location || row?.inLog?.device?.location;
+                const outLoc = row?.outLog?.gps_location || row?.outLog?.device?.location;
                 return (
-                  <tr key={log.id} className="border-t border-gray-100 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                  <tr key={row.key} className={`${row.groupRowIndex === 0 ? "border-t border-gray-100 dark:border-slate-800" : ""} hover:bg-gray-50 dark:hover:bg-slate-800/50 align-top`}>
+                    {row.groupRowIndex === 0 && (
+                      <>
+                        <Td rowSpan={row.groupRowCount}>
+                          <div className="flex items-center gap-2.5">
+                            <ProfilePicture src={emp.profile_picture} />
+                            <div>
+                              <div className="text-slate-700 dark:text-slate-200 font-medium">{fullName || "—"}</div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400">ID: {emp.employee_id || anyLog?.UserID}</div>
+                            </div>
+                          </div>
+                        </Td>
+                        <Td rowSpan={row.groupRowCount}>{branchName} / {deptName}</Td>
+                        <Td rowSpan={row.groupRowCount}>{anyLog?.date || "—"}</Td>
+                      </>
+                    )}
                     <Td>
-                      <div className="flex items-center gap-2.5">
-                        <ProfilePicture src={emp.profile_picture} />
-                        <div>
-                          <div className="text-slate-700 dark:text-slate-200 font-medium">{fullName || "—"}</div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400">ID: {emp.employee_id || log.UserID}</div>
+                      {row.inLog ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            {row.inLog.time}
+                          </span>
+                          {row.extraPunches && row.extraPunches.length > 0 && (
+                            <span
+                              className="inline-flex w-fit items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 cursor-help"
+                              title={row.extraPunches.map((p) => `${p.time} ${String(p.log_type || "").toUpperCase()}`).join("\n")}
+                            >
+                              +{row.extraPunches.length} punches
+                            </span>
+                          )}
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 max-w-[180px] truncate" title={inLoc || ""}>
+                            {inLoc || "—"}
+                          </span>
                         </div>
-                      </div>
+                      ) : <span className="text-slate-400 dark:text-slate-500">—</span>}
                     </Td>
-                    <Td>{branchName} / {deptName}</Td>
-                    <Td>{log.date} {log.time}</Td>
-                    <Td>{log.log_type || "—"}</Td>
+                    <Td>
+                      {row.outLog ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                            {row.outLog.time}
+                          </span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 max-w-[180px] truncate" title={outLoc || ""}>
+                            {outLoc || "—"}
+                          </span>
+                        </div>
+                      ) : <span className="text-slate-400 dark:text-slate-500">—</span>}
+                    </Td>
+                    <Td>
+                      {row.shiftLabel && row.shiftLabel !== "—" ? (
+                        <span className="text-[11px] px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                          {row.shiftLabel}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 dark:text-slate-500 text-[11px]">—</span>
+                      )}
+                    </Td>
                     <Td><Smartphone size={16} className="text-slate-400 dark:text-slate-500" /></Td>
-                    <Td>Mobile</Td>
                     <Td>
                       <button
-                        onClick={() => openHistory(log)}
-                        title="View movement history"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 transition"
+                        onClick={() => openHistory(row)}
+                        title="Play movement between these times"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 shadow-sm transition"
                       >
                         <MapPin size={14} />
                         Play
@@ -267,8 +334,8 @@ function Field({ label, children }) {
 function Th({ children }) {
   return <th className="px-3.5 py-3 text-left text-[11px] font-semibold tracking-wider text-slate-500 dark:text-slate-400 uppercase">{children}</th>;
 }
-function Td({ children }) {
-  return <td className="px-3.5 py-2.5 text-slate-600 dark:text-slate-300 align-middle">{children}</td>;
+function Td({ children, rowSpan }) {
+  return <td rowSpan={rowSpan} className="px-3.5 py-2.5 text-slate-600 dark:text-slate-300 align-middle">{children}</td>;
 }
 
 export default function TrackerHistoryPage() {

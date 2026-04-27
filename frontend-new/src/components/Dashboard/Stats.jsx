@@ -29,12 +29,6 @@ function Stats({ branch_ids, department_ids }) {
           <span className="text-2xl font-bold text-gray-600 dark:text-gray-300 font-display">
             {stats.employeeCount}
           </span>
-          <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded flex items-center mb-1">
-            <span className="material-symbols-outlined text-[10px] mr-0.5">
-              arrow_upward
-            </span>
-            1%
-          </span>
         </div>
       </div>
       <div className="glass-card p-4 rounded-xl relative overflow-hidden group border-l-2 border-l-emerald-500/50">
@@ -45,12 +39,11 @@ function Stats({ branch_ids, department_ids }) {
           <span className="text-2xl font-bold text-gray-600 dark:text-gray-300 font-display">
             {stats.presentCount}
           </span>
-          <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded flex items-center mb-1">
-            <span className="material-symbols-outlined text-[10px] mr-0.5">
-              arrow_upward
+          {stats.employeeCount > 0 && (
+            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded flex items-center mb-1">
+              {Math.round((stats.presentCount / stats.employeeCount) * 100)}%
             </span>
-            2%
-          </span>
+          )}
         </div>
       </div>
       <div className="glass-card p-4 rounded-xl relative overflow-hidden group">
@@ -61,12 +54,11 @@ function Stats({ branch_ids, department_ids }) {
           <span className="text-2xl font-bold text-gray-600 dark:text-gray-300 font-display">
             {stats.absentCount}
           </span>
-          <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded flex items-center mb-1">
-            <span className="material-symbols-outlined text-[10px] mr-0.5">
-              arrow_downward
+          {stats.employeeCount > 0 && (
+            <span className="text-[10px] text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded flex items-center mb-1">
+              {Math.round((stats.absentCount / stats.employeeCount) * 100)}%
             </span>
-            5%
-          </span>
+          )}
         </div>
       </div>
       <div className="glass-card p-4 rounded-xl relative overflow-hidden group">
@@ -77,9 +69,6 @@ function Stats({ branch_ids, department_ids }) {
           <span className="text-2xl font-bold text-gray-600 dark:text-gray-300 font-display">
             {stats.leaveCount}
           </span>
-          <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 py-0.5 rounded flex items-center mb-1">
-            Stable
-          </span>
         </div>
       </div>
       <div className="glass-card p-4 rounded-xl relative overflow-hidden group">
@@ -87,12 +76,6 @@ function Stats({ branch_ids, department_ids }) {
         <div className="flex items-end gap-2">
           <span className="text-2xl font-bold text-gray-600 dark:text-gray-300 font-display">
             {stats.vacationCount}
-          </span>
-          <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded flex items-center mb-1">
-            <span className="material-symbols-outlined text-[10px] mr-0.5">
-              arrow_upward
-            </span>
-            1%
           </span>
         </div>
       </div>
@@ -112,7 +95,7 @@ function Stats({ branch_ids, department_ids }) {
           </span>
         </div>
       </div> */}
-      <div className="glass-card p-4 rounded-xl relative overflow-hidden group border-l-2 border-l-orange-500/50">
+      <div className={`glass-card p-4 rounded-xl relative overflow-hidden group ${stats.offlineDevices > 0 ? "border-l-2 border-l-orange-500/50" : ""}`}>
         <p className="text-orange-400/80 text-xs font-medium mb-1">
           Offline Nodes
         </p>
@@ -120,12 +103,14 @@ function Stats({ branch_ids, department_ids }) {
           <span className="text-2xl font-bold text-gray-600 dark:text-gray-300 font-display">
             {stats.offlineDevices}
           </span>
-          <span className="text-[10px] text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded flex items-center mb-1">
-            <span className="material-symbols-outlined text-[10px] mr-0.5">
-              warning
+          {stats.offlineDevices > 0 && (
+            <span className="text-[10px] text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded flex items-center mb-1">
+              <span className="material-symbols-outlined text-[10px] mr-0.5">
+                warning
+              </span>
+              Alert
             </span>
-            Alert
-          </span>
+          )}
         </div>
       </div>
     </>

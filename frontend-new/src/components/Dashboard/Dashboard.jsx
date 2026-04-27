@@ -72,14 +72,14 @@ const AdminDashboard = () => {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto overflow-x-hidden pr-2 pb-16 custom-scrollbar flex flex-col gap-5">
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           <Stats
             branch_ids={selectedBranchIds}
             departments_ids={selectedDepartmentIds}
           />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 h-[340px]">
-          <div className="grid grid-cols-2 gap-4 h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:h-[340px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
             <div className="glass-panel rounded-2xl p-5 relative overflow-hidden flex flex-col h-full">
               <AttendanceCard
                 branch_ids={selectedBranchIds}

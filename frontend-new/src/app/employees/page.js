@@ -117,33 +117,33 @@ export default function EmployeesPage() {
     }
 
     return (
-        <div className='p-4 pb-24 overflow-y-auto max-h-[calc(100vh-100px)]'>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6  sm:space-y-0">
-                <h1 className="text-2xl font-extrabold text-gray-600 dark:text-gray-300 flex items-center">
-                    {/* <User className="w-7 h-7 mr-3 text-indigo-600" /> */}
+        <div className='p-3 sm:p-4 pb-24 overflow-y-auto max-h-[calc(100vh-100px)]'>
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 mb-6">
+                <h1 className="text-xl sm:text-2xl font-extrabold text-gray-600 dark:text-gray-300 flex items-center shrink-0">
                     Employees
                 </h1>
-                <div className="flex flex-wrap items-center space-x-3 space-y-2 sm:space-y-0">
-                    <div className="relative">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <div className="relative w-full sm:w-auto">
                         <MultiDropDown
                             placeholder={'Select Branch'}
                             items={branches}
                             value={selectedBranchIds}
                             onChange={setSelectedBranchIds}
                             badgesCount={1}
-                            width='w-[220px]'
+                            width='w-full sm:w-[200px]'
                         />
                     </div>
-                    <div className="relative">
+                    <div className="relative w-full sm:w-auto">
                         <MultiDropDown
                             placeholder={'Select Department'}
                             items={departments}
                             value={selectedDepartmentIds}
                             onChange={setSelectedDepartmentIds}
                             badgesCount={1}
+                            width='w-full sm:w-[200px]'
                         />
                     </div>
-                    <div className="relative">
+                    <div className="relative w-full sm:w-auto">
                         <Input
                             placeholder="Search by name or ID"
                             icon="search"

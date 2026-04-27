@@ -29,8 +29,8 @@ const RadioGroup = ({
                 relative flex items-center group cursor-pointer h-10 rounded-xl border transition-all duration-200
                 ${
                   isSelected
-                    ? "bg-primary/5 border-primary/40 ring-1 ring-primary/20"
-                    : "bg-white dark:bg-slate-900 border-gray-200 dark:border-white/10 hover:border-primary/30"
+                    ? "bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-white/30 ring-1 ring-slate-200 dark:ring-white/10"
+                    : "bg-white dark:bg-slate-900 border-gray-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/30"
                 }
               `}
             >
@@ -50,14 +50,14 @@ const RadioGroup = ({
                 flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all duration-200
                 ${
                   isSelected
-                    ? "border-primary bg-primary"
-                    : "border-slate-300 dark:border-slate-600 group-hover:border-primary/50"
+                    ? "border-slate-900 bg-slate-900 dark:border-white dark:bg-white"
+                    : "border-slate-300 dark:border-slate-600 group-hover:border-slate-400 dark:group-hover:border-white/40"
                 }
               `}
               >
                 <div
                   className={`
-                  w-2 h-2 rounded-full bg-white transition-transform duration-200
+                  w-2 h-2 rounded-full bg-white dark:bg-slate-900 transition-transform duration-200
                   ${isSelected ? "scale-100" : "scale-0"}
                 `}
                 />
@@ -68,7 +68,7 @@ const RadioGroup = ({
                 <span
                   className={`text-sm font-medium transition-colors ${
                     isSelected
-                      ? "text-primary"
+                      ? "text-slate-900 dark:text-white"
                       : "text-slate-700 dark:text-slate-300"
                   }`}
                 >

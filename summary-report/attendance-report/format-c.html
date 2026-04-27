@@ -381,7 +381,15 @@
         var genDate = pad(now.getDate()) + ' ' + monthShort(now.getMonth()) + ' ' + now.getFullYear() + ', ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
 
         var titleSuffix = shiftTypeId === 2 ? ' - MULTI SHIFT' : (shiftTypeId === 5 ? ' - SPLIT DUTY' : '');
-        var typeLabel = shiftTypeId === 2 ? 'Multi Shift' : (shiftTypeId === 5 ? 'Split Duty' : 'Monthly Exact');
+
+        // Derive the report's frequency label from the date range so the title matches
+        // what the email actually represents (Daily / Weekly / Monthly).
+        var rangeDays = Math.round((Date.parse(toDate) - Date.parse(fromDate)) / 86400000) + 1;
+        var reportKind = rangeDays <= 1 ? 'DAILY' : (rangeDays <= 14 ? 'WEEKLY' : 'MONTHLY');
+        var reportTitle = reportKind + ' ATTENDANCE REPORT';
+
+        var typeLabel = shiftTypeId === 2 ? 'Multi Shift' : (shiftTypeId === 5 ? 'Split Duty' :
+          (reportKind === 'DAILY' ? 'Daily' : (reportKind === 'WEEKLY' ? 'Weekly' : 'Monthly Exact')));
 
         var profileImg = emp.profile_picture || '';
         var empName = emp.full_name || emp.display_name || first.employee_id;
@@ -398,7 +406,7 @@
         var headerHtml = ''
           + '<div class="header-row">'
           +   '<div>'
-          +     '<div class="title">MONTHLY ATTENDANCE REPORT' + titleSuffix + '</div>'
+          +     '<div class="title">' + reportTitle + titleSuffix + '</div>'
           +     '<div class="subtitle">' + esc(fromDate) + ' - ' + esc(toDate) + ' &bull; ' + esc(typeLabel) + '</div>'
           +   '</div>'
           +   '<div class="branch-badge">'

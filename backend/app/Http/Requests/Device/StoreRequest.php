@@ -60,6 +60,7 @@ class StoreRequest extends FormRequest
             'camera_username' => ['nullable', 'string', 'max:255'],
             'camera_password' => ['nullable', 'string', 'max:255'],
             'door_pin' => ['required', 'digits:4'],
+            'device_photo' => ['nullable', 'string'],
         ];
     }
 
